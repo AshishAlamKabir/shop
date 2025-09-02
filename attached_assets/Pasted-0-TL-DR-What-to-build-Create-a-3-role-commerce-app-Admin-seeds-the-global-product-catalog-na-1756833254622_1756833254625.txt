@@ -1,0 +1,638 @@
+0) TL;DR (What to build)
+
+Create a 3-role commerce app:
+
+Admin: seeds the global product catalog (name, brand, images, size/packaging, unit, wholesale flag).
+
+Retailers: create a store profile, import from the global catalog, set prices (retail & wholesale), toggle “available”, manage inventory.
+
+Shop Owners: browse retailer stores, pick products, set quantities/lots, place orders, track statuses.
+
+Notifications: real-time order events (placed/accepted/rejected/ready/delivered) to both parties.
+
+Deliver a working MVP with room to scale.
+
+1) Tech Stack Targets (pick defaults; allow alternatives)
+
+Mobile Frontend (default): React Native (Expo).
+Alternative: Flutter.
+
+Backend (default): Node.js + Express + TypeScript.
+Alternative: NestJS.
+
+Database (default): PostgreSQL via Prisma ORM.
+Alternative: MySQL (Prisma) or MongoDB (Mongoose).
+
+Auth: JWT (access+refresh), role-based guards.
+
+Real-time: Socket.IO (orders + notifications).
+
+Push Notifications: Firebase Cloud Messaging (FCM); in dev use local toasts + in-app inbox.
+
+Storage: Cloud storage for product images (mock in dev with local folder).
+
+Deployment (later): Render/Railway for API + DB, Expo EAS for mobile.
+
+2) Project Structure (Monorepo)
+shoplink/
+├─ README.md
+├─ .env.example
+├─ packages/
+│  └─ shared/                 # shared types & constants
+├─ apps/
+│  ├─ mobile/                 # React Native (Expo)
+│  └─ api/                    # Express (TypeScript)
+└─ docs/                      # OpenAPI, diagrams
+
+2.1 Backend (apps/api)
+apps/api/
+├─ src/
+│  ├─ app.ts                  # express app
+│  ├─ server.ts               # boot
+│  ├─ config/                 # env, logger
+│  ├─ middleware/             # auth, error, rate-limit
+│  ├─ modules/
+│  │  ├─ auth/
+│  │  ├─ users/               # roles: ADMIN, RETAILER, SHOP_OWNER
+│  │  ├─ stores/              # retailer store profiles
+│  │  ├─ catalog/             # admin global product catalog
+│  │  ├─ listings/            # retailer store-listings (price/availability)
+│  │  ├─ orders/              # cart -> order, status flow
+│  │  └─ notifications/       # socket + FCM tokens
+│  ├─ libs/
+│  │  ├─ prisma/              # Prisma client
+│  │  └─ sockets/             # socket.io setup
+│  └─ routes.ts               # route registry
+├─ prisma/
+│  ├─ schema.prisma
+│  └─ seed.ts
+└─ package.json
+
+2.2 Mobile (apps/mobile)
+apps/mobile/
+├─ App.tsx
+├─ src/
+│  ├─ api/                    # axios client & hooks
+│  ├─ auth/                   # token store, guards
+│  ├─ components/             # UI (cards, list, forms)
+│  ├─ nav/                    # stacks/tabs per role
+│  ├─ screens/
+│  │  ├─ common/              # Login, Register, Notifications, Orders
+│  │  ├─ retailer/            # StoreProfile, MyListings, AddListing, Orders
+│  │  └─ owner/               # ExploreStores, StoreCatalog, Cart, MyOrders
+│  ├─ store/                  # Zustand/Redux
+│  └─ utils/                  # formatters, validators
+└─ package.json
+
+3) Data Model (Prisma – PostgreSQL)
+// prisma/schema.prisma
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  passwordHash  String
+  role          Role
+  fullName      String
+  phone         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  store         Store?
+  fcmTokens     FcmToken[]
+  ordersAsOwner Order[]  @relation("OwnerOrders")
+  ordersAsRetailer Order[] @relation("RetailerOrders")
+}
+
+enum Role {
+  ADMIN
+  RETAILER
+  SHOP_OWNER
+}
+
+model Store {
+  id            String   @id @default(cuid())
+  ownerId       String   @unique
+  owner         User     @relation(fields: [ownerId], references: [id])
+  name          String
+  description   String?
+  address       String?
+  city          String?
+  pincode       String?
+  logoUrl       String?
+  isOpen        Boolean  @default(true)
+  listings      Listing[]
+  rating        Float    @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model ProductCatalog {
+  id           String   @id @default(cuid())
+  name         String
+  brand        String?
+  imageUrl     String?
+  unit         String    // e.g., "kg", "piece", "box"
+  size         String?   // e.g., "500g", "1L", "10pcs"
+  isWholesale  Boolean   @default(false)
+  createdById  String
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  listings     Listing[]
+}
+
+model Listing {
+  id             String   @id @default(cuid())
+  storeId        String
+  productId      String
+  priceRetail    Decimal
+  priceWholesale Decimal?
+  available      Boolean  @default(true)
+  stockQty       Int?     // optional stock
+  sku            String?  @unique
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  store          Store          @relation(fields: [storeId], references: [id])
+  product        ProductCatalog @relation(fields: [productId], references: [id])
+
+  @@unique([storeId, productId]) // one listing per product per store
+}
+
+model Order {
+  id            String   @id @default(cuid())
+  ownerId       String   // Shop Owner who places
+  retailerId    String   // Retailer (store owner) who fulfills
+  storeId       String
+  status        OrderStatus @default(PENDING) // PENDING, ACCEPTED, REJECTED, READY, OUT_FOR_DELIVERY, COMPLETED, CANCELLED
+  totalAmount   Decimal  @default(0)
+  deliveryType  DeliveryType @default(PICKUP) // PICKUP or DELIVERY
+  deliveryAt    DateTime?
+  note          String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  owner         User   @relation("OwnerOrders", fields: [ownerId], references: [id])
+  retailer      User   @relation("RetailerOrders", fields: [retailerId], references: [id])
+  store         Store  @relation(fields: [storeId], references: [id])
+  items         OrderItem[]
+  timeline      OrderEvent[]
+}
+
+enum OrderStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  READY
+  OUT_FOR_DELIVERY
+  COMPLETED
+  CANCELLED
+}
+
+enum DeliveryType {
+  PICKUP
+  DELIVERY
+}
+
+model OrderItem {
+  id         String   @id @default(cuid())
+  orderId    String
+  listingId  String
+  qty        Int
+  priceAt    Decimal   // snapshot of unit price
+  createdAt  DateTime  @default(now())
+  order      Order     @relation(fields: [orderId], references: [id])
+  listing    Listing   @relation(fields: [listingId], references: [id])
+}
+
+model OrderEvent {
+  id         String    @id @default(cuid())
+  orderId    String
+  type       String    // "PLACED","ACCEPTED",...
+  message    String?
+  createdAt  DateTime  @default(now())
+  order      Order     @relation(fields: [orderId], references: [id])
+}
+
+model FcmToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+4) Core User Stories & Acceptance Criteria
+Admin
+
+Can log in as ADMIN.
+
+CRUD global ProductCatalog with: name, brand, image, unit, size, isWholesale.
+
+Retailers can only list products that exist in this catalog.
+
+Retailer
+
+Create/Edit Store Profile (name, address, logo, open/closed).
+
+Browse catalog; Add Listing (set retail & optional wholesale price, availability, stock).
+
+Receive real-time order notifications; Accept/Reject orders; set delivery/pickup time; update status: READY → OUT_FOR_DELIVERY → COMPLETED.
+
+Order history, filter by status/date.
+
+Shop Owner
+
+Explore retailer stores (search by city/pincode/name).
+
+Open a store profile -> see listings (with priceRetail/priceWholesale).
+
+Add to Cart, set qty/lots, create Order.
+
+Track order timeline with live updates; view order history.
+
+5) API Design (Express + TypeScript)
+Auth
+
+POST /auth/register {email, password, fullName, role}
+
+POST /auth/login {email, password} -> {accessToken, refreshToken, role}
+
+POST /auth/refresh
+
+POST /auth/logout
+
+Admin: Catalog
+
+POST /admin/catalog (ADMIN)
+
+GET /admin/catalog?search=&page= (ADMIN)
+
+PUT /admin/catalog/:id (ADMIN)
+
+DELETE /admin/catalog/:id (ADMIN)
+
+Retailer: Store & Listings
+
+POST /retailer/store (RETAILER – create/update)
+
+GET /retailer/store/me
+
+POST /retailer/listings (add product to store)
+
+GET /retailer/listings?available=&q=
+
+PUT /retailer/listings/:id
+
+PATCH /retailer/listings/:id/toggle
+
+Public/Shop Owner: Discover
+
+GET /stores?city=&pincode=&q=
+
+GET /stores/:id (includes store meta + listings)
+
+Orders
+
+Shop Owner
+
+POST /orders {storeId, items:[{listingId, qty}], deliveryType, deliveryAt, note}
+
+GET /orders/mine
+
+GET /orders/:id
+
+POST /orders/:id/cancel
+
+Retailer
+
+GET /retailer/orders
+
+POST /orders/:id/accept {deliveryAt}
+
+POST /orders/:id/reject {reason}
+
+POST /orders/:id/status {status} // READY, OUT_FOR_DELIVERY, COMPLETED
+
+Events
+
+GET /orders/:id/timeline
+
+Notifications
+
+POST /notifications/token {fcmToken}
+
+Socket.IO namespaces:
+
+/orders room: order:<id>; events: placed, accepted, rejected, statusChanged.
+
+6) Backend Code Stubs
+6.1 Express app & sockets
+// src/server.ts
+import http from 'http';
+import { app } from './app';
+import { initSocket } from './libs/sockets';
+
+const server = http.createServer(app);
+initSocket(server);
+
+server.listen(process.env.PORT || 4000, () => {
+  console.log(`API on :${process.env.PORT || 4000}`);
+});
+
+// src/libs/sockets.ts
+import { Server } from 'socket.io';
+import type { Server as HttpServer } from 'http';
+
+let io: Server;
+
+export const initSocket = (server: HttpServer) => {
+  io = new Server(server, { cors: { origin: '*' }});
+};
+
+export const emitOrderEvent = (orderId: string, event: string, payload: any) => {
+  io?.to(`order:${orderId}`).emit(event, payload);
+};
+
+6.2 Auth middleware (role guard)
+// src/middleware/requireRole.ts
+import { Request, Response, NextFunction } from 'express';
+
+export const requireRole = (...roles: string[]) => 
+  (req: Request, res: Response, next: NextFunction) => {
+    const user = (req as any).user;
+    if (!user || !roles.includes(user.role)) {
+      return res.status(403).json({ message: 'Forbidden' });
+    }
+    next();
+  };
+
+6.3 Place Order (service snippet)
+// src/modules/orders/service.ts
+import { prisma } from '../../libs/prisma';
+import { emitOrderEvent } from '../../libs/sockets';
+
+export async function placeOrder(dto: {
+  ownerId: string,
+  storeId: string,
+  items: { listingId: string, qty: number }[],
+  deliveryType: 'PICKUP'|'DELIVERY',
+  deliveryAt?: Date, note?: string
+}) {
+  const store = await prisma.store.findUnique({ where: { id: dto.storeId }, include: { owner: true }});
+  if (!store) throw new Error('Store not found');
+
+  const listings = await prisma.listing.findMany({ where: { id: { in: dto.items.map(i => i.listingId) }, storeId: dto.storeId }, include: { product: true }});
+  if (listings.length !== dto.items.length) throw new Error('Invalid items');
+
+  let total = 0;
+  const itemsWithPrice = dto.items.map(i => {
+    const listing = listings.find(l => l.id === i.listingId)!;
+    const price = listing.priceRetail; // MVP: retail price for owners
+    total += Number(price) * i.qty;
+    return { listingId: i.listingId, qty: i.qty, priceAt: price };
+  });
+
+  const order = await prisma.order.create({
+    data: {
+      ownerId: dto.ownerId,
+      retailerId: store.ownerId,
+      storeId: dto.storeId,
+      status: 'PENDING',
+      deliveryType: dto.deliveryType,
+      deliveryAt: dto.deliveryAt,
+      note: dto.note,
+      totalAmount: total,
+      items: { create: itemsWithPrice },
+      timeline: { create: { type: 'PLACED', message: 'Order placed' } }
+    },
+    include: { items: true }
+  });
+
+  emitOrderEvent(order.id, 'placed', { orderId: order.id, status: order.status, total: order.totalAmount });
+  return order;
+}
+
+7) Mobile App Flows (React Native / Expo)
+Navigation
+
+AuthStack: Login, Register
+
+RoleRouter:
+
+RetailerTab: StoreProfile, MyListings, AddListing, Orders
+
+OwnerTab: ExploreStores, StoreCatalog, Cart, MyOrders
+
+AdminGuard: (optional separate admin web UI; for MVP, use Postman)
+
+Sample screens
+// src/screens/owner/ExploreStores.tsx
+import { useEffect, useState } from 'react';
+import { View, FlatList } from 'react-native';
+import { api } from '../../api/client';
+import StoreCard from '../../components/StoreCard';
+
+export default function ExploreStores() {
+  const [stores, setStores] = useState<any[]>([]);
+  useEffect(() => { api.get('/stores').then(r => setStores(r.data)); }, []);
+  return (
+    <View>
+      <FlatList
+        data={stores}
+        keyExtractor={(s) => s.id}
+        renderItem={({ item }) => <StoreCard store={item} />}
+      />
+    </View>
+  );
+}
+
+// src/screens/owner/StoreCatalog.tsx
+import { View, FlatList, Button } from 'react-native';
+import { useEffect, useState } from 'react';
+import { api } from '../../api/client';
+import { useRoute } from '@react-navigation/native';
+import ProductCard from '../../components/ProductCard';
+import { useCart } from '../../store/cart';
+
+export default function StoreCatalog() {
+  const route = useRoute<any>();
+  const { storeId } = route.params;
+  const [listings, setListings] = useState([]);
+  const cart = useCart();
+
+  useEffect(() => { api.get(`/stores/${storeId}`).then(r => setListings(r.data.listings)); }, [storeId]);
+
+  return (
+    <View>
+      <FlatList
+        data={listings}
+        keyExtractor={(l:any) => l.id}
+        renderItem={({ item }: any) => (
+          <ProductCard
+            title={item.product.name}
+            price={item.priceRetail}
+            onAdd={(qty)=> cart.addItem({ listingId: item.id, qty, priceAt: item.priceRetail })}
+          />
+        )}
+      />
+      <Button title={`Go to Cart (${cart.count})`} onPress={() => {/* navigate */}} />
+    </View>
+  );
+}
+
+8) Workflows (Text Diagrams)
+8.1 Product Flow
+Admin -> Create ProductCatalog (name, image, unit, size, isWholesale)
+      -> Retailer imports product -> creates Listing (prices, availability)
+      -> Shop Owner views store listings -> adds to cart -> places order
+
+8.2 Order Status Flow
+PENDING -> (Retailer ACCEPTS -> sets deliveryAt) -> ACCEPTED
+ACCEPTED -> READY -> OUT_FOR_DELIVERY -> COMPLETED
+PENDING -> REJECTED
+Any non-final -> CANCELLED (Owner)
+
+8.3 Notification Flow
+Order event (server) -> Socket.IO emit -> 
+- ShopOwner joins room order:<id>
+- Retailer joins room order:<id>
+-> Receive event & update UI (+ optional FCM push)
+
+9) Security & Auth
+
+Passwords hashed (argon2/bcrypt).
+
+JWT Access (15m) + Refresh (7d).
+
+Role checks on each protected route.
+
+Rate limiting on auth routes.
+
+Input validation (zod/yup) for DTOs.
+
+CORS locked to mobile in prod.
+
+10) Local Dev Setup (commands)
+
+Root
+
+mkdir shoplink && cd shoplink
+pnpm init -y && pnpm dlx turbo@latest init
+
+
+API
+
+cd apps && mkdir api && cd api
+pnpm init -y
+pnpm add express cors dotenv zod jsonwebtoken bcrypt socket.io
+pnpm add -D typescript ts-node-dev @types/express @types/jsonwebtoken @types/cors
+pnpm add prisma @prisma/client
+npx prisma init
+# add schema.prisma (above), then:
+npx prisma migrate dev --name init
+pnpm dev
+
+
+Mobile
+
+cd ../ && npx create-expo-app mobile
+cd mobile
+pnpm add axios @react-navigation/native @react-navigation/native-stack zustand
+npx expo start
+
+
+Env (.env.example)
+
+DATABASE_URL=postgresql://user:pass@localhost:5432/shoplink
+JWT_SECRET=supersecret
+PORT=4000
+
+11) Notifications (MVP vs Production)
+
+MVP: Socket.IO + in-app “Notifications” screen; local Toasts.
+
+Production: FCM push (save FCM token per user via /notifications/token), topic per order & per user.
+
+12) Testing & Quality
+
+Unit tests for services (order placement, status transitions).
+
+Seed script: create Admin, sample Retailer + Store, 10 catalog items, 5 listings.
+
+OpenAPI/Swagger auto-docs for routes.
+
+13) MVP vs Scale Alternatives
+Layer	MVP (fast)	Scale (production)
+Backend	Express TS	NestJS modular, CQRS
+DB	Postgres (single)	Postgres + read replica, Redis cache
+Realtime	Socket.IO	Socket.IO + message queue (BullMQ/Redis)
+Images	Local folder	S3/GCS + CDN
+Auth	JWT	JWT + device pinning + refresh rotation
+Search	Simple queries	PostgreSQL trigram/pgvector for fuzzy search
+Deploy	Railway/Render	AWS ECS/EKS, RDS, CloudFront
+14) Definition of Done
+
+Admin can CRUD global ProductCatalog.
+
+Retailer can build a Store Profile, add Listings with prices (retail & optional wholesale), toggle availability.
+
+Shop Owner can browse stores, view listings, add to cart, place order with quantities, and track status timeline.
+
+Real-time (Socket.IO) updates for order events, with an in-app notifications screen.
+
+Basic auth, role guards, input validation, and seeded demo data.
+
+README with setup steps & environment variables.
+
+15) Stretch Goals (optional)
+
+Delivery slots calendar & pickup time selector.
+
+Simple invoice PDF + email.
+
+Store ratings & reviews.
+
+Inventory auto-decrement & low-stock alerts.
+
+Geosearch by pincode/radius.
+
+16) Quick API Examples (for Mobile Integration)
+// apps/mobile/src/api/client.ts
+import axios from 'axios';
+export const api = axios.create({ baseURL: 'http://localhost:4000' });
+api.interceptors.request.use(cfg => {
+  // attach access token
+  return cfg;
+});
+
+// Login
+api.post('/auth/login', { email, password });
+
+// Explore stores
+api.get('/stores', { params: { city: 'Guwahati' }});
+
+// Store details + listings
+api.get(`/stores/${storeId}`);
+
+// Place order
+api.post('/orders', {
+  storeId,
+  items: cart.items.map(i => ({ listingId: i.listingId, qty: i.qty })),
+  deliveryType: 'PICKUP',
+  deliveryAt: null,
+  note: ''
+});
+
+17) README Outline (generate automatically)
+
+Overview, features, screenshots (placeholders)
+
+Tech stack & architecture diagram
+
+Setup (API + Mobile), env vars
+
+Prisma migrations & seed
+
+Running dev servers
+
+API docs (Swagger link)
+
+Known limitations & next steps
