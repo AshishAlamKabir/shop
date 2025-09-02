@@ -1,0 +1,681 @@
+import type { Express } from "express";
+import { createServer, type Server } from "http";
+import { WebSocketServer, WebSocket } from "ws";
+import { storage } from "./storage";
+import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
+import { z } from "zod";
+import { insertUserSchema, insertStoreSchema, insertProductCatalogSchema, insertListingSchema, insertOrderSchema } from "@shared/schema";
+
+const JWT_SECRET = process.env.JWT_SECRET || "supersecret";
+
+// Middleware for authentication
+const authenticateToken = async (req: any, res: any, next: any) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+
+  if (!token) {
+    return res.status(401).json({ message: 'Access token required' });
+  }
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    const user = await storage.getUser(decoded.userId);
+    if (!user) {
+      return res.status(401).json({ message: 'Invalid token' });
+    }
+    req.user = user;
+    next();
+  } catch (error) {
+    return res.status(403).json({ message: 'Invalid token' });
+  }
+};
+
+// Middleware for role authorization
+const requireRole = (...roles: string[]) => (req: any, res: any, next: any) => {
+  if (!req.user || !roles.includes(req.user.role)) {
+    return res.status(403).json({ message: 'Insufficient permissions' });
+  }
+  next();
+};
+
+export async function registerRoutes(app: Express): Promise<Server> {
+  const httpServer = createServer(app);
+  
+  // WebSocket setup for real-time notifications
+  const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
+  const clients = new Map<string, WebSocket>();
+  
+  wss.on('connection', (ws: WebSocket, req) => {
+    const url = new URL(req.url!, `http://${req.headers.host}`);
+    const userId = url.searchParams.get('userId');
+    
+    if (userId) {
+      clients.set(userId, ws);
+      console.log(`User ${userId} connected to WebSocket`);
+    }
+
+    ws.on('close', () => {
+      if (userId) {
+        clients.delete(userId);
+        console.log(`User ${userId} disconnected from WebSocket`);
+      }
+    });
+  });
+
+  // Helper function to emit order events
+  const emitOrderEvent = (orderId: string, ownerId: string, retailerId: string, event: string, payload: any) => {
+    [ownerId, retailerId].forEach(userId => {
+      const client = clients.get(userId);
+      if (client && client.readyState === WebSocket.OPEN) {
+        client.send(JSON.stringify({ orderId, event, payload }));
+      }
+    });
+  };
+
+  // Authentication routes
+  app.post('/api/auth/register', async (req, res) => {
+    try {
+      const userData = insertUserSchema.parse(req.body);
+      
+      // Check if user already exists
+      const existingUser = await storage.getUserByEmail(userData.email);
+      if (existingUser) {
+        return res.status(400).json({ message: 'Email already registered' });
+      }
+      
+      // Hash password
+      const passwordHash = await bcrypt.hash(userData.passwordHash, 10);
+      
+      const user = await storage.createUser({
+        ...userData,
+        passwordHash
+      });
+      
+      res.status(201).json({ message: 'User created successfully', userId: user.id });
+    } catch (error) {
+      res.status(400).json({ message: 'Invalid input data' });
+    }
+  });
+
+  app.post('/api/auth/login', async (req, res) => {
+    try {
+      const { email, password } = req.body;
+      
+      const user = await storage.getUserByEmail(email);
+      if (!user) {
+        return res.status(401).json({ message: 'Invalid credentials' });
+      }
+      
+      const isValidPassword = await bcrypt.compare(password, user.passwordHash);
+      if (!isValidPassword) {
+        return res.status(401).json({ message: 'Invalid credentials' });
+      }
+      
+      const accessToken = jwt.sign({ userId: user.id, role: user.role }, JWT_SECRET, { expiresIn: '15m' });
+      const refreshToken = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '7d' });
+      
+      res.json({
+        accessToken,
+        refreshToken,
+        user: {
+          id: user.id,
+          email: user.email,
+          fullName: user.fullName,
+          role: user.role
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ message: 'Login failed' });
+    }
+  });
+
+  app.get('/api/auth/me', authenticateToken, async (req: any, res) => {
+    res.json({
+      user: {
+        id: req.user.id,
+        email: req.user.email,
+        fullName: req.user.fullName,
+        role: req.user.role
+      }
+    });
+  });
+
+  // Admin routes - Product Catalog
+  app.post('/api/admin/catalog', authenticateToken, requireRole('ADMIN'), async (req: any, res) => {
+    try {
+      const productData = insertProductCatalogSchema.parse({
+        ...req.body,
+        createdById: req.user.id
+      });
+      
+      const product = await storage.createProduct(productData);
+      res.status(201).json(product);
+    } catch (error) {
+      res.status(400).json({ message: 'Invalid product data' });
+    }
+  });
+
+  app.get('/api/admin/catalog', authenticateToken, requireRole('ADMIN'), async (req: any, res) => {
+    try {
+      const { search, page = 1, limit = 20 } = req.query;
+      const products = await storage.getProducts({ search, page: parseInt(page), limit: parseInt(limit) });
+      res.json(products);
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to fetch products' });
+    }
+  });
+
+  app.put('/api/admin/catalog/:id', authenticateToken, requireRole('ADMIN'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const updateData = req.body;
+      const product = await storage.updateProduct(id, updateData);
+      res.json(product);
+    } catch (error) {
+      res.status(400).json({ message: 'Failed to update product' });
+    }
+  });
+
+  app.delete('/api/admin/catalog/:id', authenticateToken, requireRole('ADMIN'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteProduct(id);
+      res.json({ message: 'Product deleted successfully' });
+    } catch (error) {
+      res.status(400).json({ message: 'Failed to delete product' });
+    }
+  });
+
+  // Retailer routes - Store management
+  app.post('/api/retailer/store', authenticateToken, requireRole('RETAILER'), async (req: any, res) => {
+    try {
+      const existingStore = await storage.getStoreByOwnerId(req.user.id);
+      
+      if (existingStore) {
+        // Update existing store
+        const updateData = req.body;
+        const store = await storage.updateStore(existingStore.id, updateData);
+        res.json(store);
+      } else {
+        // Create new store
+        const storeData = insertStoreSchema.parse({
+          ...req.body,
+          ownerId: req.user.id
+        });
+        const store = await storage.createStore(storeData);
+        res.status(201).json(store);
+      }
+    } catch (error) {
+      res.status(400).json({ message: 'Invalid store data' });
+    }
+  });
+
+  app.get('/api/retailer/store/me', authenticateToken, requireRole('RETAILER'), async (req: any, res) => {
+    try {
+      const store = await storage.getStoreByOwnerId(req.user.id);
+      res.json(store);
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to fetch store' });
+    }
+  });
+
+  // Retailer routes - Listings
+  app.post('/api/retailer/listings', authenticateToken, requireRole('RETAILER'), async (req: any, res) => {
+    try {
+      const store = await storage.getStoreByOwnerId(req.user.id);
+      if (!store) {
+        return res.status(400).json({ message: 'Store not found' });
+      }
+      
+      const listingData = insertListingSchema.parse({
+        ...req.body,
+        storeId: store.id
+      });
+      
+      const listing = await storage.createListing(listingData);
+      res.status(201).json(listing);
+    } catch (error) {
+      res.status(400).json({ message: 'Invalid listing data' });
+    }
+  });
+
+  app.get('/api/retailer/listings', authenticateToken, requireRole('RETAILER'), async (req: any, res) => {
+    try {
+      const store = await storage.getStoreByOwnerId(req.user.id);
+      if (!store) {
+        return res.status(400).json({ message: 'Store not found' });
+      }
+      
+      const { available, search } = req.query;
+      const listings = await storage.getListingsByStore(store.id, { 
+        available: available ? available === 'true' : undefined,
+        search: search as string
+      });
+      res.json(listings);
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to fetch listings' });
+    }
+  });
+
+  app.put('/api/retailer/listings/:id', authenticateToken, requireRole('RETAILER'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const updateData = req.body;
+      const listing = await storage.updateListing(id, updateData);
+      res.json(listing);
+    } catch (error) {
+      res.status(400).json({ message: 'Failed to update listing' });
+    }
+  });
+
+  // Public routes - Store discovery
+  app.get('/api/stores', async (req, res) => {
+    try {
+      const { city, pincode, search } = req.query;
+      const stores = await storage.getStores({
+        city: city as string,
+        pincode: pincode as string,
+        search: search as string
+      });
+      res.json(stores);
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to fetch stores' });
+    }
+  });
+
+  app.get('/api/stores/:id', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const store = await storage.getStoreWithListings(id);
+      if (!store) {
+        return res.status(404).json({ message: 'Store not found' });
+      }
+      res.json(store);
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to fetch store' });
+    }
+  });
+
+  // Order routes - Shop Owner
+  app.post('/api/orders', authenticateToken, requireRole('SHOP_OWNER'), async (req: any, res) => {
+    try {
+      const { storeId, items, deliveryType, deliveryAt, note } = req.body;
+      
+      // Get store and retailer info
+      const store = await storage.getStore(storeId);
+      if (!store) {
+        return res.status(404).json({ message: 'Store not found' });
+      }
+      
+      // Calculate total amount
+      let totalAmount = 0;
+      const orderItemsData = [];
+      
+      for (const item of items) {
+        const listing = await storage.getListing(item.listingId);
+        if (!listing) {
+          return res.status(400).json({ message: `Listing ${item.listingId} not found` });
+        }
+        
+        const itemTotal = parseFloat(listing.priceRetail.toString()) * item.qty;
+        totalAmount += itemTotal;
+        
+        orderItemsData.push({
+          listingId: item.listingId,
+          qty: item.qty,
+          priceAt: listing.priceRetail
+        });
+      }
+      
+      // Create order
+      const orderData = insertOrderSchema.parse({
+        ownerId: req.user.id,
+        retailerId: store.ownerId,
+        storeId,
+        totalAmount: totalAmount.toString(),
+        deliveryType,
+        deliveryAt: deliveryAt ? new Date(deliveryAt) : undefined,
+        note
+      });
+      
+      const order = await storage.createOrder(orderData);
+      
+      // Create order items
+      const itemsWithOrderId = orderItemsData.map(item => ({
+        ...item,
+        orderId: order.id
+      }));
+      await storage.createOrderItems(itemsWithOrderId);
+      
+      // Create order event
+      await storage.createOrderEvent({
+        orderId: order.id,
+        type: 'PLACED',
+        message: 'Order placed successfully'
+      });
+      
+      // Emit real-time notification
+      emitOrderEvent(order.id, req.user.id, store.ownerId, 'orderPlaced', {
+        orderId: order.id,
+        status: order.status,
+        totalAmount: order.totalAmount
+      });
+      
+      res.status(201).json(order);
+    } catch (error) {
+      console.error('Order creation error:', error);
+      res.status(400).json({ message: 'Failed to create order' });
+    }
+  });
+
+  app.get('/api/orders/mine', authenticateToken, async (req: any, res) => {
+    try {
+      const orders = await storage.getOrdersByOwner(req.user.id);
+      res.json(orders);
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to fetch orders' });
+    }
+  });
+
+  app.get('/api/orders/:id', authenticateToken, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const order = await storage.getOrder(id);
+      
+      if (!order) {
+        return res.status(404).json({ message: 'Order not found' });
+      }
+      
+      // Check if user has access to this order
+      if (order.ownerId !== req.user.id && order.retailerId !== req.user.id) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+      
+      res.json(order);
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to fetch order' });
+    }
+  });
+
+  // Retailer order management
+  app.get('/api/retailer/orders', authenticateToken, requireRole('RETAILER'), async (req: any, res) => {
+    try {
+      const orders = await storage.getOrdersByRetailer(req.user.id);
+      res.json(orders);
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to fetch orders' });
+    }
+  });
+
+  app.post('/api/orders/:id/accept', authenticateToken, requireRole('RETAILER'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { deliveryAt } = req.body;
+      
+      const order = await storage.getOrder(id);
+      if (!order || order.retailerId !== req.user.id) {
+        return res.status(404).json({ message: 'Order not found' });
+      }
+      
+      if (order.status !== 'PENDING') {
+        return res.status(400).json({ message: 'Order cannot be accepted' });
+      }
+      
+      await storage.updateOrderStatus(id, 'ACCEPTED');
+      await storage.createOrderEvent({
+        orderId: id,
+        type: 'ACCEPTED',
+        message: `Order accepted${deliveryAt ? ` with delivery scheduled for ${new Date(deliveryAt).toLocaleDateString()}` : ''}`
+      });
+      
+      emitOrderEvent(id, order.ownerId, order.retailerId, 'orderAccepted', {
+        orderId: id,
+        status: 'ACCEPTED',
+        deliveryAt
+      });
+      
+      res.json({ message: 'Order accepted successfully' });
+    } catch (error) {
+      res.status(400).json({ message: 'Failed to accept order' });
+    }
+  });
+
+  app.post('/api/orders/:id/reject', authenticateToken, requireRole('RETAILER'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { reason } = req.body;
+      
+      const order = await storage.getOrder(id);
+      if (!order || order.retailerId !== req.user.id) {
+        return res.status(404).json({ message: 'Order not found' });
+      }
+      
+      if (order.status !== 'PENDING') {
+        return res.status(400).json({ message: 'Order cannot be rejected' });
+      }
+      
+      await storage.updateOrderStatus(id, 'REJECTED');
+      await storage.createOrderEvent({
+        orderId: id,
+        type: 'REJECTED',
+        message: `Order rejected: ${reason || 'No reason provided'}`
+      });
+      
+      emitOrderEvent(id, order.ownerId, order.retailerId, 'orderRejected', {
+        orderId: id,
+        status: 'REJECTED',
+        reason
+      });
+      
+      res.json({ message: 'Order rejected successfully' });
+    } catch (error) {
+      res.status(400).json({ message: 'Failed to reject order' });
+    }
+  });
+
+  app.post('/api/orders/:id/status', authenticateToken, requireRole('RETAILER'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { status } = req.body;
+      
+      const order = await storage.getOrder(id);
+      if (!order || order.retailerId !== req.user.id) {
+        return res.status(404).json({ message: 'Order not found' });
+      }
+      
+      const validTransitions: { [key: string]: string[] } = {
+        'ACCEPTED': ['READY'],
+        'READY': ['OUT_FOR_DELIVERY', 'COMPLETED'],
+        'OUT_FOR_DELIVERY': ['COMPLETED']
+      };
+      
+      if (!validTransitions[order.status]?.includes(status)) {
+        return res.status(400).json({ message: 'Invalid status transition' });
+      }
+      
+      await storage.updateOrderStatus(id, status);
+      await storage.createOrderEvent({
+        orderId: id,
+        type: status,
+        message: `Order status updated to ${status.toLowerCase().replace('_', ' ')}`
+      });
+      
+      emitOrderEvent(id, order.ownerId, order.retailerId, 'orderStatusChanged', {
+        orderId: id,
+        status,
+        previousStatus: order.status
+      });
+      
+      res.json({ message: 'Order status updated successfully' });
+    } catch (error) {
+      res.status(400).json({ message: 'Failed to update order status' });
+    }
+  });
+
+  app.get('/api/orders/:id/timeline', authenticateToken, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const order = await storage.getOrder(id);
+      
+      if (!order) {
+        return res.status(404).json({ message: 'Order not found' });
+      }
+      
+      // Check access
+      if (order.ownerId !== req.user.id && order.retailerId !== req.user.id) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+      
+      const timeline = await storage.getOrderEvents(id);
+      res.json(timeline);
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to fetch order timeline' });
+    }
+  });
+
+  // Cancel order (Shop Owner)
+  app.post('/api/orders/:id/cancel', authenticateToken, requireRole('SHOP_OWNER'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const order = await storage.getOrder(id);
+      
+      if (!order || order.ownerId !== req.user.id) {
+        return res.status(404).json({ message: 'Order not found' });
+      }
+      
+      if (['COMPLETED', 'CANCELLED'].includes(order.status)) {
+        return res.status(400).json({ message: 'Order cannot be cancelled' });
+      }
+      
+      await storage.updateOrderStatus(id, 'CANCELLED');
+      await storage.createOrderEvent({
+        orderId: id,
+        type: 'CANCELLED',
+        message: 'Order cancelled by customer'
+      });
+      
+      emitOrderEvent(id, order.ownerId, order.retailerId, 'orderCancelled', {
+        orderId: id,
+        status: 'CANCELLED'
+      });
+      
+      res.json({ message: 'Order cancelled successfully' });
+    } catch (error) {
+      res.status(400).json({ message: 'Failed to cancel order' });
+    }
+  });
+
+  // Get catalog for shop owners
+  app.get('/api/catalog', async (req, res) => {
+    try {
+      const { search } = req.query;
+      const products = await storage.getProducts({ search: search as string });
+      res.json(products);
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to fetch catalog' });
+    }
+  });
+
+  // Seed demo data
+  app.post('/api/seed', async (req, res) => {
+    try {
+      // Create demo users
+      const adminPassword = await bcrypt.hash('12345678', 10);
+      const retailPassword = await bcrypt.hash('12345678', 10);
+      const shopPassword = await bcrypt.hash('12345678', 10);
+      
+      const admin = await storage.createUser({
+        email: 'admin@gmail.com',
+        passwordHash: adminPassword,
+        role: 'ADMIN',
+        fullName: 'Admin User',
+        phone: '+91-9876543210'
+      });
+      
+      const retailer = await storage.createUser({
+        email: 'retail@gmail.com',
+        passwordHash: retailPassword,
+        role: 'RETAILER',
+        fullName: 'Retailer User',
+        phone: '+91-9876543211'
+      });
+      
+      const shopOwner = await storage.createUser({
+        email: 'shop@gmail.com',
+        passwordHash: shopPassword,
+        role: 'SHOP_OWNER',
+        fullName: 'Shop Owner',
+        phone: '+91-9876543212'
+      });
+      
+      // Create sample store
+      const store = await storage.createStore({
+        ownerId: retailer.id,
+        name: 'Mumbai Electronics Hub',
+        description: 'Premium electronics and gadgets',
+        address: '123 Commercial Street, Fort',
+        city: 'Mumbai',
+        pincode: '400001',
+        logoUrl: 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=100',
+        isOpen: true,
+        rating: '4.6'
+      });
+      
+      // Create sample products
+      const products = [
+        {
+          name: 'Premium Coffee Beans',
+          brand: 'Blue Tokai',
+          imageUrl: 'https://images.unsplash.com/photo-1447933601403-0c6688de566e?w=400',
+          unit: 'kg',
+          size: '500g',
+          isWholesale: false,
+          createdById: admin.id
+        },
+        {
+          name: 'Wireless Earbuds Pro',
+          brand: 'Sony',
+          imageUrl: 'https://images.unsplash.com/photo-1590658268037-6bf12165a8df?w=400',
+          unit: 'piece',
+          size: '1 unit',
+          isWholesale: true,
+          createdById: admin.id
+        },
+        {
+          name: 'Designer Handbag',
+          brand: 'Coach',
+          imageUrl: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=400',
+          unit: 'piece',
+          size: 'Standard',
+          isWholesale: false,
+          createdById: admin.id
+        }
+      ];
+      
+      for (const productData of products) {
+        const product = await storage.createProduct(productData);
+        
+        // Create listing for the retailer store
+        await storage.createListing({
+          storeId: store.id,
+          productId: product.id,
+          priceRetail: product.name.includes('Coffee') ? '450' : 
+                      product.name.includes('Earbuds') ? '3999' : '12500',
+          priceWholesale: product.isWholesale ? 
+                         (product.name.includes('Earbuds') ? '3500' : null) : null,
+          available: !product.name.includes('Smartphone'), // Make smartphone out of stock
+          stockQty: product.name.includes('Coffee') ? 24 :
+                   product.name.includes('Earbuds') ? 0 : 8
+        });
+      }
+      
+      res.json({ message: 'Demo data seeded successfully' });
+    } catch (error) {
+      console.error('Seed error:', error);
+      res.status(500).json({ message: 'Failed to seed data' });
+    }
+  });
+
+  return httpServer;
+}

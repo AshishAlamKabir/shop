@@ -1,0 +1,125 @@
+import { useState } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
+
+const demoAccounts = [
+  { email: 'admin@gmail.com', role: 'Admin', icon: 'fas fa-user-shield' },
+  { email: 'retail@gmail.com', role: 'Retailer', icon: 'fas fa-store' },
+  { email: 'shop@gmail.com', role: 'Shop Owner', icon: 'fas fa-shopping-cart' }
+];
+
+export default function Login() {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const { login } = useAuth();
+  const { toast } = useToast();
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    
+    try {
+      await login(email, password);
+      toast({ title: "Login successful!", description: "Welcome to ShopLink" });
+    } catch (error: any) {
+      toast({ 
+        title: "Login failed", 
+        description: error.message || "Invalid credentials",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fillLogin = (demoEmail: string) => {
+    setEmail(demoEmail);
+    setPassword('12345678');
+  };
+
+  return (
+    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-primary/5 to-accent/10">
+      <Card className="w-full max-w-md mx-4 shadow-xl">
+        <CardContent className="p-8">
+          <div className="text-center mb-8">
+            <div className="w-16 h-16 bg-primary rounded-xl flex items-center justify-center mx-auto mb-4">
+              <i className="fas fa-store text-2xl text-primary-foreground"></i>
+            </div>
+            <h1 className="text-2xl font-bold text-foreground">ShopLink</h1>
+            <p className="text-muted-foreground mt-2">B2B Commerce Platform</p>
+          </div>
+          
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div>
+              <Label htmlFor="email" className="text-sm font-medium text-foreground">Email</Label>
+              <Input 
+                id="email"
+                type="email" 
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Enter your email" 
+                required
+                data-testid="input-email"
+                className="mt-2"
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="password" className="text-sm font-medium text-foreground">Password</Label>
+              <Input 
+                id="password"
+                type="password" 
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Enter your password" 
+                required
+                data-testid="input-password"
+                className="mt-2"
+              />
+            </div>
+            
+            <Button 
+              type="submit" 
+              className="w-full" 
+              disabled={isLoading}
+              data-testid="button-login"
+            >
+              {isLoading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-foreground mr-2"></div>
+                  Signing In...
+                </>
+              ) : (
+                'Sign In'
+              )}
+            </Button>
+          </form>
+          
+          <div className="mt-6 pt-6 border-t border-border">
+            <p className="text-sm text-muted-foreground mb-3 text-center">Demo Accounts</p>
+            <div className="space-y-2">
+              {demoAccounts.map((account) => (
+                <Button
+                  key={account.email}
+                  variant="outline"
+                  onClick={() => fillLogin(account.email)}
+                  className="w-full justify-start text-sm"
+                  data-testid={`button-demo-${account.role.toLowerCase().replace(' ', '-')}`}
+                >
+                  <i className={`${account.icon} mr-3`}></i>
+                  <span className="font-medium">{account.role}:</span>
+                  <span className="ml-1">{account.email}</span>
+                </Button>
+              ))}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
