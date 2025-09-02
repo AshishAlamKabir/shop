@@ -6,7 +6,7 @@ import {
   type OrderEvent, type InsertOrderEvent, type FcmToken, type InsertFcmToken
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, asc, like, or } from "drizzle-orm";
+import { eq, and, desc, asc, like, or, sql } from "drizzle-orm";
 
 export interface IStorage {
   // User operations
@@ -53,6 +53,9 @@ export interface IStorage {
   // FCM tokens
   saveFcmToken(token: InsertFcmToken): Promise<FcmToken>;
   getFcmTokensByUser(userId: string): Promise<FcmToken[]>;
+  
+  // Popular products based on order history
+  getPopularProducts(limit?: number): Promise<any[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -291,6 +294,43 @@ export class DatabaseStorage implements IStorage {
 
   async getFcmTokensByUser(userId: string): Promise<FcmToken[]> {
     return await db.select().from(fcmTokens).where(eq(fcmTokens.userId, userId));
+  }
+
+  async getPopularProducts(limit: number = 6): Promise<any[]> {
+    // Get products with order frequency from completed orders
+    const popularProducts = await db
+      .select({
+        product: productCatalog,
+        totalOrdered: sql<number>`sum(${orderItems.qty})`.as('total_ordered'),
+        orderCount: sql<number>`count(distinct ${orders.id})`.as('order_count'),
+        avgPrice: sql<number>`avg(${orderItems.priceAt})`.as('avg_price')
+      })
+      .from(orderItems)
+      .innerJoin(listings, eq(orderItems.listingId, listings.id))
+      .innerJoin(productCatalog, eq(listings.productId, productCatalog.id))
+      .innerJoin(orders, eq(orderItems.orderId, orders.id))
+      .where(eq(orders.status, 'COMPLETED'))
+      .groupBy(productCatalog.id, productCatalog.name, productCatalog.brand, productCatalog.imageUrl, productCatalog.unit, productCatalog.size, productCatalog.isWholesale, productCatalog.createdById, productCatalog.createdAt, productCatalog.updatedAt)
+      .orderBy(sql`sum(${orderItems.qty}) DESC`)
+      .limit(limit);
+
+    // If no orders exist, return random products from catalog
+    if (popularProducts.length === 0) {
+      const randomProducts = await db
+        .select({
+          product: productCatalog,
+          totalOrdered: sql<number>`0`.as('total_ordered'),
+          orderCount: sql<number>`0`.as('order_count'),
+          avgPrice: sql<number>`0`.as('avg_price')
+        })
+        .from(productCatalog)
+        .orderBy(sql`RANDOM()`)
+        .limit(limit);
+      
+      return randomProducts;
+    }
+
+    return popularProducts;
   }
 }
 

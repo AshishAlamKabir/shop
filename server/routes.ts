@@ -577,6 +577,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get popular products based on order history
+  app.get('/api/popular-products', async (req, res) => {
+    try {
+      const { limit = 6 } = req.query;
+      const popularProducts = await storage.getPopularProducts(parseInt(limit as string));
+      res.json(popularProducts);
+    } catch (error) {
+      console.error('Popular products error:', error);
+      res.status(500).json({ message: 'Failed to fetch popular products' });
+    }
+  });
+
   // Seed demo data
   app.post('/api/seed', async (req, res) => {
     try {

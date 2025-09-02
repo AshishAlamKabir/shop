@@ -50,6 +50,15 @@ export default function ShopOwnerDashboard() {
     }
   });
 
+  const { data: popularProducts = [] } = useQuery({
+    queryKey: ['/api/popular-products'],
+    queryFn: async () => {
+      const response = await fetch('/api/popular-products?limit=8');
+      if (!response.ok) throw new Error('Failed to fetch popular products');
+      return response.json();
+    }
+  });
+
   const placeOrderMutation = useMutation({
     mutationFn: async (orderData: any) => {
       return await apiRequest('POST', '/api/orders', orderData);
@@ -221,6 +230,72 @@ export default function ShopOwnerDashboard() {
                     </CardContent>
                   </Card>
                 ))}
+              </div>
+
+              {/* Popular Products Section */}
+              <div className="mt-12">
+                <div className="mb-6">
+                  <h3 className="text-xl font-bold text-foreground mb-2">Popular Products</h3>
+                  <p className="text-muted-foreground">Trending items based on customer orders</p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {popularProducts.map((item: any) => (
+                    <Card 
+                      key={item.product.id} 
+                      className="hover:shadow-md transition-shadow"
+                      data-testid={`card-popular-${item.product.id}`}
+                    >
+                      <CardContent className="p-4">
+                        <img 
+                          src={item.product.imageUrl || 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=200&h=160'} 
+                          alt={item.product.name}
+                          className="w-full h-32 object-cover rounded-md mb-3"
+                        />
+                        <h4 className="font-medium text-foreground mb-1 text-sm">{item.product.name}</h4>
+                        <p className="text-xs text-muted-foreground mb-2">
+                          {item.product.brand} • {item.product.size}
+                        </p>
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="text-xs text-muted-foreground">
+                            {item.totalOrdered > 0 ? (
+                              <>
+                                <i className="fas fa-fire text-orange-500 mr-1"></i>
+                                {item.totalOrdered} sold
+                              </>
+                            ) : (
+                              <>
+                                <i className="fas fa-star text-yellow-500 mr-1"></i>
+                                Featured
+                              </>
+                            )}
+                          </div>
+                          <Badge 
+                            variant={item.product.isWholesale ? "default" : "secondary"}
+                            className="text-xs"
+                          >
+                            {item.product.isWholesale ? 'Wholesale' : 'Retail'}
+                          </Badge>
+                        </div>
+                        {item.avgPrice > 0 && (
+                          <div className="text-sm font-semibold text-foreground">
+                            Avg: ₹{parseFloat(item.avgPrice).toFixed(0)}
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+
+                {popularProducts.length === 0 && (
+                  <Card>
+                    <CardContent className="p-6 text-center text-muted-foreground">
+                      <i className="fas fa-chart-line text-4xl mb-4 opacity-50"></i>
+                      <p>No popular products data available yet</p>
+                      <p className="text-sm">Products will appear here based on order history</p>
+                    </CardContent>
+                  </Card>
+                )}
               </div>
             </div>
           )}
