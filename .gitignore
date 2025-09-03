@@ -1,6 +1,16 @@
-node_modules
-dist
+# OS / Editors
 .DS_Store
-server/public
-vite.config.ts.*
-*.tar.gz
+Thumbs.db
+.vscode/
+.idea/
+
+# Node.js
+node_modules/
+dist/
+build/
+*.log
+
+# Python
+__pycache__/
+*.pyc
+.env

@@ -1,0 +1,1429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ShopLink - B2B Commerce Platform</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    borderRadius: {
+                        lg: "var(--radius)",
+                        md: "calc(var(--radius) - 2px)",
+                        sm: "calc(var(--radius) - 4px)",
+                    },
+                    colors: {
+                        background: "var(--background)",
+                        foreground: "var(--foreground)",
+                        card: {
+                            DEFAULT: "var(--card)",
+                            foreground: "var(--card-foreground)",
+                        },
+                        popover: {
+                            DEFAULT: "var(--popover)",
+                            foreground: "var(--popover-foreground)",
+                        },
+                        primary: {
+                            DEFAULT: "var(--primary)",
+                            foreground: "var(--primary-foreground)",
+                        },
+                        secondary: {
+                            DEFAULT: "var(--secondary)",
+                            foreground: "var(--secondary-foreground)",
+                        },
+                        muted: {
+                            DEFAULT: "var(--muted)",
+                            foreground: "var(--muted-foreground)",
+                        },
+                        accent: {
+                            DEFAULT: "var(--accent)",
+                            foreground: "var(--accent-foreground)",
+                        },
+                        destructive: {
+                            DEFAULT: "var(--destructive)",
+                            foreground: "var(--destructive-foreground)",
+                        },
+                        border: "var(--border)",
+                        input: "var(--input)",
+                        ring: "var(--ring)",
+                    },
+                    fontFamily: {
+                        sans: ["var(--font-sans)"],
+                    }
+                },
+            }
+        };
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --background: hsl(0 0% 98%);
+            --foreground: hsl(222 84% 5%);
+            --card: hsl(0 0% 100%);
+            --card-foreground: hsl(222 84% 5%);
+            --popover: hsl(0 0% 100%);
+            --popover-foreground: hsl(222 84% 5%);
+            --primary: hsl(221 83% 53%);
+            --primary-foreground: hsl(210 40% 98%);
+            --secondary: hsl(210 40% 96%);
+            --secondary-foreground: hsl(222 47% 11%);
+            --muted: hsl(210 40% 96%);
+            --muted-foreground: hsl(215 16% 47%);
+            --accent: hsl(210 40% 96%);
+            --accent-foreground: hsl(222 47% 11%);
+            --destructive: hsl(0 84% 60%);
+            --destructive-foreground: hsl(210 40% 98%);
+            --border: hsl(214 32% 91%);
+            --input: hsl(214 32% 91%);
+            --ring: hsl(221 83% 53%);
+            --radius: 0.5rem;
+            --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+        }
+        
+        body {
+            font-family: var(--font-sans);
+        }
+        
+        .notification-toast {
+            animation: slideInRight 0.3s ease-out;
+        }
+        
+        @keyframes slideInRight {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        .status-pending { color: hsl(38 92% 50%); background-color: hsl(48 96% 89%); }
+        .status-accepted { color: hsl(142 76% 36%); background-color: hsl(142 76% 94%); }
+        .status-rejected { color: hsl(0 84% 60%); background-color: hsl(0 93% 94%); }
+        .status-ready { color: hsl(221 83% 53%); background-color: hsl(221 91% 95%); }
+        .status-completed { color: hsl(142 76% 36%); background-color: hsl(142 76% 94%); }
+    </style>
+</head>
+<body class="bg-background text-foreground min-h-screen">
+    <!-- @COMPONENT: App [Main application container with role switching] -->
+    <div class="min-h-screen bg-background">
+        <!-- Login Screen (Initial State) -->
+        <!-- @COMPONENT: LoginScreen [Authentication form with demo accounts] -->
+        <div id="loginScreen" class="flex items-center justify-center min-h-screen bg-gradient-to-br from-primary/5 to-accent/10">
+            <div class="bg-card p-8 rounded-lg shadow-xl border border-border w-full max-w-md mx-4">
+                <div class="text-center mb-8">
+                    <div class="w-16 h-16 bg-primary rounded-xl flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-store text-2xl text-primary-foreground"></i>
+                    </div>
+                    <h1 class="text-2xl font-bold text-foreground">ShopLink</h1>
+                    <p class="text-muted-foreground mt-2">B2B Commerce Platform</p>
+                </div>
+                
+                <form onsubmit="handleLogin(event)" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-foreground mb-2">Email</label>
+                        <input type="email" id="loginEmail" class="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring" placeholder="Enter your email" required>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-foreground mb-2">Password</label>
+                        <input type="password" id="loginPassword" class="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring" placeholder="Enter your password" required>
+                    </div>
+                    
+                    <button type="submit" class="w-full bg-primary text-primary-foreground py-2 px-4 rounded-md hover:bg-primary/90 font-medium transition-colors">
+                        Sign In
+                    </button>
+                </form>
+                
+                <div class="mt-6 pt-6 border-t border-border">
+                    <p class="text-sm text-muted-foreground mb-3 text-center">Demo Accounts</p>
+                    <div class="space-y-2">
+                        <button onclick="fillLogin('admin@gmail.com')" class="w-full text-left px-3 py-2 text-sm bg-muted rounded-md hover:bg-accent transition-colors">
+                            <span class="font-medium">Admin:</span> admin@gmail.com
+                        </button>
+                        <button onclick="fillLogin('retail@gmail.com')" class="w-full text-left px-3 py-2 text-sm bg-muted rounded-md hover:bg-accent transition-colors">
+                            <span class="font-medium">Retailer:</span> retail@gmail.com
+                        </button>
+                        <button onclick="fillLogin('shop@gmail.com')" class="w-full text-left px-3 py-2 text-sm bg-muted rounded-md hover:bg-accent transition-colors">
+                            <span class="font-medium">Shop Owner:</span> shop@gmail.com
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- @END_COMPONENT: LoginScreen -->
+
+        <!-- Main Application (Hidden Initially) -->
+        <!-- @COMPONENT: MainApp [Role-based dashboard interface] -->
+        <div id="mainApp" class="hidden">
+            <!-- Header -->
+            <!-- @COMPONENT: AppHeader [Navigation and user menu] -->
+            <header class="bg-card border-b border-border px-6 py-4">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-4">
+                        <div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                            <i class="fas fa-store text-primary-foreground"></i>
+                        </div>
+                        <h1 class="text-xl font-bold text-foreground">ShopLink</h1>
+                        <span id="roleIndicator" class="px-3 py-1 text-xs font-medium bg-secondary text-secondary-foreground rounded-full"></span>
+                    </div>
+                    
+                    <div class="flex items-center space-x-4">
+                        <!-- Notifications -->
+                        <button class="relative p-2 text-muted-foreground hover:text-foreground transition-colors">
+                            <i class="fas fa-bell"></i>
+                            <span id="notificationBadge" class="absolute -top-1 -right-1 w-5 h-5 bg-destructive text-destructive-foreground text-xs rounded-full flex items-center justify-center hidden">3</span>
+                        </button>
+                        
+                        <!-- User Menu -->
+                        <div class="relative">
+                            <button id="userMenuToggle" class="flex items-center space-x-2 p-2 rounded-md hover:bg-accent transition-colors">
+                                <div class="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
+                                    <span id="userInitials" class="text-sm font-medium text-primary-foreground">A</span>
+                                </div>
+                                <span id="userName" class="font-medium text-foreground">Admin User</span>
+                                <i class="fas fa-chevron-down text-xs text-muted-foreground"></i>
+                            </button>
+                            
+                            <div id="userMenu" class="absolute right-0 mt-2 w-48 bg-popover border border-border rounded-md shadow-lg hidden z-50">
+                                <div class="py-1">
+                                    <button onclick="handleLogout()" class="w-full text-left px-4 py-2 text-sm text-foreground hover:bg-accent transition-colors">
+                                        <i class="fas fa-sign-out-alt mr-2"></i>
+                                        Sign Out
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </header>
+            <!-- @END_COMPONENT: AppHeader -->
+
+            <!-- Admin Dashboard -->
+            <!-- @COMPONENT: AdminDashboard [Product catalog management interface] -->
+            <div id="adminDashboard" class="hidden">
+                <div class="flex h-[calc(100vh-80px)]">
+                    <!-- Sidebar -->
+                    <aside class="w-64 bg-card border-r border-border p-6">
+                        <nav class="space-y-2">
+                            <button onclick="showAdminSection('catalog')" class="admin-nav-btn w-full text-left px-4 py-3 rounded-md bg-primary text-primary-foreground font-medium">
+                                <i class="fas fa-boxes mr-3"></i>
+                                Product Catalog
+                            </button>
+                            <button onclick="showAdminSection('analytics')" class="admin-nav-btn w-full text-left px-4 py-3 rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors">
+                                <i class="fas fa-chart-line mr-3"></i>
+                                Analytics
+                            </button>
+                        </nav>
+                    </aside>
+
+                    <!-- Main Content -->
+                    <main class="flex-1 p-6 overflow-auto">
+                        <div id="adminCatalogSection">
+                            <div class="flex items-center justify-between mb-6">
+                                <div>
+                                    <h2 class="text-2xl font-bold text-foreground">Product Catalog</h2>
+                                    <p class="text-muted-foreground">Manage global product catalog for all retailers</p>
+                                </div>
+                                <button onclick="showAddProductModal()" class="bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90 font-medium transition-colors">
+                                    <i class="fas fa-plus mr-2"></i>
+                                    Add Product
+                                </button>
+                            </div>
+
+                            <!-- Search and Filters -->
+                            <div class="bg-card border border-border rounded-lg p-4 mb-6">
+                                <div class="flex items-center space-x-4">
+                                    <div class="flex-1">
+                                        <input type="text" placeholder="Search products..." class="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
+                                    </div>
+                                    <select class="px-3 py-2 border border-input rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
+                                        <option>All Categories</option>
+                                        <option>Electronics</option>
+                                        <option>Fashion</option>
+                                        <option>Home & Garden</option>
+                                    </select>
+                                    <button class="bg-secondary text-secondary-foreground px-4 py-2 rounded-md hover:bg-secondary/80 transition-colors">
+                                        <i class="fas fa-filter mr-2"></i>
+                                        Filter
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Product Table -->
+                            <div class="bg-card border border-border rounded-lg overflow-hidden">
+                                <table class="w-full">
+                                    <thead class="bg-muted">
+                                        <tr>
+                                            <th class="text-left px-6 py-3 text-sm font-medium text-muted-foreground">Product</th>
+                                            <th class="text-left px-6 py-3 text-sm font-medium text-muted-foreground">Brand</th>
+                                            <th class="text-left px-6 py-3 text-sm font-medium text-muted-foreground">Unit/Size</th>
+                                            <th class="text-left px-6 py-3 text-sm font-medium text-muted-foreground">Type</th>
+                                            <th class="text-left px-6 py-3 text-sm font-medium text-muted-foreground">Created</th>
+                                            <th class="text-left px-6 py-3 text-sm font-medium text-muted-foreground">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-border">
+                                        <tr data-mock="true">
+                                            <td class="px-6 py-4">
+                                                <div class="flex items-center space-x-3">
+                                                    <!-- High-quality image of premium coffee beans in a burlap sack -->
+                                                    <img src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?ixlib=rb-4.0.3&auto=format&fit=crop&w=80&h=80" alt="Premium Coffee Beans" class="w-12 h-12 rounded-md object-cover">
+                                                    <div>
+                                                        <div class="font-medium text-foreground">Premium Coffee Beans</div>
+                                                        <div class="text-sm text-muted-foreground">Arabica blend</div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td class="px-6 py-4 text-foreground">Blue Tokai</td>
+                                            <td class="px-6 py-4 text-foreground">kg / 500g</td>
+                                            <td class="px-6 py-4">
+                                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-accent text-accent-foreground">
+                                                    Retail
+                                                </span>
+                                            </td>
+                                            <td class="px-6 py-4 text-muted-foreground">Jan 15, 2024</td>
+                                            <td class="px-6 py-4">
+                                                <div class="flex items-center space-x-2">
+                                                    <button class="p-2 text-muted-foreground hover:text-foreground transition-colors">
+                                                        <i class="fas fa-edit"></i>
+                                                    </button>
+                                                    <button class="p-2 text-destructive hover:text-destructive/80 transition-colors">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        <tr data-mock="true">
+                                            <td class="px-6 py-4">
+                                                <div class="flex items-center space-x-3">
+                                                    <!-- Modern wireless earbuds in sleek packaging -->
+                                                    <img src="https://images.unsplash.com/photo-1590658268037-6bf12165a8df?ixlib=rb-4.0.3&auto=format&fit=crop&w=80&h=80" alt="Wireless Earbuds" class="w-12 h-12 rounded-md object-cover">
+                                                    <div>
+                                                        <div class="font-medium text-foreground">Wireless Earbuds Pro</div>
+                                                        <div class="text-sm text-muted-foreground">Noise cancelling</div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td class="px-6 py-4 text-foreground">Sony</td>
+                                            <td class="px-6 py-4 text-foreground">piece / 1 unit</td>
+                                            <td class="px-6 py-4">
+                                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
+                                                    Wholesale
+                                                </span>
+                                            </td>
+                                            <td class="px-6 py-4 text-muted-foreground">Jan 12, 2024</td>
+                                            <td class="px-6 py-4">
+                                                <div class="flex items-center space-x-2">
+                                                    <button class="p-2 text-muted-foreground hover:text-foreground transition-colors">
+                                                        <i class="fas fa-edit"></i>
+                                                    </button>
+                                                    <button class="p-2 text-destructive hover:text-destructive/80 transition-colors">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        <tr data-mock="true">
+                                            <td class="px-6 py-4">
+                                                <div class="flex items-center space-x-3">
+                                                    <!-- Organic fresh vegetables arranged artistically -->
+                                                    <img src="https://images.unsplash.com/photo-1540420773420-3366772f4999?ixlib=rb-4.0.3&auto=format&fit=crop&w=80&h=80" alt="Fresh Vegetables" class="w-12 h-12 rounded-md object-cover">
+                                                    <div>
+                                                        <div class="font-medium text-foreground">Organic Vegetables Mix</div>
+                                                        <div class="text-sm text-muted-foreground">Seasonal variety</div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td class="px-6 py-4 text-foreground">Fresh Farm</td>
+                                            <td class="px-6 py-4 text-foreground">kg / 2kg pack</td>
+                                            <td class="px-6 py-4">
+                                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-accent text-accent-foreground">
+                                                    Retail
+                                                </span>
+                                            </td>
+                                            <td class="px-6 py-4 text-muted-foreground">Jan 10, 2024</td>
+                                            <td class="px-6 py-4">
+                                                <div class="flex items-center space-x-2">
+                                                    <button class="p-2 text-muted-foreground hover:text-foreground transition-colors">
+                                                        <i class="fas fa-edit"></i>
+                                                    </button>
+                                                    <button class="p-2 text-destructive hover:text-destructive/80 transition-colors">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </main>
+                </div>
+            </div>
+            <!-- @END_COMPONENT: AdminDashboard -->
+
+            <!-- Retailer Dashboard -->
+            <!-- @COMPONENT: RetailerDashboard [Store management and inventory interface] -->
+            <div id="retailerDashboard" class="hidden">
+                <div class="flex h-[calc(100vh-80px)]">
+                    <!-- Sidebar -->
+                    <aside class="w-64 bg-card border-r border-border p-6">
+                        <nav class="space-y-2">
+                            <button onclick="showRetailerSection('store')" class="retailer-nav-btn w-full text-left px-4 py-3 rounded-md bg-primary text-primary-foreground font-medium">
+                                <i class="fas fa-store mr-3"></i>
+                                My Store
+                            </button>
+                            <button onclick="showRetailerSection('listings')" class="retailer-nav-btn w-full text-left px-4 py-3 rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors">
+                                <i class="fas fa-box mr-3"></i>
+                                Inventory
+                            </button>
+                            <button onclick="showRetailerSection('orders')" class="retailer-nav-btn w-full text-left px-4 py-3 rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors">
+                                <i class="fas fa-receipt mr-3"></i>
+                                Orders
+                                <span class="ml-auto bg-primary text-primary-foreground text-xs px-2 py-1 rounded-full">2</span>
+                            </button>
+                        </nav>
+                    </aside>
+
+                    <!-- Main Content -->
+                    <main class="flex-1 p-6 overflow-auto">
+                        <!-- Store Profile Section -->
+                        <div id="retailerStoreSection">
+                            <div class="mb-6">
+                                <h2 class="text-2xl font-bold text-foreground mb-2">Store Profile</h2>
+                                <p class="text-muted-foreground">Manage your store information and settings</p>
+                            </div>
+
+                            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                <!-- Store Info Card -->
+                                <div class="lg:col-span-2 bg-card border border-border rounded-lg p-6">
+                                    <div class="flex items-center justify-between mb-4">
+                                        <h3 class="text-lg font-semibold text-foreground">Store Information</h3>
+                                        <button class="text-primary hover:text-primary/80 font-medium">Edit</button>
+                                    </div>
+                                    
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label class="block text-sm font-medium text-foreground mb-2">Store Name</label>
+                                            <input type="text" value="Mumbai Electronics Hub" class="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground" data-mock="true">
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-medium text-foreground mb-2">City</label>
+                                            <input type="text" value="Mumbai" class="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground" data-mock="true">
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-medium text-foreground mb-2">Pincode</label>
+                                            <input type="text" value="400001" class="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground" data-mock="true">
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-medium text-foreground mb-2">Status</label>
+                                            <select class="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground">
+                                                <option>Open</option>
+                                                <option>Closed</option>
+                                            </select>
+                                        </div>
+                                        <div class="md:col-span-2">
+                                            <label class="block text-sm font-medium text-foreground mb-2">Address</label>
+                                            <textarea rows="3" class="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground" data-mock="true">123 Commercial Street, Fort, Mumbai, Maharashtra</textarea>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Store Stats -->
+                                <div class="space-y-4">
+                                    <div class="bg-card border border-border rounded-lg p-6">
+                                        <div class="text-center">
+                                            <div class="text-2xl font-bold text-primary">4.6</div>
+                                            <div class="text-sm text-muted-foreground">Store Rating</div>
+                                            <div class="flex justify-center mt-2">
+                                                <div class="flex text-yellow-400">
+                                                    <i class="fas fa-star"></i>
+                                                    <i class="fas fa-star"></i>
+                                                    <i class="fas fa-star"></i>
+                                                    <i class="fas fa-star"></i>
+                                                    <i class="fas fa-star-half-alt"></i>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="bg-card border border-border rounded-lg p-6">
+                                        <div class="text-center">
+                                            <div class="text-2xl font-bold text-foreground">127</div>
+                                            <div class="text-sm text-muted-foreground">Active Products</div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="bg-card border border-border rounded-lg p-6">
+                                        <div class="text-center">
+                                            <div class="text-2xl font-bold text-foreground">23</div>
+                                            <div class="text-sm text-muted-foreground">Pending Orders</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Inventory Section -->
+                        <div id="retailerListingsSection" class="hidden">
+                            <div class="flex items-center justify-between mb-6">
+                                <div>
+                                    <h2 class="text-2xl font-bold text-foreground">Inventory Management</h2>
+                                    <p class="text-muted-foreground">Add products from catalog and manage pricing</p>
+                                </div>
+                                <button onclick="showAddListingModal()" class="bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90 font-medium transition-colors">
+                                    <i class="fas fa-plus mr-2"></i>
+                                    Add from Catalog
+                                </button>
+                            </div>
+
+                            <!-- Inventory Grid -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                <!-- @MAP: listings.map(listing => ( -->
+                                <div class="bg-card border border-border rounded-lg p-4 hover:shadow-md transition-shadow" data-mock="true">
+                                    <div class="flex items-start justify-between mb-3">
+                                        <!-- Premium coffee beans in a transparent package -->
+                                        <img src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?ixlib=rb-4.0.3&auto=format&fit=crop&w=80&h=80" alt="Coffee Beans" class="w-16 h-16 rounded-md object-cover">
+                                        <div class="flex items-center space-x-2">
+                                            <span class="w-3 h-3 bg-green-500 rounded-full"></span>
+                                            <span class="text-xs text-muted-foreground">Available</span>
+                                        </div>
+                                    </div>
+                                    <h4 class="font-medium text-foreground mb-1">Premium Coffee Beans</h4>
+                                    <p class="text-sm text-muted-foreground mb-3">Blue Tokai • 500g</p>
+                                    <div class="space-y-2">
+                                        <div class="flex justify-between">
+                                            <span class="text-sm text-muted-foreground">Retail Price:</span>
+                                            <span class="font-medium text-foreground">₹450</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="text-sm text-muted-foreground">Stock:</span>
+                                            <span class="font-medium text-foreground">24 units</span>
+                                        </div>
+                                    </div>
+                                    <div class="mt-4 flex space-x-2">
+                                        <button class="flex-1 px-3 py-1.5 text-sm border border-border rounded-md hover:bg-accent transition-colors">
+                                            Edit
+                                        </button>
+                                        <button class="px-3 py-1.5 text-sm text-destructive border border-destructive rounded-md hover:bg-destructive/10 transition-colors">
+                                            <i class="fas fa-pause"></i>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="bg-card border border-border rounded-lg p-4 hover:shadow-md transition-shadow" data-mock="true">
+                                    <div class="flex items-start justify-between mb-3">
+                                        <!-- Modern smartphone with sleek design -->
+                                        <img src="https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?ixlib=rb-4.0.3&auto=format&fit=crop&w=80&h=80" alt="Smartphone" class="w-16 h-16 rounded-md object-cover">
+                                        <div class="flex items-center space-x-2">
+                                            <span class="w-3 h-3 bg-red-500 rounded-full"></span>
+                                            <span class="text-xs text-muted-foreground">Out of Stock</span>
+                                        </div>
+                                    </div>
+                                    <h4 class="font-medium text-foreground mb-1">Smartphone Pro Max</h4>
+                                    <p class="text-sm text-muted-foreground mb-3">Apple • 256GB</p>
+                                    <div class="space-y-2">
+                                        <div class="flex justify-between">
+                                            <span class="text-sm text-muted-foreground">Retail Price:</span>
+                                            <span class="font-medium text-foreground">₹89,999</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="text-sm text-muted-foreground">Stock:</span>
+                                            <span class="font-medium text-destructive">0 units</span>
+                                        </div>
+                                    </div>
+                                    <div class="mt-4 flex space-x-2">
+                                        <button class="flex-1 px-3 py-1.5 text-sm border border-border rounded-md hover:bg-accent transition-colors">
+                                            Restock
+                                        </button>
+                                        <button class="px-3 py-1.5 text-sm text-muted-foreground border border-border rounded-md">
+                                            <i class="fas fa-play"></i>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="bg-card border border-border rounded-lg p-4 hover:shadow-md transition-shadow" data-mock="true">
+                                    <div class="flex items-start justify-between mb-3">
+                                        <!-- Elegant designer handbag -->
+                                        <img src="https://images.unsplash.com/photo-1553062407-98eeb64c6a62?ixlib=rb-4.0.3&auto=format&fit=crop&w=80&h=80" alt="Designer Handbag" class="w-16 h-16 rounded-md object-cover">
+                                        <div class="flex items-center space-x-2">
+                                            <span class="w-3 h-3 bg-green-500 rounded-full"></span>
+                                            <span class="text-xs text-muted-foreground">Available</span>
+                                        </div>
+                                    </div>
+                                    <h4 class="font-medium text-foreground mb-1">Designer Handbag</h4>
+                                    <p class="text-sm text-muted-foreground mb-3">Coach • Leather</p>
+                                    <div class="space-y-2">
+                                        <div class="flex justify-between">
+                                            <span class="text-sm text-muted-foreground">Retail Price:</span>
+                                            <span class="font-medium text-foreground">₹12,500</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="text-sm text-muted-foreground">Stock:</span>
+                                            <span class="font-medium text-foreground">8 units</span>
+                                        </div>
+                                    </div>
+                                    <div class="mt-4 flex space-x-2">
+                                        <button class="flex-1 px-3 py-1.5 text-sm border border-border rounded-md hover:bg-accent transition-colors">
+                                            Edit
+                                        </button>
+                                        <button class="px-3 py-1.5 text-sm text-destructive border border-destructive rounded-md hover:bg-destructive/10 transition-colors">
+                                            <i class="fas fa-pause"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <!-- @END_MAP )) -->
+                            </div>
+                        </div>
+
+                        <!-- Orders Section -->
+                        <div id="retailerOrdersSection" class="hidden">
+                            <div class="mb-6">
+                                <h2 class="text-2xl font-bold text-foreground mb-2">Order Management</h2>
+                                <p class="text-muted-foreground">Review and process incoming orders</p>
+                            </div>
+
+                            <!-- Order Cards -->
+                            <div class="space-y-4">
+                                <div class="bg-card border border-border rounded-lg p-6" data-mock="true">
+                                    <div class="flex items-start justify-between mb-4">
+                                        <div>
+                                            <h4 class="font-semibold text-foreground">#ORD-2024-001</h4>
+                                            <p class="text-sm text-muted-foreground">from GroceryMart Store</p>
+                                        </div>
+                                        <span class="status-pending px-3 py-1 text-sm font-medium rounded-full">
+                                            Pending
+                                        </span>
+                                    </div>
+                                    
+                                    <div class="space-y-3 mb-4">
+                                        <div class="flex items-center justify-between">
+                                            <div class="flex items-center space-x-3">
+                                                <!-- Premium coffee beans product -->
+                                                <img src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?ixlib=rb-4.0.3&auto=format&fit=crop&w=40&h=40" alt="Coffee" class="w-10 h-10 rounded object-cover">
+                                                <div>
+                                                    <div class="font-medium text-foreground">Premium Coffee Beans</div>
+                                                    <div class="text-sm text-muted-foreground">500g pack</div>
+                                                </div>
+                                            </div>
+                                            <div class="text-right">
+                                                <div class="font-medium text-foreground">Qty: 5</div>
+                                                <div class="text-sm text-muted-foreground">₹2,250</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="flex items-center justify-between pt-4 border-t border-border">
+                                        <div>
+                                            <div class="font-semibold text-foreground">Total: ₹2,250</div>
+                                            <div class="text-sm text-muted-foreground">Delivery requested</div>
+                                        </div>
+                                        <div class="flex space-x-2">
+                                            <button class="px-4 py-2 text-sm border border-destructive text-destructive rounded-md hover:bg-destructive/10 transition-colors">
+                                                Reject
+                                            </button>
+                                            <button class="px-4 py-2 text-sm bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors">
+                                                Accept
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="bg-card border border-border rounded-lg p-6" data-mock="true">
+                                    <div class="flex items-start justify-between mb-4">
+                                        <div>
+                                            <h4 class="font-semibold text-foreground">#ORD-2024-002</h4>
+                                            <p class="text-sm text-muted-foreground">from TechWorld Store</p>
+                                        </div>
+                                        <span class="status-ready px-3 py-1 text-sm font-medium rounded-full">
+                                            Ready
+                                        </span>
+                                    </div>
+                                    
+                                    <div class="space-y-3 mb-4">
+                                        <div class="flex items-center justify-between">
+                                            <div class="flex items-center space-x-3">
+                                                <!-- Wireless earbuds in packaging -->
+                                                <img src="https://images.unsplash.com/photo-1590658268037-6bf12165a8df?ixlib=rb-4.0.3&auto=format&fit=crop&w=40&h=40" alt="Earbuds" class="w-10 h-10 rounded object-cover">
+                                                <div>
+                                                    <div class="font-medium text-foreground">Wireless Earbuds Pro</div>
+                                                    <div class="text-sm text-muted-foreground">1 unit</div>
+                                                </div>
+                                            </div>
+                                            <div class="text-right">
+                                                <div class="font-medium text-foreground">Qty: 2</div>
+                                                <div class="text-sm text-muted-foreground">₹7,998</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="flex items-center justify-between pt-4 border-t border-border">
+                                        <div>
+                                            <div class="font-semibold text-foreground">Total: ₹7,998</div>
+                                            <div class="text-sm text-muted-foreground">Pickup scheduled</div>
+                                        </div>
+                                        <div class="flex space-x-2">
+                                            <button class="px-4 py-2 text-sm bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors">
+                                                Mark as Delivered
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </main>
+                </div>
+            </div>
+            <!-- @END_COMPONENT: RetailerDashboard -->
+
+            <!-- Shop Owner Dashboard -->
+            <!-- @COMPONENT: ShopOwnerDashboard [Store browsing and ordering interface] -->
+            <div id="shopOwnerDashboard" class="hidden">
+                <div class="flex h-[calc(100vh-80px)]">
+                    <!-- Sidebar -->
+                    <aside class="w-64 bg-card border-r border-border p-6">
+                        <nav class="space-y-2">
+                            <button onclick="showOwnerSection('explore')" class="owner-nav-btn w-full text-left px-4 py-3 rounded-md bg-primary text-primary-foreground font-medium">
+                                <i class="fas fa-search mr-3"></i>
+                                Explore Stores
+                            </button>
+                            <button onclick="showOwnerSection('cart')" class="owner-nav-btn w-full text-left px-4 py-3 rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors">
+                                <i class="fas fa-shopping-cart mr-3"></i>
+                                Cart
+                                <span class="ml-auto bg-primary text-primary-foreground text-xs px-2 py-1 rounded-full">3</span>
+                            </button>
+                            <button onclick="showOwnerSection('orders')" class="owner-nav-btn w-full text-left px-4 py-3 rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors">
+                                <i class="fas fa-receipt mr-3"></i>
+                                My Orders
+                            </button>
+                        </nav>
+                    </aside>
+
+                    <!-- Main Content -->
+                    <main class="flex-1 p-6 overflow-auto">
+                        <!-- Explore Stores Section -->
+                        <div id="ownerExploreSection">
+                            <div class="mb-6">
+                                <h2 class="text-2xl font-bold text-foreground mb-2">Explore Stores</h2>
+                                <p class="text-muted-foreground">Discover retailers and browse their products</p>
+                            </div>
+
+                            <!-- Search and Filters -->
+                            <div class="bg-card border border-border rounded-lg p-4 mb-6">
+                                <div class="flex items-center space-x-4">
+                                    <div class="flex-1">
+                                        <input type="text" placeholder="Search stores..." class="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
+                                    </div>
+                                    <input type="text" placeholder="City" class="px-3 py-2 border border-input rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
+                                    <input type="text" placeholder="Pincode" class="px-3 py-2 border border-input rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
+                                    <button class="bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90 transition-colors">
+                                        <i class="fas fa-search"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Store Grid -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                <!-- @MAP: stores.map(store => ( -->
+                                <div class="bg-card border border-border rounded-lg overflow-hidden hover:shadow-lg transition-shadow cursor-pointer" onclick="viewStore('store1')" data-mock="true">
+                                    <div class="p-6">
+                                        <div class="flex items-start justify-between mb-4">
+                                            <div class="flex items-center space-x-3">
+                                                <div class="w-12 h-12 bg-primary rounded-lg flex items-center justify-center">
+                                                    <i class="fas fa-store text-primary-foreground"></i>
+                                                </div>
+                                                <div>
+                                                    <h3 class="font-semibold text-foreground">Mumbai Electronics Hub</h3>
+                                                    <p class="text-sm text-muted-foreground">Electronics & Gadgets</p>
+                                                </div>
+                                            </div>
+                                            <span class="w-3 h-3 bg-green-500 rounded-full"></span>
+                                        </div>
+                                        
+                                        <div class="space-y-2 mb-4">
+                                            <div class="flex items-center text-sm text-muted-foreground">
+                                                <i class="fas fa-map-marker-alt mr-2"></i>
+                                                Mumbai, 400001
+                                            </div>
+                                            <div class="flex items-center justify-between">
+                                                <div class="flex items-center text-sm text-muted-foreground">
+                                                    <i class="fas fa-star text-yellow-400 mr-1"></i>
+                                                    4.6 rating
+                                                </div>
+                                                <div class="text-sm font-medium text-foreground">127 products</div>
+                                            </div>
+                                        </div>
+                                        
+                                        <button class="w-full bg-primary text-primary-foreground py-2 rounded-md hover:bg-primary/90 font-medium transition-colors">
+                                            Browse Catalog
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="bg-card border border-border rounded-lg overflow-hidden hover:shadow-lg transition-shadow cursor-pointer" data-mock="true">
+                                    <div class="p-6">
+                                        <div class="flex items-start justify-between mb-4">
+                                            <div class="flex items-center space-x-3">
+                                                <div class="w-12 h-12 bg-green-600 rounded-lg flex items-center justify-center">
+                                                    <i class="fas fa-leaf text-white"></i>
+                                                </div>
+                                                <div>
+                                                    <h3 class="font-semibold text-foreground">Fresh Farm Organics</h3>
+                                                    <p class="text-sm text-muted-foreground">Organic Groceries</p>
+                                                </div>
+                                            </div>
+                                            <span class="w-3 h-3 bg-green-500 rounded-full"></span>
+                                        </div>
+                                        
+                                        <div class="space-y-2 mb-4">
+                                            <div class="flex items-center text-sm text-muted-foreground">
+                                                <i class="fas fa-map-marker-alt mr-2"></i>
+                                                Pune, 411001
+                                            </div>
+                                            <div class="flex items-center justify-between">
+                                                <div class="flex items-center text-sm text-muted-foreground">
+                                                    <i class="fas fa-star text-yellow-400 mr-1"></i>
+                                                    4.8 rating
+                                                </div>
+                                                <div class="text-sm font-medium text-foreground">89 products</div>
+                                            </div>
+                                        </div>
+                                        
+                                        <button class="w-full bg-primary text-primary-foreground py-2 rounded-md hover:bg-primary/90 font-medium transition-colors">
+                                            Browse Catalog
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="bg-card border border-border rounded-lg overflow-hidden hover:shadow-lg transition-shadow cursor-pointer" data-mock="true">
+                                    <div class="p-6">
+                                        <div class="flex items-start justify-between mb-4">
+                                            <div class="flex items-center space-x-3">
+                                                <div class="w-12 h-12 bg-purple-600 rounded-lg flex items-center justify-center">
+                                                    <i class="fas fa-tshirt text-white"></i>
+                                                </div>
+                                                <div>
+                                                    <h3 class="font-semibold text-foreground">Fashion Forward</h3>
+                                                    <p class="text-sm text-muted-foreground">Clothing & Accessories</p>
+                                                </div>
+                                            </div>
+                                            <span class="w-3 h-3 bg-yellow-500 rounded-full"></span>
+                                        </div>
+                                        
+                                        <div class="space-y-2 mb-4">
+                                            <div class="flex items-center text-sm text-muted-foreground">
+                                                <i class="fas fa-map-marker-alt mr-2"></i>
+                                                Delhi, 110001
+                                            </div>
+                                            <div class="flex items-center justify-between">
+                                                <div class="flex items-center text-sm text-muted-foreground">
+                                                    <i class="fas fa-star text-yellow-400 mr-1"></i>
+                                                    4.3 rating
+                                                </div>
+                                                <div class="text-sm font-medium text-foreground">156 products</div>
+                                            </div>
+                                        </div>
+                                        
+                                        <button class="w-full bg-secondary text-secondary-foreground py-2 rounded-md hover:bg-secondary/80 font-medium transition-colors">
+                                            Browse Catalog
+                                        </button>
+                                    </div>
+                                </div>
+                                <!-- @END_MAP )) -->
+                            </div>
+                        </div>
+
+                        <!-- Cart Section -->
+                        <div id="ownerCartSection" class="hidden">
+                            <div class="mb-6">
+                                <h2 class="text-2xl font-bold text-foreground mb-2">Shopping Cart</h2>
+                                <p class="text-muted-foreground">Review your items and place orders</p>
+                            </div>
+
+                            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                <!-- Cart Items -->
+                                <div class="lg:col-span-2">
+                                    <div class="bg-card border border-border rounded-lg">
+                                        <div class="p-4 border-b border-border">
+                                            <h3 class="font-semibold text-foreground">Mumbai Electronics Hub</h3>
+                                            <p class="text-sm text-muted-foreground">3 items</p>
+                                        </div>
+                                        
+                                        <div class="p-4 space-y-4" data-mock="true">
+                                            <div class="flex items-center space-x-4">
+                                                <!-- Premium coffee product image -->
+                                                <img src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?ixlib=rb-4.0.3&auto=format&fit=crop&w=60&h=60" alt="Coffee" class="w-15 h-15 rounded-md object-cover">
+                                                <div class="flex-1">
+                                                    <h4 class="font-medium text-foreground">Premium Coffee Beans</h4>
+                                                    <p class="text-sm text-muted-foreground">Blue Tokai • 500g</p>
+                                                    <p class="text-sm font-medium text-foreground">₹450 each</p>
+                                                </div>
+                                                <div class="flex items-center space-x-2">
+                                                    <button class="w-8 h-8 border border-border rounded-md flex items-center justify-center hover:bg-accent transition-colors">
+                                                        <i class="fas fa-minus text-xs"></i>
+                                                    </button>
+                                                    <span class="w-8 text-center font-medium">2</span>
+                                                    <button class="w-8 h-8 border border-border rounded-md flex items-center justify-center hover:bg-accent transition-colors">
+                                                        <i class="fas fa-plus text-xs"></i>
+                                                    </button>
+                                                </div>
+                                                <div class="text-right">
+                                                    <div class="font-semibold text-foreground">₹900</div>
+                                                    <button class="text-destructive hover:text-destructive/80 text-sm">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            <div class="flex items-center space-x-4">
+                                                <!-- Wireless earbuds product -->
+                                                <img src="https://images.unsplash.com/photo-1590658268037-6bf12165a8df?ixlib=rb-4.0.3&auto=format&fit=crop&w=60&h=60" alt="Earbuds" class="w-15 h-15 rounded-md object-cover">
+                                                <div class="flex-1">
+                                                    <h4 class="font-medium text-foreground">Wireless Earbuds Pro</h4>
+                                                    <p class="text-sm text-muted-foreground">Sony • 1 unit</p>
+                                                    <p class="text-sm font-medium text-foreground">₹3,999 each</p>
+                                                </div>
+                                                <div class="flex items-center space-x-2">
+                                                    <button class="w-8 h-8 border border-border rounded-md flex items-center justify-center hover:bg-accent transition-colors">
+                                                        <i class="fas fa-minus text-xs"></i>
+                                                    </button>
+                                                    <span class="w-8 text-center font-medium">1</span>
+                                                    <button class="w-8 h-8 border border-border rounded-md flex items-center justify-center hover:bg-accent transition-colors">
+                                                        <i class="fas fa-plus text-xs"></i>
+                                                    </button>
+                                                </div>
+                                                <div class="text-right">
+                                                    <div class="font-semibold text-foreground">₹3,999</div>
+                                                    <button class="text-destructive hover:text-destructive/80 text-sm">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Order Summary -->
+                                <div class="bg-card border border-border rounded-lg p-6 h-fit">
+                                    <h3 class="font-semibold text-foreground mb-4">Order Summary</h3>
+                                    
+                                    <div class="space-y-3 mb-4">
+                                        <div class="flex justify-between">
+                                            <span class="text-muted-foreground">Subtotal</span>
+                                            <span class="font-medium text-foreground">₹4,899</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="text-muted-foreground">Delivery Fee</span>
+                                            <span class="font-medium text-foreground">₹50</span>
+                                        </div>
+                                        <div class="pt-3 border-t border-border flex justify-between">
+                                            <span class="font-semibold text-foreground">Total</span>
+                                            <span class="font-bold text-foreground">₹4,949</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mb-4">
+                                        <label class="block text-sm font-medium text-foreground mb-2">Delivery Type</label>
+                                        <select class="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground">
+                                            <option>Delivery</option>
+                                            <option>Pickup</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="mb-6">
+                                        <label class="block text-sm font-medium text-foreground mb-2">Special Instructions</label>
+                                        <textarea rows="3" placeholder="Add any special notes..." class="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground resize-none"></textarea>
+                                    </div>
+                                    
+                                    <button onclick="placeOrder()" class="w-full bg-primary text-primary-foreground py-3 rounded-md hover:bg-primary/90 font-medium transition-colors">
+                                        <i class="fas fa-shopping-cart mr-2"></i>
+                                        Place Order
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- My Orders Section -->
+                        <div id="ownerOrdersSection" class="hidden">
+                            <div class="mb-6">
+                                <h2 class="text-2xl font-bold text-foreground mb-2">My Orders</h2>
+                                <p class="text-muted-foreground">Track your order status and history</p>
+                            </div>
+
+                            <!-- Order Status Cards -->
+                            <div class="space-y-4">
+                                <div class="bg-card border border-border rounded-lg p-6" data-mock="true">
+                                    <div class="flex items-start justify-between mb-4">
+                                        <div>
+                                            <h4 class="font-semibold text-foreground">#ORD-2024-001</h4>
+                                            <p class="text-sm text-muted-foreground">Mumbai Electronics Hub</p>
+                                            <p class="text-xs text-muted-foreground">Placed on Jan 20, 2024</p>
+                                        </div>
+                                        <span class="status-accepted px-3 py-1 text-sm font-medium rounded-full">
+                                            Accepted
+                                        </span>
+                                    </div>
+                                    
+                                    <div class="mb-4">
+                                        <div class="flex items-center space-x-3 mb-2">
+                                            <!-- Coffee beans product -->
+                                            <img src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?ixlib=rb-4.0.3&auto=format&fit=crop&w=40&h=40" alt="Coffee" class="w-10 h-10 rounded object-cover">
+                                            <div class="flex-1">
+                                                <div class="font-medium text-foreground">Premium Coffee Beans x2</div>
+                                                <div class="text-sm text-muted-foreground">₹450 each</div>
+                                            </div>
+                                            <div class="text-right font-medium text-foreground">₹900</div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Order Timeline -->
+                                    <div class="border-t border-border pt-4">
+                                        <h5 class="font-medium text-foreground mb-3">Order Timeline</h5>
+                                        <div class="space-y-2">
+                                            <div class="flex items-center space-x-3">
+                                                <div class="w-2 h-2 bg-primary rounded-full"></div>
+                                                <div class="text-sm">
+                                                    <span class="font-medium text-foreground">Order accepted</span>
+                                                    <span class="text-muted-foreground ml-2">2 hours ago</span>
+                                                </div>
+                                            </div>
+                                            <div class="flex items-center space-x-3">
+                                                <div class="w-2 h-2 bg-muted rounded-full"></div>
+                                                <div class="text-sm">
+                                                    <span class="font-medium text-foreground">Order placed</span>
+                                                    <span class="text-muted-foreground ml-2">3 hours ago</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="flex items-center justify-between pt-4 mt-4 border-t border-border">
+                                        <div class="font-semibold text-foreground">Total: ₹950</div>
+                                        <button class="px-4 py-2 text-sm bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/80 transition-colors">
+                                            Track Order
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="bg-card border border-border rounded-lg p-6" data-mock="true">
+                                    <div class="flex items-start justify-between mb-4">
+                                        <div>
+                                            <h4 class="font-semibold text-foreground">#ORD-2024-002</h4>
+                                            <p class="text-sm text-muted-foreground">Fresh Farm Organics</p>
+                                            <p class="text-xs text-muted-foreground">Placed on Jan 18, 2024</p>
+                                        </div>
+                                        <span class="status-completed px-3 py-1 text-sm font-medium rounded-full">
+                                            Completed
+                                        </span>
+                                    </div>
+                                    
+                                    <div class="mb-4">
+                                        <div class="flex items-center space-x-3 mb-2">
+                                            <!-- Fresh vegetables product -->
+                                            <img src="https://images.unsplash.com/photo-1540420773420-3366772f4999?ixlib=rb-4.0.3&auto=format&fit=crop&w=40&h=40" alt="Vegetables" class="w-10 h-10 rounded object-cover">
+                                            <div class="flex-1">
+                                                <div class="font-medium text-foreground">Organic Vegetables Mix x1</div>
+                                                <div class="text-sm text-muted-foreground">₹280 each</div>
+                                            </div>
+                                            <div class="text-right font-medium text-foreground">₹280</div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="flex items-center justify-between pt-4 border-t border-border">
+                                        <div class="font-semibold text-foreground">Total: ₹330</div>
+                                        <div class="flex space-x-2">
+                                            <button class="px-4 py-2 text-sm border border-border rounded-md hover:bg-accent transition-colors">
+                                                Reorder
+                                            </button>
+                                            <button class="px-4 py-2 text-sm bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors">
+                                                Rate Store
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </main>
+                </div>
+            </div>
+            <!-- @END_COMPONENT: ShopOwnerDashboard -->
+
+            <!-- Store Catalog Modal -->
+            <!-- @COMPONENT: StoreCatalogModal [Product browsing interface] -->
+            <div id="storeCatalogModal" class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 hidden z-50">
+                <div class="bg-card border border-border rounded-lg w-full max-w-4xl max-h-[90vh] overflow-hidden">
+                    <div class="flex items-center justify-between p-6 border-b border-border">
+                        <div>
+                            <h3 class="text-xl font-semibold text-foreground">Mumbai Electronics Hub</h3>
+                            <p class="text-sm text-muted-foreground">Browse products and add to cart</p>
+                        </div>
+                        <button onclick="closeStoreCatalog()" class="p-2 text-muted-foreground hover:text-foreground transition-colors">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    
+                    <div class="p-6 overflow-auto max-h-[70vh]">
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <!-- @MAP: storeProducts.map(product => ( -->
+                            <div class="bg-background border border-border rounded-lg p-4 hover:shadow-md transition-shadow" data-mock="true">
+                                <!-- Premium coffee beans product -->
+                                <img src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&h=160" alt="Coffee Beans" class="w-full h-40 object-cover rounded-md mb-3">
+                                <h4 class="font-medium text-foreground mb-1">Premium Coffee Beans</h4>
+                                <p class="text-sm text-muted-foreground mb-2">Blue Tokai • 500g pack</p>
+                                <div class="flex items-center justify-between mb-3">
+                                    <div>
+                                        <div class="font-bold text-foreground">₹450</div>
+                                        <div class="text-xs text-muted-foreground">24 in stock</div>
+                                    </div>
+                                    <span class="text-xs px-2 py-1 bg-green-100 text-green-800 rounded-full">Available</span>
+                                </div>
+                                <button onclick="addToCart('product1')" class="w-full bg-primary text-primary-foreground py-2 rounded-md hover:bg-primary/90 font-medium transition-colors">
+                                    <i class="fas fa-cart-plus mr-2"></i>
+                                    Add to Cart
+                                </button>
+                            </div>
+
+                            <div class="bg-background border border-border rounded-lg p-4 hover:shadow-md transition-shadow" data-mock="true">
+                                <!-- High-quality smartphone image -->
+                                <img src="https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&h=160" alt="Smartphone" class="w-full h-40 object-cover rounded-md mb-3">
+                                <h4 class="font-medium text-foreground mb-1">Smartphone Pro Max</h4>
+                                <p class="text-sm text-muted-foreground mb-2">Apple • 256GB</p>
+                                <div class="flex items-center justify-between mb-3">
+                                    <div>
+                                        <div class="font-bold text-foreground">₹89,999</div>
+                                        <div class="text-xs text-destructive">Out of stock</div>
+                                    </div>
+                                    <span class="text-xs px-2 py-1 bg-red-100 text-red-800 rounded-full">Unavailable</span>
+                                </div>
+                                <button disabled class="w-full bg-muted text-muted-foreground py-2 rounded-md cursor-not-allowed">
+                                    <i class="fas fa-ban mr-2"></i>
+                                    Out of Stock
+                                </button>
+                            </div>
+
+                            <div class="bg-background border border-border rounded-lg p-4 hover:shadow-md transition-shadow" data-mock="true">
+                                <!-- Designer handbag product -->
+                                <img src="https://images.unsplash.com/photo-1553062407-98eeb64c6a62?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&h=160" alt="Handbag" class="w-full h-40 object-cover rounded-md mb-3">
+                                <h4 class="font-medium text-foreground mb-1">Designer Handbag</h4>
+                                <p class="text-sm text-muted-foreground mb-2">Coach • Leather</p>
+                                <div class="flex items-center justify-between mb-3">
+                                    <div>
+                                        <div class="font-bold text-foreground">₹12,500</div>
+                                        <div class="text-xs text-muted-foreground">8 in stock</div>
+                                    </div>
+                                    <span class="text-xs px-2 py-1 bg-green-100 text-green-800 rounded-full">Available</span>
+                                </div>
+                                <button onclick="addToCart('product3')" class="w-full bg-primary text-primary-foreground py-2 rounded-md hover:bg-primary/90 font-medium transition-colors">
+                                    <i class="fas fa-cart-plus mr-2"></i>
+                                    Add to Cart
+                                </button>
+                            </div>
+                            <!-- @END_MAP )) -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- @END_COMPONENT: StoreCatalogModal -->
+
+            <!-- Add Product Modal (Admin) -->
+            <!-- @COMPONENT: AddProductModal [Product creation form] -->
+            <div id="addProductModal" class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 hidden z-50">
+                <div class="bg-card border border-border rounded-lg w-full max-w-md">
+                    <div class="flex items-center justify-between p-6 border-b border-border">
+                        <h3 class="text-lg font-semibold text-foreground">Add New Product</h3>
+                        <button onclick="closeAddProductModal()" class="p-2 text-muted-foreground hover:text-foreground transition-colors">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    
+                    <form class="p-6 space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-foreground mb-2">Product Name</label>
+                            <input type="text" class="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring" placeholder="Enter product name">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-foreground mb-2">Brand</label>
+                            <input type="text" class="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring" placeholder="Enter brand name">
+                        </div>
+                        
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-foreground mb-2">Unit</label>
+                                <select class="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
+                                    <option>kg</option>
+                                    <option>piece</option>
+                                    <option>box</option>
+                                    <option>liter</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-foreground mb-2">Size/Pack</label>
+                                <input type="text" class="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring" placeholder="e.g., 500g">
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-foreground mb-2">Product Image</label>
+                            <div class="border-2 border-dashed border-border rounded-lg p-4 text-center">
+                                <i class="fas fa-cloud-upload-alt text-2xl text-muted-foreground mb-2"></i>
+                                <p class="text-sm text-muted-foreground">Click to upload or drag and drop</p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-center space-x-2">
+                            <input type="checkbox" id="wholesaleFlag" class="rounded border-border">
+                            <label for="wholesaleFlag" class="text-sm text-foreground">Wholesale product</label>
+                        </div>
+                        
+                        <div class="flex space-x-3 pt-4">
+                            <button type="button" onclick="closeAddProductModal()" class="flex-1 px-4 py-2 border border-border rounded-md hover:bg-accent transition-colors">
+                                Cancel
+                            </button>
+                            <button type="submit" class="flex-1 bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90 transition-colors">
+                                Add Product
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            <!-- @END_COMPONENT: AddProductModal -->
+        </div>
+        <!-- @END_COMPONENT: MainApp -->
+
+        <!-- Toast Notifications -->
+        <!-- @COMPONENT: ToastNotifications [Real-time notification system] -->
+        <div id="toastContainer" class="fixed top-4 right-4 space-y-2 z-50">
+            <!-- Notifications will be dynamically inserted here -->
+        </div>
+        <!-- @END_COMPONENT: ToastNotifications -->
+    </div>
+    <!-- @END_COMPONENT: App -->
+
+    <script>
+        // @STATE: currentUser:object = null, currentRole:string = null
+        let currentUser = null;
+        let currentRole = null;
+        
+        // Demo accounts data
+        const demoAccounts = {
+            'admin@gmail.com': { role: 'ADMIN', name: 'Admin User', initials: 'AD' },
+            'retail@gmail.com': { role: 'RETAILER', name: 'Retailer User', initials: 'RE' },
+            'shop@gmail.com': { role: 'SHOP_OWNER', name: 'Shop Owner', initials: 'SO' }
+        };
+
+        // @FUNCTIONALITY: Authentication and role management
+        function fillLogin(email) {
+            document.getElementById('loginEmail').value = email;
+            document.getElementById('loginPassword').value = '12345678';
+        }
+
+        function handleLogin(event) {
+            event.preventDefault();
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            
+            // TODO: Implement real authentication with JWT tokens
+            if (demoAccounts[email] && password === '12345678') {
+                currentUser = demoAccounts[email];
+                currentRole = currentUser.role;
+                
+                // Update UI with user info
+                document.getElementById('userName').textContent = currentUser.name;
+                document.getElementById('userInitials').textContent = currentUser.initials;
+                document.getElementById('roleIndicator').textContent = currentRole.replace('_', ' ');
+                
+                // Show appropriate dashboard
+                document.getElementById('loginScreen').classList.add('hidden');
+                document.getElementById('mainApp').classList.remove('hidden');
+                
+                if (currentRole === 'ADMIN') {
+                    document.getElementById('adminDashboard').classList.remove('hidden');
+                } else if (currentRole === 'RETAILER') {
+                    document.getElementById('retailerDashboard').classList.remove('hidden');
+                } else if (currentRole === 'SHOP_OWNER') {
+                    document.getElementById('shopOwnerDashboard').classList.remove('hidden');
+                }
+                
+                showToast('Login successful!', 'success');
+            } else {
+                showToast('Invalid credentials. Please use demo accounts.', 'error');
+            }
+        }
+
+        function handleLogout() {
+            // TODO: Implement real logout with token cleanup
+            currentUser = null;
+            currentRole = null;
+            
+            // Hide all dashboards
+            document.getElementById('mainApp').classList.add('hidden');
+            document.getElementById('adminDashboard').classList.add('hidden');
+            document.getElementById('retailerDashboard').classList.add('hidden');
+            document.getElementById('shopOwnerDashboard').classList.add('hidden');
+            
+            // Show login screen
+            document.getElementById('loginScreen').classList.remove('hidden');
+            
+            // Reset form
+            document.getElementById('loginEmail').value = '';
+            document.getElementById('loginPassword').value = '';
+            
+            showToast('Logged out successfully', 'info');
+        }
+
+        // @FUNCTIONALITY: Navigation management for different roles
+        function showAdminSection(section) {
+            document.querySelectorAll('.admin-nav-btn').forEach(btn => {
+                btn.classList.remove('bg-primary', 'text-primary-foreground');
+                btn.classList.add('text-muted-foreground', 'hover:bg-accent', 'hover:text-accent-foreground');
+            });
+            event.target.classList.add('bg-primary', 'text-primary-foreground');
+            event.target.classList.remove('text-muted-foreground', 'hover:bg-accent', 'hover:text-accent-foreground');
+            
+            // TODO: Implement section switching logic
+            console.log('Switching to admin section:', section);
+        }
+
+        function showRetailerSection(section) {
+            document.querySelectorAll('.retailer-nav-btn').forEach(btn => {
+                btn.classList.remove('bg-primary', 'text-primary-foreground');
+                btn.classList.add('text-muted-foreground', 'hover:bg-accent', 'hover:text-accent-foreground');
+            });
+            event.target.classList.add('bg-primary', 'text-primary-foreground');
+            event.target.classList.remove('text-muted-foreground', 'hover:bg-accent', 'hover:text-accent-foreground');
+            
+            // Show/hide sections
+            document.getElementById('retailerStoreSection').classList.toggle('hidden', section !== 'store');
+            document.getElementById('retailerListingsSection').classList.toggle('hidden', section !== 'listings');
+            document.getElementById('retailerOrdersSection').classList.toggle('hidden', section !== 'orders');
+        }
+
+        function showOwnerSection(section) {
+            document.querySelectorAll('.owner-nav-btn').forEach(btn => {
+                btn.classList.remove('bg-primary', 'text-primary-foreground');
+                btn.classList.add('text-muted-foreground', 'hover:bg-accent', 'hover:text-accent-foreground');
+            });
+            event.target.classList.add('bg-primary', 'text-primary-foreground');
+            event.target.classList.remove('text-muted-foreground', 'hover:bg-accent', 'hover:text-accent-foreground');
+            
+            // Show/hide sections
+            document.getElementById('ownerExploreSection').classList.toggle('hidden', section !== 'explore');
+            document.getElementById('ownerCartSection').classList.toggle('hidden', section !== 'cart');
+            document.getElementById('ownerOrdersSection').classList.toggle('hidden', section !== 'orders');
+        }
+
+        // @FUNCTIONALITY: Modal management
+        function showAddProductModal() {
+            document.getElementById('addProductModal').classList.remove('hidden');
+        }
+
+        function closeAddProductModal() {
+            document.getElementById('addProductModal').classList.add('hidden');
+        }
+
+        function viewStore(storeId) {
+            document.getElementById('storeCatalogModal').classList.remove('hidden');
+            // TODO: Load store products from API
+        }
+
+        function closeStoreCatalog() {
+            document.getElementById('storeCatalogModal').classList.add('hidden');
+        }
+
+        // @FUNCTIONALITY: Shopping cart operations
+        function addToCart(productId) {
+            // TODO: Implement cart state management
+            showToast('Product added to cart!', 'success');
+        }
+
+        function placeOrder() {
+            // TODO: Implement order placement with real API call
+            showToast('Order placed successfully! You will receive updates shortly.', 'success');
+            
+            // Simulate real-time notification after a delay
+            setTimeout(() => {
+                showToast('Order accepted by Mumbai Electronics Hub', 'info');
+            }, 3000);
+        }
+
+        // @FUNCTIONALITY: Toast notification system for real-time updates
+        function showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            toast.className = `notification-toast bg-card border border-border rounded-lg p-4 shadow-lg max-w-sm ${
+                type === 'success' ? 'border-l-4 border-l-green-500' :
+                type === 'error' ? 'border-l-4 border-l-red-500' :
+                type === 'warning' ? 'border-l-4 border-l-yellow-500' :
+                'border-l-4 border-l-blue-500'
+            }`;
+            
+            const icon = type === 'success' ? 'fa-check-circle text-green-500' :
+                        type === 'error' ? 'fa-exclamation-circle text-red-500' :
+                        type === 'warning' ? 'fa-exclamation-triangle text-yellow-500' :
+                        'fa-info-circle text-blue-500';
+            
+            toast.innerHTML = `
+                <div class="flex items-start space-x-3">
+                    <i class="fas ${icon} mt-0.5"></i>
+                    <div class="flex-1">
+                        <p class="text-sm font-medium text-foreground">${message}</p>
+                    </div>
+                    <button onclick="this.parentElement.parentElement.remove()" class="text-muted-foreground hover:text-foreground">
+                        <i class="fas fa-times text-xs"></i>
+                    </button>
+                </div>
+            `;
+            
+            document.getElementById('toastContainer').appendChild(toast);
+            
+            // Auto remove after 5 seconds
+            setTimeout(() => {
+                if (toast.parentElement) {
+                    toast.remove();
+                }
+            }, 5000);
+        }
+
+        // @FUNCTIONALITY: User menu toggle
+        document.getElementById('userMenuToggle').addEventListener('click', () => {
+            document.getElementById('userMenu').classList.toggle('hidden');
+        });
+
+        // Close user menu when clicking outside
+        document.addEventListener('click', (event) => {
+            if (!event.target.closest('#userMenuToggle') && !event.target.closest('#userMenu')) {
+                document.getElementById('userMenu').classList.add('hidden');
+            }
+        });
+
+        // @FUNCTIONALITY: Real-time Socket.IO simulation
+        (function initSocketSimulation() {
+            // TODO: Implement real Socket.IO connection
+            // This simulates receiving real-time order updates
+            
+            setInterval(() => {
+                if (currentRole === 'RETAILER' && Math.random() > 0.7) {
+                    const events = [
+                        'New order received from TechWorld Store',
+                        'Order #ORD-2024-003 payment confirmed',
+                        'Customer requested delivery update'
+                    ];
+                    const event = events[Math.floor(Math.random() * events.length)];
+                    showToast(event, 'info');
+                    
+                    // Update notification badge
+                    const badge = document.getElementById('notificationBadge');
+                    badge.classList.remove('hidden');
+                    badge.textContent = parseInt(badge.textContent || '0') + 1;
+                }
+            }, 10000); // Every 10 seconds for demo
+        })();
+
+        // @FUNCTIONALITY: Initialize demo with some sample data loaded
+        window.addEventListener('load', () => {
+            console.log('ShopLink B2B Commerce Platform loaded');
+            // TODO: Initialize real app state, API connections, and user session
+        });
+    </script>
+</body>
+</html>
