@@ -19,6 +19,7 @@ export default function RetailerDashboard() {
   const [paymentModal, setPaymentModal] = useState<{ isOpen: boolean; order: any }>({ isOpen: false, order: null });
   const [paymentAmount, setPaymentAmount] = useState('');
   const [paymentNote, setPaymentNote] = useState('');
+  const [recentlyCreatedDeliveryBoy, setRecentlyCreatedDeliveryBoy] = useState<any>(null);
   const { toast } = useToast();
 
   const { data: store } = useQuery({
@@ -168,12 +169,21 @@ export default function RetailerDashboard() {
 
   const createDeliveryBoyMutation = useMutation({
     mutationFn: async (data: { name: string; phone: string; address?: string }) => {
-      await apiRequest('POST', '/api/retailer/delivery-boys', data);
+      const response = await apiRequest('POST', '/api/retailer/delivery-boys', data);
+      return response;
     },
-    onSuccess: () => {
+    onSuccess: (createdDeliveryBoy) => {
       queryClient.invalidateQueries({ queryKey: ['/api/retailer/delivery-boys'] });
       toast({ title: "Delivery boy added successfully" });
       setNewDeliveryBoy({ name: '', phone: '', address: '' });
+      setRecentlyCreatedDeliveryBoy(createdDeliveryBoy);
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Failed to add delivery boy", 
+        description: error.response?.data?.message || "An error occurred",
+        variant: "destructive" 
+      });
     }
   });
 
@@ -766,6 +776,78 @@ export default function RetailerDashboard() {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Recently Created Delivery Boy Profile */}
+              {recentlyCreatedDeliveryBoy && (
+                <Card className="mb-6 border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-semibold text-green-800 dark:text-green-200">
+                        <i className="fas fa-check-circle mr-2"></i>
+                        Delivery Boy Added Successfully
+                      </h3>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => setRecentlyCreatedDeliveryBoy(null)}
+                        data-testid="button-close-profile"
+                      >
+                        <i className="fas fa-times"></i>
+                      </Button>
+                    </div>
+                    
+                    <div className="bg-white dark:bg-gray-900 rounded-lg p-4 border">
+                      <div className="flex items-center space-x-4 mb-4">
+                        <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
+                          <i className="fas fa-motorcycle text-primary text-2xl"></i>
+                        </div>
+                        <div>
+                          <h4 className="text-xl font-semibold text-foreground" data-testid="profile-name">
+                            {recentlyCreatedDeliveryBoy.name}
+                          </h4>
+                          <div className="flex items-center space-x-2">
+                            <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                            <span className="text-sm text-muted-foreground">Active</span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-3">
+                          <div className="flex items-center text-sm">
+                            <i className="fas fa-phone mr-3 w-4 text-muted-foreground"></i>
+                            <span className="font-medium text-foreground" data-testid="profile-phone">
+                              {recentlyCreatedDeliveryBoy.phone}
+                            </span>
+                          </div>
+                          {recentlyCreatedDeliveryBoy.address && (
+                            <div className="flex items-center text-sm">
+                              <i className="fas fa-map-marker-alt mr-3 w-4 text-muted-foreground"></i>
+                              <span className="text-foreground" data-testid="profile-address">
+                                {recentlyCreatedDeliveryBoy.address}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="space-y-3">
+                          <div className="flex items-center text-sm">
+                            <i className="fas fa-calendar mr-3 w-4 text-muted-foreground"></i>
+                            <span className="text-foreground">
+                              Added {new Date(recentlyCreatedDeliveryBoy.createdAt).toLocaleDateString()}
+                            </span>
+                          </div>
+                          <div className="flex items-center text-sm">
+                            <i className="fas fa-id-badge mr-3 w-4 text-muted-foreground"></i>
+                            <span className="text-xs text-muted-foreground font-mono">
+                              ID: {recentlyCreatedDeliveryBoy.id.substring(0, 8)}...
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Delivery Boys List */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
