@@ -595,8 +595,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         orderId: id,
         userId: req.user.id,
         action: 'PAYMENT_RECEIVED',
-        oldAmount: 0,
-        newAmount: amount,
+        oldAmount: "0",
+        newAmount: amount.toString(),
         reason: note || (isPartialPayment ? 'Partial payment received' : 'Full payment received'),
         metadata: JSON.stringify({
           totalAmount,
@@ -851,8 +851,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         orderId: orderId || null,
         userId: req.user.id,
         action: 'BALANCE_SETTLED',
-        oldAmount: outstandingBalancePayment > 0 ? await storage.getOutstandingBalance(req.user.id, retailerId) : 0,
-        newAmount: actualTotalPayment,
+        oldAmount: outstandingBalancePayment > 0 ? (await storage.getOutstandingBalance(req.user.id, retailerId)).toString() : "0",
+        newAmount: actualTotalPayment.toString(),
         reason: note || 'Balance settlement',
         metadata: JSON.stringify({
           retailerId,

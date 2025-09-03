@@ -115,14 +115,19 @@ export class DatabaseStorage implements IStorage {
   async getStores(filters?: { city?: string; pincode?: string; search?: string }): Promise<Store[]> {
     let query = db.select().from(stores);
     
+    const conditions = [];
     if (filters?.city) {
-      query = query.where(eq(stores.city, filters.city));
+      conditions.push(eq(stores.city, filters.city));
     }
     if (filters?.pincode) {
-      query = query.where(eq(stores.pincode, filters.pincode));
+      conditions.push(eq(stores.pincode, filters.pincode));
     }
     if (filters?.search) {
-      query = query.where(like(stores.name, `%${filters.search}%`));
+      conditions.push(like(stores.name, `%${filters.search}%`));
+    }
+    
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions));
     }
     
     return await query;
@@ -158,7 +163,8 @@ export class DatabaseStorage implements IStorage {
       ));
     }
     
-    return await query.orderBy(desc(productCatalog.createdAt));
+    const results = await query.orderBy(desc(productCatalog.createdAt));
+    return results;
   }
 
   async getProduct(id: string): Promise<ProductCatalog | undefined> {
@@ -376,10 +382,13 @@ export class DatabaseStorage implements IStorage {
       .where(eq(khatabook.userId, entry.userId));
     
     if (entry.counterpartyId) {
-      balanceQuery = balanceQuery.where(and(
+      const counterpartyConditions = [
         eq(khatabook.userId, entry.userId),
         eq(khatabook.counterpartyId, entry.counterpartyId)
-      ));
+      ];
+      balanceQuery = db.select({ balance: khatabook.balance })
+        .from(khatabook)
+        .where(and(...counterpartyConditions));
     }
     
     const lastEntry = await balanceQuery
