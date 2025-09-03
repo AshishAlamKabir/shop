@@ -13,6 +13,8 @@ import { useToast } from "@/hooks/use-toast";
 
 export default function RetailerDashboard() {
   const [activeSection, setActiveSection] = useState('store');
+  const [newDeliveryBoy, setNewDeliveryBoy] = useState({ name: '', phone: '', address: '' });
+  const [editingDeliveryBoy, setEditingDeliveryBoy] = useState(null);
   const { toast } = useToast();
 
   const { data: store } = useQuery({
@@ -80,6 +82,19 @@ export default function RetailerDashboard() {
     }
   });
 
+  const { data: deliveryBoys = [] } = useQuery({
+    queryKey: ['/api/retailer/delivery-boys'],
+    queryFn: async () => {
+      const response = await fetch('/api/retailer/delivery-boys', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+        }
+      });
+      if (!response.ok) throw new Error('Failed to fetch delivery boys');
+      return response.json();
+    }
+  });
+
   const acceptOrderMutation = useMutation({
     mutationFn: async ({ orderId, deliveryAt }: { orderId: string; deliveryAt?: string }) => {
       await apiRequest('POST', `/api/orders/${orderId}/accept`, { deliveryAt });
@@ -120,6 +135,37 @@ export default function RetailerDashboard() {
         title: "✅ Payment Confirmed", 
         description: "Shop owner has been notified of payment receipt" 
       });
+    }
+  });
+
+  const createDeliveryBoyMutation = useMutation({
+    mutationFn: async (data: { name: string; phone: string; address?: string }) => {
+      await apiRequest('POST', '/api/retailer/delivery-boys', data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/retailer/delivery-boys'] });
+      toast({ title: "Delivery boy added successfully" });
+      setNewDeliveryBoy({ name: '', phone: '', address: '' });
+    }
+  });
+
+  const updateDeliveryBoyMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      await apiRequest('PUT', `/api/retailer/delivery-boys/${id}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/retailer/delivery-boys'] });
+      toast({ title: "Delivery boy updated successfully" });
+    }
+  });
+
+  const deleteDeliveryBoyMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest('DELETE', `/api/retailer/delivery-boys/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/retailer/delivery-boys'] });
+      toast({ title: "Delivery boy removed successfully" });
     }
   });
 
@@ -184,6 +230,15 @@ export default function RetailerDashboard() {
             >
               <i className="fas fa-book mr-3"></i>
               Khatabook
+            </Button>
+            <Button
+              onClick={() => setActiveSection('delivery-boys')}
+              variant={activeSection === 'delivery-boys' ? "default" : "ghost"}
+              className="w-full justify-start"
+              data-testid="button-nav-delivery-boys"
+            >
+              <i className="fas fa-motorcycle mr-3"></i>
+              Delivery Boy
             </Button>
           </nav>
         </aside>
@@ -605,6 +660,165 @@ export default function RetailerDashboard() {
                   </div>
                 </CardContent>
               </Card>
+            </div>
+          )}
+
+          {/* Delivery Boys Section */}
+          {activeSection === 'delivery-boys' && (
+            <div>
+              <div className="mb-6">
+                <h2 className="text-2xl font-bold text-foreground mb-2">Delivery Boy Management</h2>
+                <p className="text-muted-foreground">Add and manage your delivery boys</p>
+              </div>
+
+              {/* Add New Delivery Boy Form */}
+              <Card className="mb-6">
+                <CardContent className="p-6">
+                  <h3 className="text-lg font-semibold text-foreground mb-4">Add New Delivery Boy</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <Label htmlFor="delivery-boy-name" className="text-sm font-medium text-foreground">Full Name</Label>
+                      <Input
+                        id="delivery-boy-name"
+                        value={newDeliveryBoy.name}
+                        onChange={(e) => setNewDeliveryBoy({ ...newDeliveryBoy, name: e.target.value })}
+                        placeholder="Enter delivery boy name"
+                        className="mt-2"
+                        data-testid="input-delivery-boy-name"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="delivery-boy-phone" className="text-sm font-medium text-foreground">Phone Number</Label>
+                      <Input
+                        id="delivery-boy-phone"
+                        value={newDeliveryBoy.phone}
+                        onChange={(e) => setNewDeliveryBoy({ ...newDeliveryBoy, phone: e.target.value })}
+                        placeholder="Enter phone number"
+                        className="mt-2"
+                        data-testid="input-delivery-boy-phone"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="delivery-boy-address" className="text-sm font-medium text-foreground">Address</Label>
+                      <Input
+                        id="delivery-boy-address"
+                        value={newDeliveryBoy.address}
+                        onChange={(e) => setNewDeliveryBoy({ ...newDeliveryBoy, address: e.target.value })}
+                        placeholder="Enter address (optional)"
+                        className="mt-2"
+                        data-testid="input-delivery-boy-address"
+                      />
+                    </div>
+                  </div>
+                  <div className="mt-4">
+                    <Button
+                      onClick={() => {
+                        if (newDeliveryBoy.name && newDeliveryBoy.phone) {
+                          createDeliveryBoyMutation.mutate(newDeliveryBoy);
+                        } else {
+                          toast({ title: "Please fill in required fields", variant: "destructive" });
+                        }
+                      }}
+                      disabled={createDeliveryBoyMutation.isPending}
+                      data-testid="button-add-delivery-boy"
+                    >
+                      {createDeliveryBoyMutation.isPending ? (
+                        <i className="fas fa-spinner fa-spin mr-2"></i>
+                      ) : (
+                        <i className="fas fa-plus mr-2"></i>
+                      )}
+                      Add Delivery Boy
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Delivery Boys List */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {deliveryBoys.map((deliveryBoy: any) => (
+                  <Card key={deliveryBoy.id} className="hover:shadow-md transition-shadow" data-testid={`card-delivery-boy-${deliveryBoy.id}`}>
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
+                            <i className="fas fa-motorcycle text-primary text-xl"></i>
+                          </div>
+                          <div>
+                            <h4 className="font-semibold text-foreground" data-testid={`name-${deliveryBoy.id}`}>
+                              {deliveryBoy.name}
+                            </h4>
+                            <div className="flex items-center space-x-2">
+                              <span className={`w-2 h-2 rounded-full ${deliveryBoy.isActive ? 'bg-green-500' : 'bg-gray-400'}`}></span>
+                              <span className="text-xs text-muted-foreground">
+                                {deliveryBoy.isActive ? 'Active' : 'Inactive'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-2 mb-4">
+                        <div className="flex items-center text-sm text-muted-foreground">
+                          <i className="fas fa-phone mr-2 w-4"></i>
+                          <span data-testid={`phone-${deliveryBoy.id}`}>{deliveryBoy.phone}</span>
+                        </div>
+                        {deliveryBoy.address && (
+                          <div className="flex items-center text-sm text-muted-foreground">
+                            <i className="fas fa-map-marker-alt mr-2 w-4"></i>
+                            <span data-testid={`address-${deliveryBoy.id}`}>{deliveryBoy.address}</span>
+                          </div>
+                        )}
+                        <div className="flex items-center text-sm text-muted-foreground">
+                          <i className="fas fa-calendar mr-2 w-4"></i>
+                          <span>Added {new Date(deliveryBoy.createdAt).toLocaleDateString()}</span>
+                        </div>
+                      </div>
+                      
+                      <div className="flex space-x-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => {
+                            const newStatus = !deliveryBoy.isActive;
+                            updateDeliveryBoyMutation.mutate({
+                              id: deliveryBoy.id,
+                              data: { isActive: newStatus }
+                            });
+                          }}
+                          disabled={updateDeliveryBoyMutation.isPending}
+                          data-testid={`button-toggle-${deliveryBoy.id}`}
+                        >
+                          <i className={`fas ${deliveryBoy.isActive ? 'fa-pause' : 'fa-play'} mr-1`}></i>
+                          {deliveryBoy.isActive ? 'Deactivate' : 'Activate'}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-destructive border-destructive hover:bg-destructive/10"
+                          onClick={() => {
+                            if (confirm(`Are you sure you want to remove ${deliveryBoy.name}?`)) {
+                              deleteDeliveryBoyMutation.mutate(deliveryBoy.id);
+                            }
+                          }}
+                          disabled={deleteDeliveryBoyMutation.isPending}
+                          data-testid={`button-delete-${deliveryBoy.id}`}
+                        >
+                          <i className="fas fa-trash"></i>
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+                
+                {deliveryBoys.length === 0 && (
+                  <div className="col-span-full text-center py-12">
+                    <i className="fas fa-motorcycle text-4xl text-muted-foreground mb-4"></i>
+                    <h3 className="text-lg font-semibold text-foreground mb-2">No delivery boys added yet</h3>
+                    <p className="text-muted-foreground">Add your first delivery boy to start managing deliveries</p>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </main>

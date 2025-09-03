@@ -5,7 +5,7 @@ import { storage } from "./storage";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { z } from "zod";
-import { insertUserSchema, insertStoreSchema, insertProductCatalogSchema, insertListingSchema, insertOrderSchema } from "@shared/schema";
+import { insertUserSchema, insertStoreSchema, insertProductCatalogSchema, insertListingSchema, insertOrderSchema, insertDeliveryBoySchema } from "@shared/schema";
 
 const JWT_SECRET = process.env.JWT_SECRET || "supersecret";
 
@@ -266,6 +266,92 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(listing);
     } catch (error) {
       res.status(400).json({ message: 'Failed to update listing' });
+    }
+  });
+
+  // Delivery Boy routes for retailers
+  app.post('/api/retailer/delivery-boys', authenticateToken, requireRole('RETAILER'), async (req: any, res) => {
+    try {
+      const deliveryBoyData = insertDeliveryBoySchema.parse({
+        ...req.body,
+        retailerId: req.user.id
+      });
+      const deliveryBoy = await storage.createDeliveryBoy(deliveryBoyData);
+      res.status(201).json(deliveryBoy);
+    } catch (error) {
+      res.status(400).json({ message: 'Failed to create delivery boy' });
+    }
+  });
+
+  app.get('/api/retailer/delivery-boys', authenticateToken, requireRole('RETAILER'), async (req: any, res) => {
+    try {
+      const deliveryBoys = await storage.getDeliveryBoysByRetailer(req.user.id);
+      res.json(deliveryBoys);
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to get delivery boys' });
+    }
+  });
+
+  app.get('/api/retailer/delivery-boys/:id', authenticateToken, requireRole('RETAILER'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const deliveryBoy = await storage.getDeliveryBoy(id);
+      
+      if (!deliveryBoy) {
+        return res.status(404).json({ message: 'Delivery boy not found' });
+      }
+      
+      // Check if the delivery boy belongs to the current retailer
+      if (deliveryBoy.retailerId !== req.user.id) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+      
+      res.json(deliveryBoy);
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to get delivery boy' });
+    }
+  });
+
+  app.put('/api/retailer/delivery-boys/:id', authenticateToken, requireRole('RETAILER'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const deliveryBoy = await storage.getDeliveryBoy(id);
+      
+      if (!deliveryBoy) {
+        return res.status(404).json({ message: 'Delivery boy not found' });
+      }
+      
+      // Check if the delivery boy belongs to the current retailer
+      if (deliveryBoy.retailerId !== req.user.id) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+      
+      const updateData = req.body;
+      const updatedDeliveryBoy = await storage.updateDeliveryBoy(id, updateData);
+      res.json(updatedDeliveryBoy);
+    } catch (error) {
+      res.status(400).json({ message: 'Failed to update delivery boy' });
+    }
+  });
+
+  app.delete('/api/retailer/delivery-boys/:id', authenticateToken, requireRole('RETAILER'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const deliveryBoy = await storage.getDeliveryBoy(id);
+      
+      if (!deliveryBoy) {
+        return res.status(404).json({ message: 'Delivery boy not found' });
+      }
+      
+      // Check if the delivery boy belongs to the current retailer
+      if (deliveryBoy.retailerId !== req.user.id) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+      
+      await storage.deleteDeliveryBoy(id);
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to delete delivery boy' });
     }
   });
 

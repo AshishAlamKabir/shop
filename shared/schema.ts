@@ -137,6 +137,17 @@ export const paymentAuditTrail = pgTable("payment_audit_trail", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const deliveryBoys = pgTable("delivery_boys", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  retailerId: varchar("retailer_id").notNull(), // which retailer added this delivery boy
+  name: text("name").notNull(),
+  phone: text("phone").notNull(),
+  address: text("address"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ one, many }) => ({
   store: one(stores, { fields: [users.id], references: [stores.ownerId] }),
@@ -145,6 +156,7 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   ordersAsRetailer: many(orders, { relationName: "retailerOrders" }),
   createdProducts: many(productCatalog),
   ledgerEntries: many(khatabook),
+  deliveryBoys: many(deliveryBoys),
 }));
 
 export const storesRelations = relations(stores, ({ one, many }) => ({
@@ -194,6 +206,10 @@ export const khatabookRelations = relations(khatabook, ({ one }) => ({
 export const paymentAuditTrailRelations = relations(paymentAuditTrail, ({ one }) => ({
   order: one(orders, { fields: [paymentAuditTrail.orderId], references: [orders.id] }),
   user: one(users, { fields: [paymentAuditTrail.userId], references: [users.id] }),
+}));
+
+export const deliveryBoysRelations = relations(deliveryBoys, ({ one }) => ({
+  retailer: one(users, { fields: [deliveryBoys.retailerId], references: [users.id] }),
 }));
 
 // Insert schemas
@@ -254,6 +270,12 @@ export const insertPaymentAuditTrailSchema = createInsertSchema(paymentAuditTrai
   createdAt: true,
 });
 
+export const insertDeliveryBoySchema = createInsertSchema(deliveryBoys).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -275,3 +297,5 @@ export type Khatabook = typeof khatabook.$inferSelect;
 export type InsertKhatabook = z.infer<typeof insertKhatabookSchema>;
 export type PaymentAuditTrail = typeof paymentAuditTrail.$inferSelect;
 export type InsertPaymentAuditTrail = z.infer<typeof insertPaymentAuditTrailSchema>;
+export type DeliveryBoy = typeof deliveryBoys.$inferSelect;
+export type InsertDeliveryBoy = z.infer<typeof insertDeliveryBoySchema>;

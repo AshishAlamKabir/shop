@@ -1,10 +1,11 @@
 import { 
-  users, stores, productCatalog, listings, orders, orderItems, orderEvents, fcmTokens, khatabook, paymentAuditTrail,
+  users, stores, productCatalog, listings, orders, orderItems, orderEvents, fcmTokens, khatabook, paymentAuditTrail, deliveryBoys,
   type User, type InsertUser, type Store, type InsertStore,
   type ProductCatalog, type InsertProductCatalog, type Listing, type InsertListing,
   type Order, type InsertOrder, type OrderItem, type InsertOrderItem,
   type OrderEvent, type InsertOrderEvent, type FcmToken, type InsertFcmToken,
-  type Khatabook, type InsertKhatabook, type PaymentAuditTrail, type InsertPaymentAuditTrail
+  type Khatabook, type InsertKhatabook, type PaymentAuditTrail, type InsertPaymentAuditTrail,
+  type DeliveryBoy, type InsertDeliveryBoy
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, asc, like, or, sql } from "drizzle-orm";
@@ -74,6 +75,13 @@ export interface IStorage {
   // Audit trail operations
   addPaymentAudit(auditData: InsertPaymentAuditTrail): Promise<PaymentAuditTrail>;
   getPaymentAuditTrail(orderId: string): Promise<PaymentAuditTrail[]>;
+  
+  // Delivery boy operations
+  createDeliveryBoy(deliveryBoy: InsertDeliveryBoy): Promise<DeliveryBoy>;
+  getDeliveryBoysByRetailer(retailerId: string): Promise<DeliveryBoy[]>;
+  getDeliveryBoy(id: string): Promise<DeliveryBoy | undefined>;
+  updateDeliveryBoy(id: string, deliveryBoy: Partial<InsertDeliveryBoy>): Promise<DeliveryBoy>;
+  deleteDeliveryBoy(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -628,6 +636,34 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(paymentAuditTrail)
       .where(eq(paymentAuditTrail.orderId, orderId))
       .orderBy(desc(paymentAuditTrail.createdAt));
+  }
+
+  async createDeliveryBoy(insertDeliveryBoy: InsertDeliveryBoy): Promise<DeliveryBoy> {
+    const [deliveryBoy] = await db.insert(deliveryBoys).values(insertDeliveryBoy).returning();
+    return deliveryBoy;
+  }
+
+  async getDeliveryBoysByRetailer(retailerId: string): Promise<DeliveryBoy[]> {
+    return await db.select().from(deliveryBoys)
+      .where(eq(deliveryBoys.retailerId, retailerId))
+      .orderBy(desc(deliveryBoys.createdAt));
+  }
+
+  async getDeliveryBoy(id: string): Promise<DeliveryBoy | undefined> {
+    const [deliveryBoy] = await db.select().from(deliveryBoys).where(eq(deliveryBoys.id, id));
+    return deliveryBoy || undefined;
+  }
+
+  async updateDeliveryBoy(id: string, updateDeliveryBoy: Partial<InsertDeliveryBoy>): Promise<DeliveryBoy> {
+    const [deliveryBoy] = await db.update(deliveryBoys)
+      .set({ ...updateDeliveryBoy, updatedAt: new Date() })
+      .where(eq(deliveryBoys.id, id))
+      .returning();
+    return deliveryBoy;
+  }
+
+  async deleteDeliveryBoy(id: string): Promise<void> {
+    await db.delete(deliveryBoys).where(eq(deliveryBoys.id, id));
   }
 }
 
