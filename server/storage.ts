@@ -80,6 +80,7 @@ export interface IStorage {
   createDeliveryBoy(deliveryBoy: InsertDeliveryBoy): Promise<DeliveryBoy>;
   getDeliveryBoysByRetailer(retailerId: string): Promise<DeliveryBoy[]>;
   getDeliveryBoy(id: string): Promise<DeliveryBoy | undefined>;
+  getDeliveryBoyByPhone(phone: string, retailerId?: string): Promise<DeliveryBoy | undefined>;
   updateDeliveryBoy(id: string, deliveryBoy: Partial<InsertDeliveryBoy>): Promise<DeliveryBoy>;
   deleteDeliveryBoy(id: string): Promise<void>;
 }
@@ -651,6 +652,17 @@ export class DatabaseStorage implements IStorage {
 
   async getDeliveryBoy(id: string): Promise<DeliveryBoy | undefined> {
     const [deliveryBoy] = await db.select().from(deliveryBoys).where(eq(deliveryBoys.id, id));
+    return deliveryBoy || undefined;
+  }
+
+  async getDeliveryBoyByPhone(phone: string, retailerId?: string): Promise<DeliveryBoy | undefined> {
+    let whereConditions = [eq(deliveryBoys.phone, phone)];
+    
+    if (retailerId) {
+      whereConditions.push(eq(deliveryBoys.retailerId, retailerId));
+    }
+    
+    const [deliveryBoy] = await db.select().from(deliveryBoys).where(and(...whereConditions));
     return deliveryBoy || undefined;
   }
 

@@ -276,9 +276,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...req.body,
         retailerId: req.user.id
       });
+
+      // Check if delivery boy with same phone number already exists for this retailer
+      const existingDeliveryBoy = await storage.getDeliveryBoyByPhone(deliveryBoyData.phone, req.user.id);
+      if (existingDeliveryBoy) {
+        return res.status(400).json({ 
+          message: 'A delivery boy with this phone number already exists' 
+        });
+      }
+
       const deliveryBoy = await storage.createDeliveryBoy(deliveryBoyData);
       res.status(201).json(deliveryBoy);
     } catch (error) {
+      console.error('Error creating delivery boy:', error);
       res.status(400).json({ message: 'Failed to create delivery boy' });
     }
   });
@@ -327,9 +337,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const updateData = req.body;
+      
+      // If phone number is being updated, check for duplicates
+      if (updateData.phone && updateData.phone !== deliveryBoy.phone) {
+        const existingDeliveryBoy = await storage.getDeliveryBoyByPhone(updateData.phone, req.user.id);
+        if (existingDeliveryBoy) {
+          return res.status(400).json({ 
+            message: 'A delivery boy with this phone number already exists' 
+          });
+        }
+      }
+      
       const updatedDeliveryBoy = await storage.updateDeliveryBoy(id, updateData);
       res.json(updatedDeliveryBoy);
     } catch (error) {
+      console.error('Error updating delivery boy:', error);
       res.status(400).json({ message: 'Failed to update delivery boy' });
     }
   });

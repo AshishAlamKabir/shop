@@ -1,0 +1,65 @@
+bjective
+
+Define the responsibilities and system capabilities available to delivery personnel within the Cash on Delivery (COD) order system that supports partial payments and per-counterparty ledgers (Khatabooks).
+
+Functional Capabilities of Delivery Personnel
+
+View Assigned Deliveries
+
+Delivery personnel should be able to log in and view a list of all orders assigned to them.
+
+Each order should display:
+
+Order ID
+
+Shop owner details (name, contact, address)
+
+Retailer details (name, store, contact)
+
+Product list and total order value
+
+Current order/payment status
+
+Mark Orders as Delivered
+
+For each assigned order, delivery personnel should have the option to mark the order as Delivered once the product has been handed over to the shop owner.
+
+This action updates the order status in the system.
+
+Record Payment Received
+
+Delivery personnel should be able to record the payment collected at the time of delivery.
+
+The payment amount field must be editable to support:
+
+Full Payment → when the shop owner pays the entire order amount.
+
+Partial Payment → when the shop owner does not pay the full amount.
+
+Once entered, the payment data should be synced to the backend and reflected in the order record and ledger.
+
+Auto-Balance Calculation
+
+If a partial payment is recorded, the system should automatically calculate and display the remaining balance for the shop owner.
+
+This remaining balance will be carried forward to the shop owner’s ledger with the retailer.
+
+Notifications Trigger
+
+Upon marking a payment as received, the system should automatically:
+
+Notify the shop owner that the payment has been recorded (awaiting their confirmation/finalization).
+
+Notify the retailer that payment collection has been initiated.
+
+Restricted Access
+
+Delivery personnel cannot:
+
+Modify finalized amounts.
+
+Edit ledger entries directly.
+
+Allocate payments to outstanding balances (only shop owners can finalize/allocate).
+
+Their role is strictly to record the raw amount of cash received during delivery.
