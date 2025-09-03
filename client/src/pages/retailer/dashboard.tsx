@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import Header from "@/components/layout/header";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -14,7 +15,10 @@ import { useToast } from "@/hooks/use-toast";
 export default function RetailerDashboard() {
   const [activeSection, setActiveSection] = useState('store');
   const [newDeliveryBoy, setNewDeliveryBoy] = useState({ name: '', phone: '', address: '' });
-  const [editingDeliveryBoy, setEditingDeliveryBoy] = useState(null);
+  const [editingDeliveryBoy, setEditingDeliveryBoy] = useState<any>(null);
+  const [paymentModal, setPaymentModal] = useState<{ isOpen: boolean; order: any }>({ isOpen: false, order: null });
+  const [paymentAmount, setPaymentAmount] = useState('');
+  const [paymentNote, setPaymentNote] = useState('');
   const { toast } = useToast();
 
   const { data: store } = useQuery({
@@ -126,17 +130,41 @@ export default function RetailerDashboard() {
   });
 
   const confirmPaymentMutation = useMutation({
-    mutationFn: async ({ orderId, amountReceived }: { orderId: string; amountReceived?: string }) => {
-      await apiRequest('POST', `/api/orders/${orderId}/payment-received`, { amountReceived });
+    mutationFn: async ({ orderId, amountReceived, note }: { orderId: string; amountReceived?: string; note?: string }) => {
+      await apiRequest('POST', `/api/orders/${orderId}/payment-received`, { amountReceived, note });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/retailer/orders'] });
+      setPaymentModal({ isOpen: false, order: null });
+      setPaymentAmount('');
+      setPaymentNote('');
       toast({ 
         title: "✅ Payment Confirmed", 
         description: "Shop owner has been notified of payment receipt" 
       });
     }
   });
+
+  const handlePaymentSubmit = (order: any) => {
+    const totalAmount = parseFloat(order.totalAmount);
+    const amountReceived = paymentAmount ? parseFloat(paymentAmount) : totalAmount;
+    
+    if (amountReceived <= 0) {
+      toast({ title: "Please enter a valid amount", variant: "destructive" });
+      return;
+    }
+    
+    if (amountReceived > totalAmount) {
+      toast({ title: "Amount cannot exceed order total", variant: "destructive" });
+      return;
+    }
+    
+    confirmPaymentMutation.mutate({ 
+      orderId: order.id, 
+      amountReceived: amountReceived.toString(), 
+      note: paymentNote 
+    });
+  };
 
   const createDeliveryBoyMutation = useMutation({
     mutationFn: async (data: { name: string; phone: string; address?: string }) => {
@@ -525,12 +553,15 @@ export default function RetailerDashboard() {
                               {!order.paymentReceived && order.deliveryType === 'DELIVERY' && (
                                 <Button 
                                   variant="outline"
-                                  onClick={() => confirmPaymentMutation.mutate({ orderId: order.id })}
+                                  onClick={() => {
+                                    setPaymentModal({ isOpen: true, order });
+                                    setPaymentAmount(order.totalAmount);
+                                  }}
                                   data-testid={`button-confirm-payment-${order.id}`}
                                   className="bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
                                 >
                                   <i className="fas fa-money-bill mr-2"></i>
-                                  Confirm Payment
+                                  Record Payment
                                 </Button>
                               )}
                             </>
@@ -538,12 +569,15 @@ export default function RetailerDashboard() {
                           {order.status === 'COMPLETED' && !order.paymentReceived && order.deliveryType === 'DELIVERY' && (
                             <Button 
                               variant="outline"
-                              onClick={() => confirmPaymentMutation.mutate({ orderId: order.id })}
+                              onClick={() => {
+                                setPaymentModal({ isOpen: true, order });
+                                setPaymentAmount(order.totalAmount);
+                              }}
                               data-testid={`button-confirm-payment-${order.id}`}
                               className="bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
                             >
                               <i className="fas fa-money-bill mr-2"></i>
-                              Confirm COD Payment
+                              Record COD Payment
                             </Button>
                           )}
                           {order.paymentReceived && (
@@ -823,6 +857,105 @@ export default function RetailerDashboard() {
           )}
         </main>
       </div>
+
+      {/* Enhanced Payment Recording Modal */}
+      <Dialog open={paymentModal.isOpen} onOpenChange={(open) => setPaymentModal({ isOpen: open, order: null })}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Record Payment - Order #{paymentModal.order?.id?.slice(-8)}</DialogTitle>
+          </DialogHeader>
+          
+          {paymentModal.order && (
+            <div className="space-y-4">
+              <div className="bg-muted/50 p-4 rounded-lg">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm text-muted-foreground">Order Total:</span>
+                  <span className="font-semibold">₹{paymentModal.order.totalAmount}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Customer:</span>
+                  <span className="text-sm">{paymentModal.order.owner?.fullName}</span>
+                </div>
+              </div>
+              
+              <div>
+                <Label htmlFor="payment-amount" className="text-sm font-medium">
+                  Amount Received <span className="text-muted-foreground">(₹)</span>
+                </Label>
+                <Input
+                  id="payment-amount"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  max={paymentModal.order.totalAmount}
+                  value={paymentAmount}
+                  onChange={(e) => setPaymentAmount(e.target.value)}
+                  placeholder="Enter amount received"
+                  className="mt-2"
+                  data-testid="input-payment-amount"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Leave empty for full payment of ₹{paymentModal.order.totalAmount}
+                </p>
+              </div>
+              
+              <div>
+                <Label htmlFor="payment-note" className="text-sm font-medium">
+                  Payment Notes <span className="text-muted-foreground">(Optional)</span>
+                </Label>
+                <Textarea
+                  id="payment-note"
+                  value={paymentNote}
+                  onChange={(e) => setPaymentNote(e.target.value)}
+                  placeholder="Add notes about partial payment, customer conditions, etc."
+                  className="mt-2"
+                  rows={3}
+                  data-testid="textarea-payment-note"
+                />
+              </div>
+              
+              {paymentAmount && parseFloat(paymentAmount) < parseFloat(paymentModal.order.totalAmount) && (
+                <div className="bg-yellow-50 border border-yellow-200 p-3 rounded-lg">
+                  <div className="flex items-center text-yellow-800">
+                    <i className="fas fa-exclamation-triangle mr-2"></i>
+                    <span className="text-sm font-medium">Partial Payment</span>
+                  </div>
+                  <p className="text-sm text-yellow-700 mt-1">
+                    Outstanding balance: ₹{(parseFloat(paymentModal.order.totalAmount) - parseFloat(paymentAmount || '0')).toFixed(2)}
+                  </p>
+                  <p className="text-xs text-yellow-600 mt-1">
+                    This will be tracked in the customer's khatabook for future settlement
+                  </p>
+                </div>
+              )}
+              
+              <div className="flex space-x-3 pt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => setPaymentModal({ isOpen: false, order: null })}
+                  className="flex-1"
+                  data-testid="button-cancel-payment"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => handlePaymentSubmit(paymentModal.order)}
+                  disabled={confirmPaymentMutation.isPending}
+                  className="flex-1"
+                  data-testid="button-confirm-payment-modal"
+                >
+                  {confirmPaymentMutation.isPending ? (
+                    <i className="fas fa-spinner fa-spin mr-2"></i>
+                  ) : (
+                    <i className="fas fa-check mr-2"></i>
+                  )}
+                  Record Payment
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
