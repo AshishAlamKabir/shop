@@ -566,6 +566,190 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Payment confirmation by delivery boy/retailer
+  app.post('/api/orders/:id/payment-received', authenticateToken, requireRole('RETAILER'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { amountReceived } = req.body;
+      
+      const order = await storage.getOrder(id);
+      if (!order) {
+        return res.status(404).json({ message: 'Order not found' });
+      }
+      
+      if (order.retailerId !== req.user.id) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+      
+      if (order.paymentReceived) {
+        return res.status(400).json({ message: 'Payment already confirmed' });
+      }
+      
+      const amount = parseFloat(amountReceived) || parseFloat(order.totalAmount);
+      
+      // Update order with payment confirmation
+      await storage.updateOrderPayment(id, {
+        paymentReceived: true,
+        amountReceived: amount.toString(),
+        originalAmountReceived: amount.toString(),
+        paymentReceivedAt: new Date(),
+        paymentReceivedBy: req.user.id
+      });
+      
+      // Create order event
+      await storage.createOrderEvent({
+        orderId: id,
+        type: 'PAYMENT_RECEIVED',
+        message: `Payment of ₹${amount} received via Cash on Delivery`
+      });
+      
+      // Add ledger entries for both shop owner and retailer
+      await storage.addLedgerEntry({
+        userId: order.ownerId,
+        orderId: id,
+        entryType: 'DEBIT',
+        transactionType: 'PAYMENT_RECEIVED',
+        amount: amount.toString(),
+        description: `Payment received for Order #${id.slice(-8)}`,
+        referenceId: id
+      });
+      
+      await storage.addLedgerEntry({
+        userId: order.retailerId,
+        orderId: id,
+        entryType: 'CREDIT',
+        transactionType: 'PAYMENT_RECEIVED',
+        amount: amount.toString(),
+        description: `Payment collected for Order #${id.slice(-8)}`,
+        referenceId: id
+      });
+      
+      // Emit real-time notification
+      emitOrderEvent(id, order.ownerId, order.retailerId, 'paymentReceived', {
+        orderId: id,
+        amountReceived: amount,
+        timestamp: new Date()
+      });
+      
+      res.json({ 
+        message: 'Payment confirmation recorded successfully',
+        amountReceived: amount
+      });
+    } catch (error) {
+      console.error('Payment confirmation error:', error);
+      res.status(500).json({ message: 'Failed to confirm payment' });
+    }
+  });
+
+  // Adjust payment amount by shop owner
+  app.post('/api/orders/:id/adjust-amount', authenticateToken, requireRole('SHOP_OWNER'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { adjustedAmount, adjustmentNote } = req.body;
+      
+      const order = await storage.getOrder(id);
+      if (!order) {
+        return res.status(404).json({ message: 'Order not found' });
+      }
+      
+      if (order.ownerId !== req.user.id) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+      
+      if (!order.paymentReceived) {
+        return res.status(400).json({ message: 'Payment not yet received' });
+      }
+      
+      const newAmount = parseFloat(adjustedAmount);
+      const originalAmount = parseFloat(order.amountReceived || order.totalAmount);
+      const adjustment = newAmount - originalAmount;
+      
+      // Update order with adjusted amount
+      await storage.updateOrderPayment(id, {
+        amountReceived: newAmount.toString(),
+        amountAdjustedBy: req.user.id,
+        amountAdjustedAt: new Date(),
+        adjustmentNote: adjustmentNote || ''
+      });
+      
+      // Create order event
+      await storage.createOrderEvent({
+        orderId: id,
+        type: 'PAYMENT_ADJUSTED',
+        message: `Payment amount adjusted to ₹${newAmount}. ${adjustmentNote || ''}`
+      });
+      
+      if (adjustment !== 0) {
+        // Add ledger entries for the adjustment
+        const adjustmentType = adjustment > 0 ? 'Additional charge' : 'Discount applied';
+        
+        await storage.addLedgerEntry({
+          userId: order.ownerId,
+          orderId: id,
+          entryType: adjustment > 0 ? 'DEBIT' : 'CREDIT',
+          transactionType: 'PAYMENT_ADJUSTED',
+          amount: Math.abs(adjustment).toString(),
+          description: `${adjustmentType} for Order #${id.slice(-8)}. ${adjustmentNote || ''}`,
+          referenceId: id
+        });
+        
+        await storage.addLedgerEntry({
+          userId: order.retailerId,
+          orderId: id,
+          entryType: adjustment > 0 ? 'CREDIT' : 'DEBIT',
+          transactionType: 'PAYMENT_ADJUSTED',
+          amount: Math.abs(adjustment).toString(),
+          description: `${adjustmentType} for Order #${id.slice(-8)}. ${adjustmentNote || ''}`,
+          referenceId: id
+        });
+      }
+      
+      // Emit real-time notification
+      emitOrderEvent(id, order.ownerId, order.retailerId, 'paymentAdjusted', {
+        orderId: id,
+        adjustedAmount: newAmount,
+        adjustment: adjustment,
+        note: adjustmentNote
+      });
+      
+      res.json({ 
+        message: 'Payment amount adjusted successfully',
+        adjustedAmount: newAmount,
+        adjustment: adjustment
+      });
+    } catch (error) {
+      console.error('Amount adjustment error:', error);
+      res.status(500).json({ message: 'Failed to adjust payment amount' });
+    }
+  });
+
+  // Get khatabook/ledger for user
+  app.get('/api/khatabook', authenticateToken, async (req: any, res) => {
+    try {
+      const { page = 1, limit = 20, type } = req.query;
+      const ledgerEntries = await storage.getLedgerEntries(req.user.id, {
+        page: parseInt(page as string),
+        limit: parseInt(limit as string),
+        type: type as string
+      });
+      res.json(ledgerEntries);
+    } catch (error) {
+      console.error('Ledger fetch error:', error);
+      res.status(500).json({ message: 'Failed to fetch ledger entries' });
+    }
+  });
+
+  // Get khatabook summary/balance
+  app.get('/api/khatabook/summary', authenticateToken, async (req: any, res) => {
+    try {
+      const summary = await storage.getLedgerSummary(req.user.id);
+      res.json(summary);
+    } catch (error) {
+      console.error('Ledger summary error:', error);
+      res.status(500).json({ message: 'Failed to fetch ledger summary' });
+    }
+  });
+
   // Get catalog for shop owners
   app.get('/api/catalog', async (req, res) => {
     try {

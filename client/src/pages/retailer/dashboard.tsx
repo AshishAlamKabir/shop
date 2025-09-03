@@ -54,6 +54,32 @@ export default function RetailerDashboard() {
     }
   });
 
+  const { data: ledgerSummary } = useQuery({
+    queryKey: ['/api/khatabook/summary'],
+    queryFn: async () => {
+      const response = await fetch('/api/khatabook/summary', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+        }
+      });
+      if (!response.ok) throw new Error('Failed to fetch ledger summary');
+      return response.json();
+    }
+  });
+
+  const { data: ledgerEntries } = useQuery({
+    queryKey: ['/api/khatabook'],
+    queryFn: async () => {
+      const response = await fetch('/api/khatabook', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+        }
+      });
+      if (!response.ok) throw new Error('Failed to fetch ledger entries');
+      return response.json();
+    }
+  });
+
   const acceptOrderMutation = useMutation({
     mutationFn: async ({ orderId, deliveryAt }: { orderId: string; deliveryAt?: string }) => {
       await apiRequest('POST', `/api/orders/${orderId}/accept`, { deliveryAt });
@@ -81,6 +107,19 @@ export default function RetailerDashboard() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/retailer/orders'] });
       toast({ title: "Order status updated" });
+    }
+  });
+
+  const confirmPaymentMutation = useMutation({
+    mutationFn: async ({ orderId, amountReceived }: { orderId: string; amountReceived?: string }) => {
+      await apiRequest('POST', `/api/orders/${orderId}/payment-received`, { amountReceived });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/retailer/orders'] });
+      toast({ 
+        title: "✅ Payment Confirmed", 
+        description: "Shop owner has been notified of payment receipt" 
+      });
     }
   });
 
@@ -136,6 +175,15 @@ export default function RetailerDashboard() {
                   {pendingOrders.length}
                 </Badge>
               )}
+            </Button>
+            <Button
+              onClick={() => setActiveSection('khatabook')}
+              variant={activeSection === 'khatabook' ? "default" : "ghost"}
+              className="w-full justify-start"
+              data-testid="button-nav-khatabook"
+            >
+              <i className="fas fa-book mr-3"></i>
+              Khatabook
             </Button>
           </nav>
         </aside>
@@ -412,12 +460,42 @@ export default function RetailerDashboard() {
                             </Button>
                           )}
                           {order.status === 'OUT_FOR_DELIVERY' && (
+                            <>
+                              <Button 
+                                onClick={() => updateStatusMutation.mutate({ orderId: order.id, status: 'COMPLETED' })}
+                                data-testid={`button-complete-${order.id}`}
+                              >
+                                Mark Delivered
+                              </Button>
+                              {!order.paymentReceived && order.deliveryType === 'DELIVERY' && (
+                                <Button 
+                                  variant="outline"
+                                  onClick={() => confirmPaymentMutation.mutate({ orderId: order.id })}
+                                  data-testid={`button-confirm-payment-${order.id}`}
+                                  className="bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
+                                >
+                                  <i className="fas fa-money-bill mr-2"></i>
+                                  Confirm Payment
+                                </Button>
+                              )}
+                            </>
+                          )}
+                          {order.status === 'COMPLETED' && !order.paymentReceived && order.deliveryType === 'DELIVERY' && (
                             <Button 
-                              onClick={() => updateStatusMutation.mutate({ orderId: order.id, status: 'COMPLETED' })}
-                              data-testid={`button-complete-${order.id}`}
+                              variant="outline"
+                              onClick={() => confirmPaymentMutation.mutate({ orderId: order.id })}
+                              data-testid={`button-confirm-payment-${order.id}`}
+                              className="bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
                             >
-                              Mark Delivered
+                              <i className="fas fa-money-bill mr-2"></i>
+                              Confirm COD Payment
                             </Button>
+                          )}
+                          {order.paymentReceived && (
+                            <div className="flex items-center text-green-600 font-medium">
+                              <i className="fas fa-check-circle mr-2"></i>
+                              Payment Received ₹{order.amountReceived || order.totalAmount}
+                            </div>
                           )}
                         </div>
                       </div>
@@ -433,6 +511,100 @@ export default function RetailerDashboard() {
                   </Card>
                 )}
               </div>
+            </div>
+          )}
+
+          {/* Khatabook Section */}
+          {activeSection === 'khatabook' && (
+            <div>
+              <div className="mb-6">
+                <h2 className="text-2xl font-bold text-foreground mb-2">Khatabook</h2>
+                <p className="text-muted-foreground">Track your payment collections and balance</p>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Current Balance</p>
+                        <p className="text-2xl font-bold text-foreground">
+                          ₹{ledgerSummary?.currentBalance?.toFixed(2) || '0.00'}
+                        </p>
+                      </div>
+                      <div className="bg-blue-100 p-3 rounded-full">
+                        <i className="fas fa-wallet text-blue-600"></i>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Total Credits</p>
+                        <p className="text-2xl font-bold text-green-600">
+                          ₹{ledgerSummary?.totalCredits?.toFixed(2) || '0.00'}
+                        </p>
+                      </div>
+                      <div className="bg-green-100 p-3 rounded-full">
+                        <i className="fas fa-arrow-up text-green-600"></i>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Total Debits</p>
+                        <p className="text-2xl font-bold text-red-600">
+                          ₹{ledgerSummary?.totalDebits?.toFixed(2) || '0.00'}
+                        </p>
+                      </div>
+                      <div className="bg-red-100 p-3 rounded-full">
+                        <i className="fas fa-arrow-down text-red-600"></i>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <Card>
+                <CardContent className="p-6">
+                  <h3 className="text-lg font-semibold text-foreground mb-4">Transaction History</h3>
+                  <div className="space-y-3">
+                    {ledgerEntries?.entries?.map((entry: any) => (
+                      <div key={entry.id} className="flex items-center justify-between p-3 border border-border rounded-lg">
+                        <div className="flex items-center space-x-3">
+                          <div className={`w-3 h-3 rounded-full ${entry.entryType === 'CREDIT' ? 'bg-green-600' : 'bg-red-600'}`}></div>
+                          <div>
+                            <div className="font-medium text-foreground">{entry.description}</div>
+                            <div className="text-sm text-muted-foreground">
+                              {new Date(entry.createdAt).toLocaleDateString()} • {entry.transactionType.replace('_', ' ')}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className={`font-semibold ${entry.entryType === 'CREDIT' ? 'text-green-600' : 'text-red-600'}`}>
+                            {entry.entryType === 'CREDIT' ? '+' : '-'}₹{parseFloat(entry.amount).toFixed(2)}
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            Bal: ₹{parseFloat(entry.balance).toFixed(2)}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    {(!ledgerEntries?.entries || ledgerEntries.entries.length === 0) && (
+                      <div className="text-center text-muted-foreground py-8">
+                        No transactions yet. Payment confirmations will appear here as ledger entries.
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           )}
         </main>

@@ -6,6 +6,8 @@ import { z } from "zod";
 export const roleEnum = pgEnum('role', ['ADMIN', 'RETAILER', 'SHOP_OWNER']);
 export const orderStatusEnum = pgEnum('order_status', ['PENDING', 'ACCEPTED', 'REJECTED', 'READY', 'OUT_FOR_DELIVERY', 'COMPLETED', 'CANCELLED']);
 export const deliveryTypeEnum = pgEnum('delivery_type', ['PICKUP', 'DELIVERY']);
+export const ledgerEntryTypeEnum = pgEnum('ledger_entry_type', ['CREDIT', 'DEBIT']);
+export const ledgerTransactionTypeEnum = pgEnum('ledger_transaction_type', ['ORDER_PLACED', 'PAYMENT_RECEIVED', 'PAYMENT_ADJUSTED', 'REFUND', 'COMMISSION']);
 
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -69,6 +71,15 @@ export const orders = pgTable("orders", {
   deliveryType: deliveryTypeEnum("delivery_type").default('PICKUP'),
   deliveryAt: timestamp("delivery_at"),
   note: text("note"),
+  // Payment confirmation fields
+  paymentReceived: boolean("payment_received").default(false),
+  amountReceived: decimal("amount_received", { precision: 10, scale: 2 }),
+  originalAmountReceived: decimal("original_amount_received", { precision: 10, scale: 2 }),
+  paymentReceivedAt: timestamp("payment_received_at"),
+  paymentReceivedBy: varchar("payment_received_by"), // delivery boy user id
+  amountAdjustedBy: varchar("amount_adjusted_by"), // shop owner user id
+  amountAdjustedAt: timestamp("amount_adjusted_at"),
+  adjustmentNote: text("adjustment_note"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -97,6 +108,19 @@ export const fcmTokens = pgTable("fcm_tokens", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const khatabook = pgTable("khatabook", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(), // shop owner or retailer
+  orderId: varchar("order_id"), // related order (optional)
+  entryType: ledgerEntryTypeEnum("entry_type").notNull(), // CREDIT or DEBIT
+  transactionType: ledgerTransactionTypeEnum("transaction_type").notNull(),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  balance: decimal("balance", { precision: 10, scale: 2 }).notNull(), // running balance
+  description: text("description").notNull(),
+  referenceId: varchar("reference_id"), // order id, payment id, etc.
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ one, many }) => ({
   store: one(stores, { fields: [users.id], references: [stores.ownerId] }),
@@ -104,6 +128,7 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   ordersAsOwner: many(orders, { relationName: "ownerOrders" }),
   ordersAsRetailer: many(orders, { relationName: "retailerOrders" }),
   createdProducts: many(productCatalog),
+  ledgerEntries: many(khatabook),
 }));
 
 export const storesRelations = relations(stores, ({ one, many }) => ({
@@ -142,6 +167,11 @@ export const orderEventsRelations = relations(orderEvents, ({ one }) => ({
 
 export const fcmTokensRelations = relations(fcmTokens, ({ one }) => ({
   user: one(users, { fields: [fcmTokens.userId], references: [users.id] }),
+}));
+
+export const khatabookRelations = relations(khatabook, ({ one }) => ({
+  user: one(users, { fields: [khatabook.userId], references: [users.id] }),
+  order: one(orders, { fields: [khatabook.orderId], references: [orders.id] }),
 }));
 
 // Insert schemas
@@ -190,6 +220,13 @@ export const insertFcmTokenSchema = createInsertSchema(fcmTokens).omit({
   createdAt: true,
 });
 
+export const insertKhatabookSchema = createInsertSchema(khatabook).omit({
+  id: true,
+  createdAt: true,
+}).partial({
+  balance: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -207,3 +244,5 @@ export type OrderEvent = typeof orderEvents.$inferSelect;
 export type InsertOrderEvent = z.infer<typeof insertOrderEventSchema>;
 export type FcmToken = typeof fcmTokens.$inferSelect;
 export type InsertFcmToken = z.infer<typeof insertFcmTokenSchema>;
+export type Khatabook = typeof khatabook.$inferSelect;
+export type InsertKhatabook = z.infer<typeof insertKhatabookSchema>;

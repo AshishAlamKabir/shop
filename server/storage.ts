@@ -1,9 +1,10 @@
 import { 
-  users, stores, productCatalog, listings, orders, orderItems, orderEvents, fcmTokens,
+  users, stores, productCatalog, listings, orders, orderItems, orderEvents, fcmTokens, khatabook,
   type User, type InsertUser, type Store, type InsertStore,
   type ProductCatalog, type InsertProductCatalog, type Listing, type InsertListing,
   type Order, type InsertOrder, type OrderItem, type InsertOrderItem,
-  type OrderEvent, type InsertOrderEvent, type FcmToken, type InsertFcmToken
+  type OrderEvent, type InsertOrderEvent, type FcmToken, type InsertFcmToken,
+  type Khatabook, type InsertKhatabook
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, asc, like, or, sql } from "drizzle-orm";
@@ -56,6 +57,14 @@ export interface IStorage {
   
   // Popular products based on order history
   getPopularProducts(limit?: number): Promise<any[]>;
+  
+  // Payment confirmation operations
+  updateOrderPayment(orderId: string, paymentData: any): Promise<Order>;
+  
+  // Ledger/Khatabook operations
+  addLedgerEntry(entry: InsertKhatabook): Promise<Khatabook>;
+  getLedgerEntries(userId: string, options?: { page?: number; limit?: number; type?: string }): Promise<any>;
+  getLedgerSummary(userId: string): Promise<any>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -331,6 +340,133 @@ export class DatabaseStorage implements IStorage {
     }
 
     return popularProducts;
+  }
+
+  async updateOrderPayment(orderId: string, paymentData: any): Promise<Order> {
+    const [order] = await db.update(orders)
+      .set({
+        paymentReceived: paymentData.paymentReceived,
+        amountReceived: paymentData.amountReceived,
+        originalAmountReceived: paymentData.originalAmountReceived,
+        paymentReceivedAt: paymentData.paymentReceivedAt,
+        paymentReceivedBy: paymentData.paymentReceivedBy,
+        amountAdjustedBy: paymentData.amountAdjustedBy,
+        amountAdjustedAt: paymentData.amountAdjustedAt,
+        adjustmentNote: paymentData.adjustmentNote,
+        updatedAt: new Date()
+      })
+      .where(eq(orders.id, orderId))
+      .returning();
+    return order;
+  }
+
+  async addLedgerEntry(entry: InsertKhatabook): Promise<Khatabook> {
+    // Calculate running balance for the user
+    const lastEntry = await db.select({ balance: khatabook.balance })
+      .from(khatabook)
+      .where(eq(khatabook.userId, entry.userId))
+      .orderBy(desc(khatabook.createdAt))
+      .limit(1);
+    
+    const lastBalance = lastEntry[0]?.balance || "0";
+    const lastBalanceNum = parseFloat(lastBalance);
+    const entryAmount = parseFloat(entry.amount);
+    
+    let newBalance = lastBalanceNum;
+    if (entry.entryType === 'CREDIT') {
+      newBalance += entryAmount;
+    } else {
+      newBalance -= entryAmount;
+    }
+    
+    const [ledgerEntry] = await db.insert(khatabook).values({
+      ...entry,
+      balance: newBalance.toString()
+    }).returning();
+    return ledgerEntry;
+  }
+
+  async getLedgerEntries(userId: string, options: { page?: number; limit?: number; type?: string } = {}): Promise<any> {
+    const { page = 1, limit = 20, type } = options;
+    const offset = (page - 1) * limit;
+    
+    let query = db.select({
+      id: khatabook.id,
+      entryType: khatabook.entryType,
+      transactionType: khatabook.transactionType,
+      amount: khatabook.amount,
+      balance: khatabook.balance,
+      description: khatabook.description,
+      referenceId: khatabook.referenceId,
+      createdAt: khatabook.createdAt,
+      orderId: khatabook.orderId
+    })
+    .from(khatabook)
+    .where(eq(khatabook.userId, userId));
+    
+    if (type) {
+      query = query.where(and(eq(khatabook.userId, userId), eq(khatabook.entryType, type)));
+    }
+    
+    const entries = await query
+      .orderBy(desc(khatabook.createdAt))
+      .limit(limit)
+      .offset(offset);
+    
+    const total = await db.select({ count: sql<number>`count(*)` })
+      .from(khatabook)
+      .where(eq(khatabook.userId, userId));
+    
+    return {
+      entries,
+      pagination: {
+        page,
+        limit,
+        total: total[0].count,
+        totalPages: Math.ceil(total[0].count / limit)
+      }
+    };
+  }
+
+  async getLedgerSummary(userId: string): Promise<any> {
+    const lastEntry = await db.select({ balance: khatabook.balance })
+      .from(khatabook)
+      .where(eq(khatabook.userId, userId))
+      .orderBy(desc(khatabook.createdAt))
+      .limit(1);
+    
+    const currentBalance = lastEntry[0]?.balance || "0";
+    
+    // Get summary statistics
+    const stats = await db.select({
+      totalCredits: sql<number>`COALESCE(SUM(CASE WHEN entry_type = 'CREDIT' THEN amount ELSE 0 END), 0)`,
+      totalDebits: sql<number>`COALESCE(SUM(CASE WHEN entry_type = 'DEBIT' THEN amount ELSE 0 END), 0)`,
+      totalTransactions: sql<number>`COUNT(*)`
+    })
+    .from(khatabook)
+    .where(eq(khatabook.userId, userId));
+    
+    // Get recent transactions
+    const recentTransactions = await db.select({
+      id: khatabook.id,
+      entryType: khatabook.entryType,
+      transactionType: khatabook.transactionType,
+      amount: khatabook.amount,
+      description: khatabook.description,
+      createdAt: khatabook.createdAt
+    })
+    .from(khatabook)
+    .where(eq(khatabook.userId, userId))
+    .orderBy(desc(khatabook.createdAt))
+    .limit(5);
+    
+    return {
+      currentBalance: parseFloat(currentBalance),
+      totalCredits: stats[0].totalCredits,
+      totalDebits: stats[0].totalDebits,
+      totalTransactions: stats[0].totalTransactions,
+      recentTransactions
+    };
   }
 }
 

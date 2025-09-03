@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import Header from "@/components/layout/header";
 import StoreCatalogModal from "@/components/modals/store-catalog-modal";
 import { useCartStore } from "@/store/cart";
@@ -19,6 +20,10 @@ export default function ShopOwnerDashboard() {
   const [searchFilters, setSearchFilters] = useState({ search: '', city: '', pincode: '' });
   const [deliveryType, setDeliveryType] = useState('PICKUP');
   const [orderNote, setOrderNote] = useState('');
+  const [adjustmentAmount, setAdjustmentAmount] = useState('');
+  const [adjustmentNote, setAdjustmentNote] = useState('');
+  const [adjustmentDialogOpen, setAdjustmentDialogOpen] = useState(false);
+  const [selectedOrderForAdjustment, setSelectedOrderForAdjustment] = useState<any>(null);
   
   const { cart, removeFromCart, updateQuantity, clearCart, getTotalAmount, getItemCount } = useCartStore();
   const { toast } = useToast();
@@ -59,6 +64,32 @@ export default function ShopOwnerDashboard() {
     }
   });
 
+  const { data: ledgerSummary } = useQuery({
+    queryKey: ['/api/khatabook/summary'],
+    queryFn: async () => {
+      const response = await fetch('/api/khatabook/summary', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+        }
+      });
+      if (!response.ok) throw new Error('Failed to fetch ledger summary');
+      return response.json();
+    }
+  });
+
+  const { data: ledgerEntries } = useQuery({
+    queryKey: ['/api/khatabook'],
+    queryFn: async () => {
+      const response = await fetch('/api/khatabook', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+        }
+      });
+      if (!response.ok) throw new Error('Failed to fetch ledger entries');
+      return response.json();
+    }
+  });
+
   const placeOrderMutation = useMutation({
     mutationFn: async (orderData: any) => {
       return await apiRequest('POST', '/api/orders', orderData);
@@ -71,6 +102,23 @@ export default function ShopOwnerDashboard() {
     },
     onError: () => {
       toast({ title: "Failed to place order", variant: "destructive" });
+    }
+  });
+
+  const adjustAmountMutation = useMutation({
+    mutationFn: async ({ orderId, adjustedAmount, adjustmentNote }: { orderId: string; adjustedAmount: string; adjustmentNote: string }) => {
+      return await apiRequest('POST', `/api/orders/${orderId}/adjust-amount`, { adjustedAmount, adjustmentNote });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/orders/mine'] });
+      setAdjustmentDialogOpen(false);
+      setAdjustmentAmount('');
+      setAdjustmentNote('');
+      setSelectedOrderForAdjustment(null);
+      toast({ title: "Payment amount adjusted successfully" });
+    },
+    onError: () => {
+      toast({ title: "Failed to adjust payment amount", variant: "destructive" });
     }
   });
 
@@ -140,6 +188,15 @@ export default function ShopOwnerDashboard() {
             >
               <i className="fas fa-receipt mr-3"></i>
               My Orders
+            </Button>
+            <Button
+              onClick={() => setActiveSection('khatabook')}
+              variant={activeSection === 'khatabook' ? "default" : "ghost"}
+              className="w-full justify-start"
+              data-testid="button-nav-khatabook"
+            >
+              <i className="fas fa-book mr-3"></i>
+              Khatabook
             </Button>
           </nav>
         </aside>
@@ -512,12 +569,106 @@ export default function ShopOwnerDashboard() {
                       )}
                       
                       <div className="flex items-center justify-between pt-4 mt-4 border-t border-border">
-                        <div className="font-semibold text-foreground">Total: ₹{order.totalAmount}</div>
+                        <div>
+                          <div className="font-semibold text-foreground">Total: ₹{order.totalAmount}</div>
+                          {order.paymentReceived && (
+                            <div className="flex items-center text-green-600 text-sm mt-1">
+                              <i className="fas fa-check-circle mr-2"></i>
+                              Payment Received: ₹{order.amountReceived || order.totalAmount}
+                              {order.amountReceived !== order.totalAmount && order.originalAmountReceived && (
+                                <span className="text-muted-foreground ml-2">
+                                  (Originally ₹{order.originalAmountReceived})
+                                </span>
+                              )}
+                            </div>
+                          )}
+                          {!order.paymentReceived && ['OUT_FOR_DELIVERY', 'COMPLETED'].includes(order.status) && order.deliveryType === 'DELIVERY' && (
+                            <div className="text-orange-600 text-sm mt-1">
+                              <i className="fas fa-clock mr-2"></i>
+                              Awaiting COD payment confirmation
+                            </div>
+                          )}
+                        </div>
                         <div className="flex space-x-2">
                           {order.status === 'PENDING' && (
                             <Button variant="outline" size="sm" data-testid={`button-cancel-${order.id}`}>
                               Cancel Order
                             </Button>
+                          )}
+                          {order.paymentReceived && (
+                            <Dialog open={adjustmentDialogOpen && selectedOrderForAdjustment?.id === order.id} onOpenChange={(open) => {
+                              if (!open) {
+                                setAdjustmentDialogOpen(false);
+                                setSelectedOrderForAdjustment(null);
+                                setAdjustmentAmount('');
+                                setAdjustmentNote('');
+                              }
+                            }}>
+                              <DialogTrigger asChild>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm" 
+                                  onClick={() => {
+                                    setSelectedOrderForAdjustment(order);
+                                    setAdjustmentAmount(order.amountReceived || order.totalAmount);
+                                    setAdjustmentDialogOpen(true);
+                                  }}
+                                  data-testid={`button-adjust-amount-${order.id}`}
+                                >
+                                  <i className="fas fa-edit mr-2"></i>
+                                  Adjust Amount
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent>
+                                <DialogHeader>
+                                  <DialogTitle>Adjust Payment Amount</DialogTitle>
+                                </DialogHeader>
+                                <div className="space-y-4">
+                                  <div>
+                                    <Label>Current Amount: ₹{order.amountReceived || order.totalAmount}</Label>
+                                  </div>
+                                  <div>
+                                    <Label htmlFor="adjustedAmount">New Amount</Label>
+                                    <Input
+                                      id="adjustedAmount"
+                                      type="number"
+                                      value={adjustmentAmount}
+                                      onChange={(e) => setAdjustmentAmount(e.target.value)}
+                                      placeholder="Enter adjusted amount"
+                                      className="mt-2"
+                                    />
+                                  </div>
+                                  <div>
+                                    <Label htmlFor="adjustmentNote">Reason for Adjustment</Label>
+                                    <Textarea
+                                      id="adjustmentNote"
+                                      value={adjustmentNote}
+                                      onChange={(e) => setAdjustmentNote(e.target.value)}
+                                      placeholder="e.g., Discount applied, Tip added, Rounding adjustment"
+                                      className="mt-2"
+                                    />
+                                  </div>
+                                  <div className="flex space-x-2">
+                                    <Button
+                                      onClick={() => {
+                                        adjustAmountMutation.mutate({
+                                          orderId: order.id,
+                                          adjustedAmount: adjustmentAmount,
+                                          adjustmentNote: adjustmentNote
+                                        });
+                                      }}
+                                      disabled={!adjustmentAmount || adjustAmountMutation.isPending}
+                                      className="flex-1"
+                                    >
+                                      {adjustAmountMutation.isPending ? 'Adjusting...' : 'Confirm Adjustment'}
+                                    </Button>
+                                    <Button variant="outline" onClick={() => setAdjustmentDialogOpen(false)}>
+                                      Cancel
+                                    </Button>
+                                  </div>
+                                </div>
+                              </DialogContent>
+                            </Dialog>
                           )}
                           <Button variant="secondary" size="sm" data-testid={`button-track-${order.id}`}>
                             Track Order
@@ -538,6 +689,100 @@ export default function ShopOwnerDashboard() {
                   </Card>
                 )}
               </div>
+            </div>
+          )}
+
+          {/* Khatabook Section */}
+          {activeSection === 'khatabook' && (
+            <div>
+              <div className="mb-6">
+                <h2 className="text-2xl font-bold text-foreground mb-2">Khatabook</h2>
+                <p className="text-muted-foreground">Track your transaction history and balance</p>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Current Balance</p>
+                        <p className="text-2xl font-bold text-foreground">
+                          ₹{ledgerSummary?.currentBalance?.toFixed(2) || '0.00'}
+                        </p>
+                      </div>
+                      <div className="bg-blue-100 p-3 rounded-full">
+                        <i className="fas fa-wallet text-blue-600"></i>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Total Credits</p>
+                        <p className="text-2xl font-bold text-green-600">
+                          ₹{ledgerSummary?.totalCredits?.toFixed(2) || '0.00'}
+                        </p>
+                      </div>
+                      <div className="bg-green-100 p-3 rounded-full">
+                        <i className="fas fa-arrow-up text-green-600"></i>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Total Debits</p>
+                        <p className="text-2xl font-bold text-red-600">
+                          ₹{ledgerSummary?.totalDebits?.toFixed(2) || '0.00'}
+                        </p>
+                      </div>
+                      <div className="bg-red-100 p-3 rounded-full">
+                        <i className="fas fa-arrow-down text-red-600"></i>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <Card>
+                <CardContent className="p-6">
+                  <h3 className="text-lg font-semibold text-foreground mb-4">Transaction History</h3>
+                  <div className="space-y-3">
+                    {ledgerEntries?.entries?.map((entry: any) => (
+                      <div key={entry.id} className="flex items-center justify-between p-3 border border-border rounded-lg">
+                        <div className="flex items-center space-x-3">
+                          <div className={`w-3 h-3 rounded-full ${entry.entryType === 'CREDIT' ? 'bg-green-600' : 'bg-red-600'}`}></div>
+                          <div>
+                            <div className="font-medium text-foreground">{entry.description}</div>
+                            <div className="text-sm text-muted-foreground">
+                              {new Date(entry.createdAt).toLocaleDateString()} • {entry.transactionType.replace('_', ' ')}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className={`font-semibold ${entry.entryType === 'CREDIT' ? 'text-green-600' : 'text-red-600'}`}>
+                            {entry.entryType === 'CREDIT' ? '+' : '-'}₹{parseFloat(entry.amount).toFixed(2)}
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            Bal: ₹{parseFloat(entry.balance).toFixed(2)}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    {(!ledgerEntries?.entries || ledgerEntries.entries.length === 0) && (
+                      <div className="text-center text-muted-foreground py-8">
+                        No transactions yet. Transactions will appear here when you place orders.
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           )}
         </main>
