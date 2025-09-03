@@ -1,0 +1,99 @@
+Enhance the existing Cash on Delivery (COD) order system to support partial payments, outstanding balances, and integrated per-counterparty ledgers (Khatabooks) between shop owners and retailers.
+
+Functional Requirements
+
+Partial Payment Handling
+
+When an order is delivered, the delivery personnel should have the ability to mark the order as Payment Received.
+
+The payment amount should be editable so that the delivery personnel can record partial amounts if the buyer does not have sufficient funds to settle the full order value.
+
+The system should automatically calculate and maintain the remaining balance associated with that order.
+
+Outstanding Balance Management
+
+If a shop owner has existing unpaid balances from previous transactions, the system should allow them to settle either:
+
+The current order amount,
+
+A portion of the outstanding balance, or
+
+Both current and outstanding balances simultaneously.
+
+Payments should be allocatable between the current order and prior balances, with clear tracking in the ledger.
+
+Ledger (Khatabook) Maintenance
+
+Each shop owner and retailer pair should maintain a dedicated ledger that records all financial activities between them.
+
+The ledger should support the following entry types:
+
+ORDER_DEBIT → order placed, liability created.
+
+PAYMENT_CREDIT → payment made against the current order.
+
+BALANCE_CLEAR_CREDIT → payment allocated to settle previous dues.
+
+ADJUSTMENT → manual corrections, discounts, or settlements.
+
+The ledger should always show a running balance, highlighting outstanding amounts.
+
+Audit & Transparency
+
+Any adjustment or modification of amounts must be logged in an immutable audit trail (who edited, when, and why).
+
+Both parties (shop owner and retailer) should have visibility into outstanding balances, cleared payments, and partial settlements.
+
+Payment Flow
+
+Order Creation:
+
+Order amount is recorded in the ledger as an ORDER_DEBIT entry.
+
+Payment Received at Delivery:
+
+Delivery personnel records the actual amount received (full or partial).
+
+System updates order with amount_received and calculates remaining_balance.
+
+Ledger entries are created accordingly.
+
+Shop Owner Settlement:
+
+Shop owner finalizes and confirms the payment received.
+
+If payment covers both current and outstanding balances, the allocation is reflected in separate ledger entries.
+
+Example Workflows
+
+Case 1: Partial Payment on Delivery
+
+Order Value: ₹1000
+
+Amount Received: ₹600
+
+Ledger Entries:
+
+ORDER_DEBIT = -1000
+
+PAYMENT_CREDIT = +600
+
+Balance Carried Forward = -400
+
+Case 2: Payment Against Current and Previous Balance
+
+Outstanding Balance: ₹400
+
+New Order Value: ₹1000
+
+Payment Made: ₹1200
+
+Ledger Entries:
+
+ORDER_DEBIT = -1000
+
+BALANCE_CLEAR_CREDIT = +400
+
+PAYMENT_CREDIT = +800
+
+Remaining Balance = -200
