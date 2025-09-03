@@ -545,7 +545,7 @@ export default function RetailerDashboard() {
                       <div>
                         <p className="text-sm text-muted-foreground">Total Credits</p>
                         <p className="text-2xl font-bold text-green-600">
-                          ₹{ledgerSummary?.totalCredits?.toFixed(2) || '0.00'}
+                          ₹{ledgerSummary?.totalCredits ? parseFloat(ledgerSummary.totalCredits).toFixed(2) : '0.00'}
                         </p>
                       </div>
                       <div className="bg-green-100 p-3 rounded-full">
@@ -561,7 +561,7 @@ export default function RetailerDashboard() {
                       <div>
                         <p className="text-sm text-muted-foreground">Total Debits</p>
                         <p className="text-2xl font-bold text-red-600">
-                          ₹{ledgerSummary?.totalDebits?.toFixed(2) || '0.00'}
+                          ₹{ledgerSummary?.totalDebits ? parseFloat(ledgerSummary.totalDebits).toFixed(2) : '0.00'}
                         </p>
                       </div>
                       <div className="bg-red-100 p-3 rounded-full">
