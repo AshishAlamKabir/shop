@@ -24,8 +24,9 @@ export default function ShopOwnerDashboard() {
   const [adjustmentNote, setAdjustmentNote] = useState('');
   const [adjustmentDialogOpen, setAdjustmentDialogOpen] = useState(false);
   const [selectedOrderForAdjustment, setSelectedOrderForAdjustment] = useState<any>(null);
+  const [productQuantities, setProductQuantities] = useState<{[key: string]: number}>({});
   
-  const { cart, removeFromCart, updateQuantity, clearCart, getTotalAmount, getItemCount } = useCartStore();
+  const { cart, addToCart, removeFromCart, updateQuantity, clearCart, getTotalAmount, getItemCount } = useCartStore();
   const { toast } = useToast();
 
   const { data: stores = [] } = useQuery({
@@ -62,6 +63,22 @@ export default function ShopOwnerDashboard() {
       if (!response.ok) throw new Error('Failed to fetch popular products');
       return response.json();
     }
+  });
+
+  // Get listings for popular products to enable add to cart
+  const { data: allStores = [] } = useQuery({
+    queryKey: ['/api/stores-detailed'],
+    queryFn: async () => {
+      const storeList = await fetch('/api/stores').then(res => res.json());
+      const storeDetails = await Promise.all(
+        storeList.map(async (store: any) => {
+          const response = await fetch(`/api/stores/${store.id}`);
+          return response.json();
+        })
+      );
+      return storeDetails;
+    },
+    enabled: popularProducts.length > 0
   });
 
   const { data: ledgerSummary } = useQuery({
@@ -147,6 +164,59 @@ export default function ShopOwnerDashboard() {
       case 'COMPLETED': return 'bg-green-100 text-green-800';
       default: return 'bg-gray-100 text-gray-800';
     }
+  };
+
+  const findBestListingForProduct = (productId: string) => {
+    for (const store of allStores) {
+      const listing = store.listings?.find((l: any) => l.productId === productId && l.available);
+      if (listing) {
+        return {
+          listingId: listing.id,
+          storeId: store.id,
+          storeName: store.name,
+          price: parseFloat(listing.price),
+          ...listing
+        };
+      }
+    }
+    return null;
+  };
+
+  const handleQuantityChange = (productId: string, quantity: number) => {
+    setProductQuantities(prev => ({
+      ...prev,
+      [productId]: Math.max(1, quantity)
+    }));
+  };
+
+  const handleAddToCart = (item: any) => {
+    const listing = findBestListingForProduct(item.product.id);
+    if (!listing) {
+      toast({ 
+        title: "Product not available", 
+        description: "This product is not currently available in any store.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const quantity = productQuantities[item.product.id] || 1;
+    
+    addToCart({
+      listingId: listing.listingId,
+      storeId: listing.storeId,
+      name: item.product.name,
+      brand: item.product.brand,
+      size: item.product.size,
+      price: listing.price,
+      imageUrl: item.product.imageUrl || 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=200&h=160',
+      qty: quantity
+    });
+
+    toast({ 
+      title: "Added to cart!", 
+      description: `${quantity}x ${item.product.name} from ${listing.storeName}` 
+    });
   };
 
   return (
@@ -334,11 +404,82 @@ export default function ShopOwnerDashboard() {
                             {item.product.isWholesale ? 'Wholesale' : 'Retail'}
                           </Badge>
                         </div>
-                        {item.avgPrice > 0 && (
-                          <div className="text-sm font-semibold text-foreground">
-                            Avg: ₹{parseFloat(item.avgPrice).toFixed(0)}
-                          </div>
-                        )}
+                        {(() => {
+                          const listing = findBestListingForProduct(item.product.id);
+                          const quantity = productQuantities[item.product.id] || 1;
+                          
+                          return (
+                            <div className="space-y-3">
+                              {listing ? (
+                                <div className="text-sm font-semibold text-foreground">
+                                  ₹{listing.price.toFixed(2)} <span className="text-xs text-muted-foreground">at {listing.storeName}</span>
+                                </div>
+                              ) : item.avgPrice > 0 ? (
+                                <div className="text-sm font-semibold text-foreground">
+                                  Avg: ₹{parseFloat(item.avgPrice).toFixed(0)}
+                                </div>
+                              ) : (
+                                <div className="text-sm text-muted-foreground">
+                                  Price not available
+                                </div>
+                              )}
+                              
+                              {listing && (
+                                <div className="flex items-center gap-2">
+                                  <div className="flex items-center border border-border rounded-md">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-8 w-8 p-0"
+                                      onClick={() => handleQuantityChange(item.product.id, quantity - 1)}
+                                      data-testid={`button-decrease-${item.product.id}`}
+                                    >
+                                      -
+                                    </Button>
+                                    <Input
+                                      type="number"
+                                      min="1"
+                                      value={quantity}
+                                      onChange={(e) => handleQuantityChange(item.product.id, parseInt(e.target.value) || 1)}
+                                      className="h-8 w-12 text-center border-0 focus-visible:ring-0"
+                                      data-testid={`input-quantity-${item.product.id}`}
+                                    />
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-8 w-8 p-0"
+                                      onClick={() => handleQuantityChange(item.product.id, quantity + 1)}
+                                      data-testid={`button-increase-${item.product.id}`}
+                                    >
+                                      +
+                                    </Button>
+                                  </div>
+                                  <Button
+                                    size="sm"
+                                    className="flex-1 h-8"
+                                    onClick={() => handleAddToCart(item)}
+                                    data-testid={`button-add-cart-${item.product.id}`}
+                                  >
+                                    <i className="fas fa-shopping-cart mr-1"></i>
+                                    Add
+                                  </Button>
+                                </div>
+                              )}
+                              
+                              {!listing && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  disabled
+                                  className="w-full h-8"
+                                  data-testid={`button-unavailable-${item.product.id}`}
+                                >
+                                  Not Available
+                                </Button>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </CardContent>
                     </Card>
                   ))}
