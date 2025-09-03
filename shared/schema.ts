@@ -7,7 +7,7 @@ export const roleEnum = pgEnum('role', ['ADMIN', 'RETAILER', 'SHOP_OWNER']);
 export const orderStatusEnum = pgEnum('order_status', ['PENDING', 'ACCEPTED', 'REJECTED', 'READY', 'OUT_FOR_DELIVERY', 'COMPLETED', 'CANCELLED']);
 export const deliveryTypeEnum = pgEnum('delivery_type', ['PICKUP', 'DELIVERY']);
 export const ledgerEntryTypeEnum = pgEnum('ledger_entry_type', ['CREDIT', 'DEBIT']);
-export const ledgerTransactionTypeEnum = pgEnum('ledger_transaction_type', ['ORDER_PLACED', 'PAYMENT_RECEIVED', 'PAYMENT_ADJUSTED', 'REFUND', 'COMMISSION']);
+export const ledgerTransactionTypeEnum = pgEnum('ledger_transaction_type', ['ORDER_PLACED', 'ORDER_DEBIT', 'PAYMENT_RECEIVED', 'PAYMENT_CREDIT', 'BALANCE_CLEAR_CREDIT', 'PAYMENT_ADJUSTED', 'ADJUSTMENT', 'REFUND', 'COMMISSION']);
 
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -75,6 +75,8 @@ export const orders = pgTable("orders", {
   paymentReceived: boolean("payment_received").default(false),
   amountReceived: decimal("amount_received", { precision: 10, scale: 2 }),
   originalAmountReceived: decimal("original_amount_received", { precision: 10, scale: 2 }),
+  remainingBalance: decimal("remaining_balance", { precision: 10, scale: 2 }).default("0"),
+  isPartialPayment: boolean("is_partial_payment").default(false),
   paymentReceivedAt: timestamp("payment_received_at"),
   paymentReceivedBy: varchar("payment_received_by"), // delivery boy user id
   amountAdjustedBy: varchar("amount_adjusted_by"), // shop owner user id
@@ -111,6 +113,7 @@ export const fcmTokens = pgTable("fcm_tokens", {
 export const khatabook = pgTable("khatabook", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull(), // shop owner or retailer
+  counterpartyId: varchar("counterparty_id"), // the other party in the transaction
   orderId: varchar("order_id"), // related order (optional)
   entryType: ledgerEntryTypeEnum("entry_type").notNull(), // CREDIT or DEBIT
   transactionType: ledgerTransactionTypeEnum("transaction_type").notNull(),
@@ -118,6 +121,19 @@ export const khatabook = pgTable("khatabook", {
   balance: decimal("balance", { precision: 10, scale: 2 }).notNull(), // running balance
   description: text("description").notNull(),
   referenceId: varchar("reference_id"), // order id, payment id, etc.
+  metadata: text("metadata"), // JSON string for additional data
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const paymentAuditTrail = pgTable("payment_audit_trail", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  orderId: varchar("order_id").notNull(),
+  userId: varchar("user_id").notNull(), // who made the change
+  action: text("action").notNull(), // PAYMENT_RECEIVED, AMOUNT_ADJUSTED, BALANCE_SETTLED
+  oldAmount: decimal("old_amount", { precision: 10, scale: 2 }),
+  newAmount: decimal("new_amount", { precision: 10, scale: 2 }),
+  reason: text("reason"),
+  metadata: text("metadata"), // JSON string for additional context
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -171,7 +187,13 @@ export const fcmTokensRelations = relations(fcmTokens, ({ one }) => ({
 
 export const khatabookRelations = relations(khatabook, ({ one }) => ({
   user: one(users, { fields: [khatabook.userId], references: [users.id] }),
+  counterparty: one(users, { fields: [khatabook.counterpartyId], references: [users.id] }),
   order: one(orders, { fields: [khatabook.orderId], references: [orders.id] }),
+}));
+
+export const paymentAuditTrailRelations = relations(paymentAuditTrail, ({ one }) => ({
+  order: one(orders, { fields: [paymentAuditTrail.orderId], references: [orders.id] }),
+  user: one(users, { fields: [paymentAuditTrail.userId], references: [users.id] }),
 }));
 
 // Insert schemas
@@ -227,6 +249,11 @@ export const insertKhatabookSchema = createInsertSchema(khatabook).omit({
   balance: true,
 });
 
+export const insertPaymentAuditTrailSchema = createInsertSchema(paymentAuditTrail).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -246,3 +273,5 @@ export type FcmToken = typeof fcmTokens.$inferSelect;
 export type InsertFcmToken = z.infer<typeof insertFcmTokenSchema>;
 export type Khatabook = typeof khatabook.$inferSelect;
 export type InsertKhatabook = z.infer<typeof insertKhatabookSchema>;
+export type PaymentAuditTrail = typeof paymentAuditTrail.$inferSelect;
+export type InsertPaymentAuditTrail = z.infer<typeof insertPaymentAuditTrailSchema>;

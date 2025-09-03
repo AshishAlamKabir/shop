@@ -570,7 +570,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/orders/:id/payment-received', authenticateToken, requireRole('RETAILER'), async (req: any, res) => {
     try {
       const { id } = req.params;
-      const { amountReceived } = req.body;
+      const { amountReceived, note } = req.body;
       
       const order = await storage.getOrder(id);
       if (!order) {
@@ -585,55 +585,107 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Payment already confirmed' });
       }
       
-      const amount = parseFloat(amountReceived) || parseFloat(order.totalAmount);
+      const totalAmount = parseFloat(order.totalAmount);
+      const amount = parseFloat(amountReceived) || totalAmount;
+      const remainingBalance = totalAmount - amount;
+      const isPartialPayment = remainingBalance > 0;
       
-      // Update order with payment confirmation
-      await storage.updateOrderPayment(id, {
-        paymentReceived: true,
+      // Create audit trail entry
+      const auditData = {
+        orderId: id,
+        userId: req.user.id,
+        action: 'PAYMENT_RECEIVED',
+        oldAmount: 0,
+        newAmount: amount,
+        reason: note || (isPartialPayment ? 'Partial payment received' : 'Full payment received'),
+        metadata: JSON.stringify({
+          totalAmount,
+          amountReceived: amount,
+          remainingBalance,
+          isPartialPayment,
+          receivedBy: req.user.fullName
+        })
+      };
+      
+      // Record payment using enhanced method
+      const updatedOrder = await storage.recordPartialPayment(id, {
         amountReceived: amount.toString(),
-        originalAmountReceived: amount.toString(),
         paymentReceivedAt: new Date(),
         paymentReceivedBy: req.user.id
-      });
+      }, auditData);
       
       // Create order event
+      const eventMessage = isPartialPayment 
+        ? `Partial payment of ₹${amount} received via Cash on Delivery. Outstanding balance: ₹${remainingBalance.toFixed(2)}`
+        : `Full payment of ₹${amount} received via Cash on Delivery`;
+        
       await storage.createOrderEvent({
         orderId: id,
         type: 'PAYMENT_RECEIVED',
-        message: `Payment of ₹${amount} received via Cash on Delivery`
+        message: eventMessage
       });
       
-      // Add ledger entries for both shop owner and retailer
+      // Add enhanced ledger entries with counterparty tracking
       await storage.addLedgerEntry({
         userId: order.ownerId,
+        counterpartyId: order.retailerId,
         orderId: id,
         entryType: 'DEBIT',
-        transactionType: 'PAYMENT_RECEIVED',
+        transactionType: 'ORDER_DEBIT',
+        amount: totalAmount.toString(),
+        description: `Order placed #${id.slice(-8)} - Total: ₹${totalAmount}`,
+        referenceId: id,
+        metadata: JSON.stringify({ orderValue: totalAmount })
+      });
+      
+      await storage.addLedgerEntry({
+        userId: order.ownerId,
+        counterpartyId: order.retailerId,
+        orderId: id,
+        entryType: 'CREDIT',
+        transactionType: 'PAYMENT_CREDIT',
         amount: amount.toString(),
-        description: `Payment received for Order #${id.slice(-8)}`,
-        referenceId: id
+        description: `Payment received for Order #${id.slice(-8)} - Amount: ₹${amount}${isPartialPayment ? ` (Partial)` : ''}`,
+        referenceId: id,
+        metadata: JSON.stringify({ 
+          paymentType: isPartialPayment ? 'partial' : 'full',
+          amountReceived: amount,
+          remainingBalance 
+        })
       });
       
       await storage.addLedgerEntry({
         userId: order.retailerId,
+        counterpartyId: order.ownerId,
         orderId: id,
         entryType: 'CREDIT',
-        transactionType: 'PAYMENT_RECEIVED',
+        transactionType: 'PAYMENT_CREDIT',
         amount: amount.toString(),
-        description: `Payment collected for Order #${id.slice(-8)}`,
-        referenceId: id
+        description: `Payment collected for Order #${id.slice(-8)} - Amount: ₹${amount}${isPartialPayment ? ` (Partial)` : ''}`,
+        referenceId: id,
+        metadata: JSON.stringify({ 
+          paymentType: isPartialPayment ? 'partial' : 'full',
+          amountReceived: amount,
+          remainingBalance 
+        })
       });
       
       // Emit real-time notification
       emitOrderEvent(id, order.ownerId, order.retailerId, 'paymentReceived', {
         orderId: id,
         amountReceived: amount,
+        totalAmount,
+        remainingBalance,
+        isPartialPayment,
         timestamp: new Date()
       });
       
       res.json({ 
-        message: 'Payment confirmation recorded successfully',
-        amountReceived: amount
+        message: `${isPartialPayment ? 'Partial payment' : 'Payment'} confirmation recorded successfully`,
+        amountReceived: amount,
+        totalAmount,
+        remainingBalance,
+        isPartialPayment
       });
     } catch (error) {
       console.error('Payment confirmation error:', error);
@@ -742,11 +794,120 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get khatabook summary/balance
   app.get('/api/khatabook/summary', authenticateToken, async (req: any, res) => {
     try {
-      const summary = await storage.getLedgerSummary(req.user.id);
+      const { counterpartyId } = req.query;
+      const summary = await storage.getLedgerSummary(req.user.id, counterpartyId as string);
       res.json(summary);
     } catch (error) {
       console.error('Ledger summary error:', error);
       res.status(500).json({ message: 'Failed to fetch ledger summary' });
+    }
+  });
+
+  // Get outstanding balance between shop owner and retailer
+  app.get('/api/outstanding-balance/:counterpartyId', authenticateToken, async (req: any, res) => {
+    try {
+      const { counterpartyId } = req.params;
+      const balance = await storage.getOutstandingBalance(req.user.id, counterpartyId);
+      res.json({ outstandingBalance: balance, counterpartyId });
+    } catch (error) {
+      console.error('Outstanding balance error:', error);
+      res.status(500).json({ message: 'Failed to fetch outstanding balance' });
+    }
+  });
+
+  // Balance settlement endpoint
+  app.post('/api/settle-balances', authenticateToken, requireRole('SHOP_OWNER'), async (req: any, res) => {
+    try {
+      const { 
+        retailerId, 
+        currentOrderPayment = 0, 
+        outstandingBalancePayment = 0, 
+        totalPayment,
+        orderId,
+        note 
+      } = req.body;
+
+      if (!retailerId) {
+        return res.status(400).json({ message: 'Retailer ID is required' });
+      }
+
+      const actualTotalPayment = totalPayment || (currentOrderPayment + outstandingBalancePayment);
+
+      if (actualTotalPayment <= 0) {
+        return res.status(400).json({ message: 'Payment amount must be greater than 0' });
+      }
+
+      // Record the settlement
+      const settlementResult = await storage.settleBalances(req.user.id, retailerId, {
+        currentOrderPayment,
+        outstandingBalancePayment,
+        totalPayment: actualTotalPayment,
+        orderId,
+        note
+      });
+
+      // Create audit trail for settlement
+      await storage.addPaymentAudit({
+        orderId: orderId || null,
+        userId: req.user.id,
+        action: 'BALANCE_SETTLED',
+        oldAmount: outstandingBalancePayment > 0 ? await storage.getOutstandingBalance(req.user.id, retailerId) : 0,
+        newAmount: actualTotalPayment,
+        reason: note || 'Balance settlement',
+        metadata: JSON.stringify({
+          retailerId,
+          currentOrderPayment,
+          outstandingBalancePayment,
+          totalPayment: actualTotalPayment,
+          settlementType: 'manual'
+        })
+      });
+
+      // If there's a current order payment, update the order
+      if (orderId && currentOrderPayment > 0) {
+        const order = await storage.getOrder(orderId);
+        if (order) {
+          await storage.createOrderEvent({
+            orderId,
+            type: 'PAYMENT_RECEIVED',
+            message: `Settlement payment of ₹${currentOrderPayment} applied to order. ${note || ''}`
+          });
+        }
+      }
+
+      res.json({
+        message: 'Balance settlement recorded successfully',
+        totalSettled: actualTotalPayment,
+        currentOrderPayment,
+        outstandingBalancePayment,
+        remainingBalance: await storage.getOutstandingBalance(req.user.id, retailerId)
+      });
+    } catch (error) {
+      console.error('Balance settlement error:', error);
+      res.status(500).json({ message: 'Failed to process balance settlement' });
+    }
+  });
+
+  // Get payment audit trail for an order
+  app.get('/api/orders/:id/audit-trail', authenticateToken, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      
+      const order = await storage.getOrder(id);
+      if (!order) {
+        return res.status(404).json({ message: 'Order not found' });
+      }
+      
+      // Check access
+      if (order.ownerId !== req.user.id && order.retailerId !== req.user.id) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+      
+      const auditTrail = await storage.getPaymentAuditTrail(id);
+      res.json(auditTrail);
+    } catch (error) {
+      console.error('Audit trail error:', error);
+      res.status(500).json({ message: 'Failed to fetch audit trail' });
     }
   });
 

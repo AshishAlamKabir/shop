@@ -1,10 +1,10 @@
 import { 
-  users, stores, productCatalog, listings, orders, orderItems, orderEvents, fcmTokens, khatabook,
+  users, stores, productCatalog, listings, orders, orderItems, orderEvents, fcmTokens, khatabook, paymentAuditTrail,
   type User, type InsertUser, type Store, type InsertStore,
   type ProductCatalog, type InsertProductCatalog, type Listing, type InsertListing,
   type Order, type InsertOrder, type OrderItem, type InsertOrderItem,
   type OrderEvent, type InsertOrderEvent, type FcmToken, type InsertFcmToken,
-  type Khatabook, type InsertKhatabook
+  type Khatabook, type InsertKhatabook, type PaymentAuditTrail, type InsertPaymentAuditTrail
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, asc, like, or, sql } from "drizzle-orm";
@@ -63,8 +63,17 @@ export interface IStorage {
   
   // Ledger/Khatabook operations
   addLedgerEntry(entry: InsertKhatabook): Promise<Khatabook>;
-  getLedgerEntries(userId: string, options?: { page?: number; limit?: number; type?: string }): Promise<any>;
-  getLedgerSummary(userId: string): Promise<any>;
+  getLedgerEntries(userId: string, options?: { page?: number; limit?: number; type?: string; counterpartyId?: string }): Promise<any>;
+  getLedgerSummary(userId: string, counterpartyId?: string): Promise<any>;
+  getOutstandingBalance(shopOwnerId: string, retailerId: string): Promise<number>;
+  
+  // Enhanced payment operations
+  recordPartialPayment(orderId: string, paymentData: any, auditData: InsertPaymentAuditTrail): Promise<Order>;
+  settleBalances(shopOwnerId: string, retailerId: string, settlementData: any): Promise<any>;
+  
+  // Audit trail operations
+  addPaymentAudit(auditData: InsertPaymentAuditTrail): Promise<PaymentAuditTrail>;
+  getPaymentAuditTrail(orderId: string): Promise<PaymentAuditTrail[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -361,10 +370,19 @@ export class DatabaseStorage implements IStorage {
   }
 
   async addLedgerEntry(entry: InsertKhatabook): Promise<Khatabook> {
-    // Calculate running balance for the user
-    const lastEntry = await db.select({ balance: khatabook.balance })
+    // Calculate running balance for the user (considering counterparty if provided)
+    let balanceQuery = db.select({ balance: khatabook.balance })
       .from(khatabook)
-      .where(eq(khatabook.userId, entry.userId))
+      .where(eq(khatabook.userId, entry.userId));
+    
+    if (entry.counterpartyId) {
+      balanceQuery = balanceQuery.where(and(
+        eq(khatabook.userId, entry.userId),
+        eq(khatabook.counterpartyId, entry.counterpartyId)
+      ));
+    }
+    
+    const lastEntry = await balanceQuery
       .orderBy(desc(khatabook.createdAt))
       .limit(1);
     
@@ -386,9 +404,19 @@ export class DatabaseStorage implements IStorage {
     return ledgerEntry;
   }
 
-  async getLedgerEntries(userId: string, options: { page?: number; limit?: number; type?: string } = {}): Promise<any> {
-    const { page = 1, limit = 20, type } = options;
+  async getLedgerEntries(userId: string, options: { page?: number; limit?: number; type?: string; counterpartyId?: string } = {}): Promise<any> {
+    const { page = 1, limit = 20, type, counterpartyId } = options;
     const offset = (page - 1) * limit;
+    
+    let whereConditions = [eq(khatabook.userId, userId)];
+    
+    if (type) {
+      whereConditions.push(eq(khatabook.entryType, type));
+    }
+    
+    if (counterpartyId) {
+      whereConditions.push(eq(khatabook.counterpartyId, counterpartyId));
+    }
     
     let query = db.select({
       id: khatabook.id,
@@ -398,15 +426,13 @@ export class DatabaseStorage implements IStorage {
       balance: khatabook.balance,
       description: khatabook.description,
       referenceId: khatabook.referenceId,
+      counterpartyId: khatabook.counterpartyId,
+      metadata: khatabook.metadata,
       createdAt: khatabook.createdAt,
       orderId: khatabook.orderId
     })
     .from(khatabook)
-    .where(eq(khatabook.userId, userId));
-    
-    if (type) {
-      query = query.where(and(eq(khatabook.userId, userId), eq(khatabook.entryType, type)));
-    }
+    .where(and(...whereConditions));
     
     const entries = await query
       .orderBy(desc(khatabook.createdAt))
@@ -415,7 +441,7 @@ export class DatabaseStorage implements IStorage {
     
     const total = await db.select({ count: sql<number>`count(*)` })
       .from(khatabook)
-      .where(eq(khatabook.userId, userId));
+      .where(and(...whereConditions));
     
     return {
       entries,
@@ -428,10 +454,17 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
-  async getLedgerSummary(userId: string): Promise<any> {
+
+  async getLedgerSummary(userId: string, counterpartyId?: string): Promise<any> {
+    let whereConditions = [eq(khatabook.userId, userId)];
+    
+    if (counterpartyId) {
+      whereConditions.push(eq(khatabook.counterpartyId, counterpartyId));
+    }
+    
     const lastEntry = await db.select({ balance: khatabook.balance })
       .from(khatabook)
-      .where(eq(khatabook.userId, userId))
+      .where(and(...whereConditions))
       .orderBy(desc(khatabook.createdAt))
       .limit(1);
     
@@ -444,7 +477,7 @@ export class DatabaseStorage implements IStorage {
       totalTransactions: sql<number>`COUNT(*)`
     })
     .from(khatabook)
-    .where(eq(khatabook.userId, userId));
+    .where(and(...whereConditions));
     
     // Get recent transactions
     const recentTransactions = await db.select({
@@ -453,10 +486,11 @@ export class DatabaseStorage implements IStorage {
       transactionType: khatabook.transactionType,
       amount: khatabook.amount,
       description: khatabook.description,
+      counterpartyId: khatabook.counterpartyId,
       createdAt: khatabook.createdAt
     })
     .from(khatabook)
-    .where(eq(khatabook.userId, userId))
+    .where(and(...whereConditions))
     .orderBy(desc(khatabook.createdAt))
     .limit(5);
     
@@ -467,6 +501,124 @@ export class DatabaseStorage implements IStorage {
       totalTransactions: stats[0].totalTransactions,
       recentTransactions
     };
+  }
+
+  async getOutstandingBalance(shopOwnerId: string, retailerId: string): Promise<number> {
+    const lastEntry = await db.select({ balance: khatabook.balance })
+      .from(khatabook)
+      .where(and(
+        eq(khatabook.userId, shopOwnerId),
+        eq(khatabook.counterpartyId, retailerId)
+      ))
+      .orderBy(desc(khatabook.createdAt))
+      .limit(1);
+    
+    const balance = lastEntry[0]?.balance || "0";
+    return parseFloat(balance);
+  }
+
+  async recordPartialPayment(orderId: string, paymentData: any, auditData: InsertPaymentAuditTrail): Promise<Order> {
+    // Get the order first to calculate remaining balance
+    const order = await this.getOrder(orderId);
+    if (!order) {
+      throw new Error('Order not found');
+    }
+    
+    const totalAmount = parseFloat(order.totalAmount);
+    const amountReceived = parseFloat(paymentData.amountReceived);
+    const remainingBalance = totalAmount - amountReceived;
+    
+    // Update order with partial payment information
+    const [updatedOrder] = await db.update(orders)
+      .set({
+        paymentReceived: true,
+        amountReceived: paymentData.amountReceived,
+        originalAmountReceived: paymentData.amountReceived,
+        remainingBalance: remainingBalance.toString(),
+        isPartialPayment: remainingBalance > 0,
+        paymentReceivedAt: paymentData.paymentReceivedAt,
+        paymentReceivedBy: paymentData.paymentReceivedBy,
+        updatedAt: new Date()
+      })
+      .where(eq(orders.id, orderId))
+      .returning();
+    
+    // Add audit trail
+    await this.addPaymentAudit(auditData);
+    
+    return updatedOrder;
+  }
+
+  async settleBalances(shopOwnerId: string, retailerId: string, settlementData: any): Promise<any> {
+    const { currentOrderPayment, outstandingBalancePayment, totalPayment, orderId, note } = settlementData;
+    
+    // Create ledger entries for the settlement
+    const entries = [];
+    
+    if (currentOrderPayment > 0) {
+      // Payment for current order
+      entries.push(await this.addLedgerEntry({
+        userId: shopOwnerId,
+        counterpartyId: retailerId,
+        orderId: orderId,
+        entryType: 'DEBIT',
+        transactionType: 'PAYMENT_CREDIT',
+        amount: currentOrderPayment.toString(),
+        description: `Payment for current order #${orderId?.slice(-8)}`,
+        referenceId: orderId,
+        metadata: JSON.stringify({ settlementType: 'current_order' })
+      }));
+      
+      entries.push(await this.addLedgerEntry({
+        userId: retailerId,
+        counterpartyId: shopOwnerId,
+        orderId: orderId,
+        entryType: 'CREDIT',
+        transactionType: 'PAYMENT_CREDIT',
+        amount: currentOrderPayment.toString(),
+        description: `Payment received for order #${orderId?.slice(-8)}`,
+        referenceId: orderId,
+        metadata: JSON.stringify({ settlementType: 'current_order' })
+      }));
+    }
+    
+    if (outstandingBalancePayment > 0) {
+      // Payment for outstanding balance
+      entries.push(await this.addLedgerEntry({
+        userId: shopOwnerId,
+        counterpartyId: retailerId,
+        entryType: 'DEBIT',
+        transactionType: 'BALANCE_CLEAR_CREDIT',
+        amount: outstandingBalancePayment.toString(),
+        description: `Settlement of outstanding balance. ${note || ''}`,
+        referenceId: `SETTLEMENT-${Date.now()}`,
+        metadata: JSON.stringify({ settlementType: 'outstanding_balance', note })
+      }));
+      
+      entries.push(await this.addLedgerEntry({
+        userId: retailerId,
+        counterpartyId: shopOwnerId,
+        entryType: 'CREDIT',
+        transactionType: 'BALANCE_CLEAR_CREDIT',
+        amount: outstandingBalancePayment.toString(),
+        description: `Outstanding balance settlement received. ${note || ''}`,
+        referenceId: `SETTLEMENT-${Date.now()}`,
+        metadata: JSON.stringify({ settlementType: 'outstanding_balance', note })
+      }));
+    }
+    
+    return { entries, totalSettled: totalPayment };
+  }
+
+  async addPaymentAudit(auditData: InsertPaymentAuditTrail): Promise<PaymentAuditTrail> {
+    const [audit] = await db.insert(paymentAuditTrail).values(auditData).returning();
+    return audit;
+  }
+
+  async getPaymentAuditTrail(orderId: string): Promise<PaymentAuditTrail[]> {
+    return await db.select().from(paymentAuditTrail)
+      .where(eq(paymentAuditTrail.orderId, orderId))
+      .orderBy(desc(paymentAuditTrail.createdAt));
   }
 }
 
