@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import Header from "@/components/layout/header";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function DeliveryBoyDashboard() {
   const [activeSection, setActiveSection] = useState('orders');
@@ -19,6 +20,7 @@ export default function DeliveryBoyDashboard() {
   const [newAmount, setNewAmount] = useState('');
   const [reason, setReason] = useState('');
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const { data: orders = [] } = useQuery({
     queryKey: ['/api/delivery/orders'],
@@ -124,6 +126,26 @@ export default function DeliveryBoyDashboard() {
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-foreground mb-2">Delivery Dashboard</h1>
           <p className="text-muted-foreground">Manage your delivery assignments and payments</p>
+          {user && (
+            <div className="mt-4 p-4 bg-card border rounded-lg">
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <i className="fas fa-id-card text-primary"></i>
+                  <span className="font-medium text-foreground">Delivery Boy ID:</span>
+                  <code className="px-2 py-1 bg-muted rounded text-sm font-mono">{user.id}</code>
+                </div>
+                <div className="flex items-center gap-2">
+                  <i className="fas fa-user text-primary"></i>
+                  <span className="font-medium text-foreground">Name:</span>
+                  <span className="text-muted-foreground">{user.fullName}</span>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                <i className="fas fa-info-circle mr-1"></i>
+                Share your Delivery Boy ID with retailers so they can assign orders to you
+              </p>
+            </div>
+          )}
         </div>
 
         <div className="flex gap-4 mb-8">
