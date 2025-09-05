@@ -138,7 +138,7 @@ export class DatabaseStorage implements IStorage {
     return store;
   }
 
-  async getStores(filters?: { city?: string; pincode?: string; search?: string }): Promise<Store[]> {
+  async getStores(filters?: { city?: string; pincode?: string; search?: string; name?: string; id?: string }): Promise<Store[]> {
     let query = db.select().from(stores);
     
     const conditions = [];
@@ -150,6 +150,12 @@ export class DatabaseStorage implements IStorage {
     }
     if (filters?.search) {
       conditions.push(like(stores.name, `%${filters.search}%`));
+    }
+    if (filters?.name) {
+      conditions.push(like(stores.name, `%${filters.name}%`));
+    }
+    if (filters?.id) {
+      conditions.push(eq(stores.id, filters.id));
     }
     
     if (conditions.length > 0) {
@@ -909,6 +915,74 @@ export class DatabaseStorage implements IStorage {
       .limit(1);
     
     return result ? parseFloat(result.balance.toString()) : 0;
+  }
+  // Get popular retailers based on order volume and ratings
+  async getPopularRetailers(limit: number = 10): Promise<Store[]> {
+    const popularRetailers = await db
+      .select({
+        id: stores.id,
+        name: stores.name,
+        city: stores.city,
+        pincode: stores.pincode,
+        isOpen: stores.isOpen,
+        rating: sql<number>`AVG(CAST(${orders.rating} AS DECIMAL))`.as('rating'),
+        orderCount: sql<number>`COUNT(${orders.id})`.as('orderCount')
+      })
+      .from(stores)
+      .leftJoin(orders, eq(stores.id, orders.retailerId))
+      .groupBy(stores.id, stores.name, stores.city, stores.pincode, stores.isOpen)
+      .orderBy(sql`COUNT(${orders.id}) DESC`, sql`AVG(CAST(${orders.rating} AS DECIMAL)) DESC`)
+      .limit(limit);
+    
+    return popularRetailers;
+  }
+
+  // Get available delivery boys (all delivery boys for now - could be enhanced with availability status)
+  async getAvailableDeliveryBoys(): Promise<User[]> {
+    const deliveryBoys = await db
+      .select({
+        id: users.id,
+        name: users.fullName,
+        phone: users.phone,
+        email: users.email
+      })
+      .from(users)
+      .where(eq(users.role, 'DELIVERY_BOY'));
+    
+    return deliveryBoys;
+  }
+
+  // Get retailer-specific balances for shop owner khatabook
+  async getRetailerBalancesForShopOwner(shopOwnerId: string): Promise<any[]> {
+    const retailerBalances = await db
+      .select({
+        retailerId: stores.id,
+        retailerName: stores.name,
+        currentBalance: sql<number>`
+          COALESCE(SUM(CASE 
+            WHEN ${ledgerEntries.entryType} = 'CREDIT' THEN ${ledgerEntries.amount}
+            WHEN ${ledgerEntries.entryType} = 'DEBIT' THEN -${ledgerEntries.amount}
+            ELSE 0
+          END), 0)`.as('currentBalance'),
+        totalCredits: sql<number>`
+          COALESCE(SUM(CASE 
+            WHEN ${ledgerEntries.entryType} = 'CREDIT' THEN ${ledgerEntries.amount}
+            ELSE 0
+          END), 0)`.as('totalCredits'),
+        totalDebits: sql<number>`
+          COALESCE(SUM(CASE 
+            WHEN ${ledgerEntries.entryType} = 'DEBIT' THEN ${ledgerEntries.amount}
+            ELSE 0
+          END), 0)`.as('totalDebits')
+      })
+      .from(stores)
+      .leftJoin(orders, eq(stores.id, orders.retailerId))
+      .leftJoin(ledgerEntries, eq(orders.id, ledgerEntries.orderId))
+      .where(eq(orders.ownerId, shopOwnerId))
+      .groupBy(stores.id, stores.name)
+      .having(sql`COUNT(${orders.id}) > 0`);
+    
+    return retailerBalances;
   }
 }
 

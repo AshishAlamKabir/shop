@@ -391,15 +391,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Public routes - Store discovery
   app.get('/api/stores', async (req, res) => {
     try {
-      const { city, pincode, search } = req.query;
+      const { city, pincode, search, name, id } = req.query;
       const stores = await storage.getStores({
         city: city as string,
         pincode: pincode as string,
-        search: search as string
+        search: search as string,
+        name: name as string,
+        id: id as string
       });
       res.json(stores);
     } catch (error) {
       res.status(500).json({ message: 'Failed to fetch stores' });
+    }
+  });
+
+  // Get popular retailers
+  app.get('/api/stores/popular', async (req, res) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 10;
+      const popularStores = await storage.getPopularRetailers(limit);
+      res.json(popularStores);
+    } catch (error) {
+      res.status(400).json({ message: 'Failed to fetch popular retailers' });
     }
   });
 
@@ -1511,6 +1524,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Payment change rejection error:', error);
       res.status(500).json({ message: 'Failed to reject payment change' });
+    }
+  });
+
+  // Shop Owner - Get available delivery boys
+  app.get('/api/delivery-boys/available', authenticateToken, requireRole('SHOP_OWNER'), async (req: any, res) => {
+    try {
+      const deliveryBoys = await storage.getAvailableDeliveryBoys();
+      res.json(deliveryBoys);
+    } catch (error) {
+      res.status(400).json({ message: 'Failed to fetch available delivery boys' });
+    }
+  });
+
+  // Shop Owner - Assign delivery boy to order
+  app.post('/api/shop-owner/orders/:id/assign-delivery-boy', authenticateToken, requireRole('SHOP_OWNER'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { deliveryBoyId } = req.body;
+      
+      const order = await storage.getOrder(id);
+      if (!order || order.ownerId !== req.user.id) {
+        return res.status(404).json({ message: 'Order not found' });
+      }
+
+      // Verify delivery boy exists
+      const deliveryBoy = await storage.getDeliveryBoy(deliveryBoyId);
+      if (!deliveryBoy) {
+        return res.status(400).json({ message: 'Invalid delivery boy' });
+      }
+
+      // Update order with delivery boy assignment
+      await storage.assignOrderToDeliveryBoy(id, deliveryBoyId);
+      
+      await storage.createOrderEvent({
+        orderId: id,
+        type: 'ASSIGNED_DELIVERY_BOY',
+        message: `Order assigned to delivery boy: ${deliveryBoy.name} by shop owner`
+      });
+
+      emitOrderEvent(id, order.ownerId, order.retailerId, 'deliveryBoyAssigned', {
+        orderId: id,
+        deliveryBoy: deliveryBoy.name,
+        deliveryBoyPhone: deliveryBoy.phone
+      });
+
+      res.json({ message: 'Order assigned to delivery boy successfully' });
+    } catch (error) {
+      res.status(400).json({ message: 'Failed to assign order to delivery boy' });
+    }
+  });
+
+  // Shop Owner - Get retailer-specific balances for khatabook
+  app.get('/api/khatabook/retailer-balances', authenticateToken, requireRole('SHOP_OWNER'), async (req: any, res) => {
+    try {
+      const retailerBalances = await storage.getRetailerBalancesForShopOwner(req.user.id);
+      res.json(retailerBalances);
+    } catch (error) {
+      res.status(400).json({ message: 'Failed to fetch retailer balances' });
     }
   });
 

@@ -17,7 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 export default function ShopOwnerDashboard() {
   const [activeSection, setActiveSection] = useState('explore');
   const [selectedStore, setSelectedStore] = useState<any>(null);
-  const [searchFilters, setSearchFilters] = useState({ search: '', city: '', pincode: '' });
+  const [searchFilters, setSearchFilters] = useState({ search: '', city: '', pincode: '', name: '', id: '' });
   const [deliveryType, setDeliveryType] = useState('PICKUP');
   const [orderNote, setOrderNote] = useState('');
   const [adjustmentAmount, setAdjustmentAmount] = useState('');
@@ -25,6 +25,8 @@ export default function ShopOwnerDashboard() {
   const [adjustmentDialogOpen, setAdjustmentDialogOpen] = useState(false);
   const [selectedOrderForAdjustment, setSelectedOrderForAdjustment] = useState<any>(null);
   const [productQuantities, setProductQuantities] = useState<{[key: string]: number}>({});
+  const [deliveryBoyAssignmentModal, setDeliveryBoyAssignmentModal] = useState<{ isOpen: boolean; order: any }>({ isOpen: false, order: null });
+  const [selectedDeliveryBoyId, setSelectedDeliveryBoyId] = useState('');
   
   const { cart, addToCart, removeFromCart, updateQuantity, clearCart, getTotalAmount, getItemCount } = useCartStore();
   const { toast } = useToast();
@@ -36,9 +38,46 @@ export default function ShopOwnerDashboard() {
       if (searchFilters.search) params.append('search', searchFilters.search);
       if (searchFilters.city) params.append('city', searchFilters.city);
       if (searchFilters.pincode) params.append('pincode', searchFilters.pincode);
+      if (searchFilters.name) params.append('name', searchFilters.name);
+      if (searchFilters.id) params.append('id', searchFilters.id);
       
       const response = await fetch(`/api/stores?${params}`);
       if (!response.ok) throw new Error('Failed to fetch stores');
+      return response.json();
+    }
+  });
+
+  const { data: popularRetailers = [] } = useQuery({
+    queryKey: ['/api/stores/popular'],
+    queryFn: async () => {
+      const response = await fetch('/api/stores/popular?limit=10');
+      if (!response.ok) throw new Error('Failed to fetch popular retailers');
+      return response.json();
+    }
+  });
+
+  const { data: availableDeliveryBoys = [] } = useQuery({
+    queryKey: ['/api/delivery-boys/available'],
+    queryFn: async () => {
+      const response = await fetch('/api/delivery-boys/available', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+        }
+      });
+      if (!response.ok) throw new Error('Failed to fetch delivery boys');
+      return response.json();
+    }
+  });
+
+  const { data: retailerBalances = [] } = useQuery({
+    queryKey: ['/api/khatabook/retailer-balances'],
+    queryFn: async () => {
+      const response = await fetch('/api/khatabook/retailer-balances', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+        }
+      });
+      if (!response.ok) throw new Error('Failed to fetch retailer balances');
       return response.json();
     }
   });
@@ -136,6 +175,21 @@ export default function ShopOwnerDashboard() {
     },
     onError: () => {
       toast({ title: "Failed to adjust payment amount", variant: "destructive" });
+    }
+  });
+
+  const assignDeliveryBoyMutation = useMutation({
+    mutationFn: async ({ orderId, deliveryBoyId }: { orderId: string; deliveryBoyId: string }) => {
+      return await apiRequest('POST', `/api/shop-owner/orders/${orderId}/assign-delivery-boy`, { deliveryBoyId });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/orders/mine'] });
+      setDeliveryBoyAssignmentModal({ isOpen: false, order: null });
+      setSelectedDeliveryBoyId('');
+      toast({ title: "Delivery boy assigned successfully!" });
+    },
+    onError: () => {
+      toast({ title: "Failed to assign delivery boy", variant: "destructive" });
     }
   });
 
@@ -284,8 +338,9 @@ export default function ShopOwnerDashboard() {
               {/* Search and Filters */}
               <Card className="mb-6">
                 <CardContent className="p-4">
-                  <div className="flex items-center space-x-4">
-                    <div className="flex-1">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+                    <div className="lg:col-span-2">
+                      <Label className="text-sm font-medium">Search</Label>
                       <Input
                         placeholder="Search stores..."
                         value={searchFilters.search}
@@ -293,24 +348,86 @@ export default function ShopOwnerDashboard() {
                         data-testid="input-search-stores"
                       />
                     </div>
-                    <Input
-                      placeholder="City"
-                      value={searchFilters.city}
-                      onChange={(e) => setSearchFilters(prev => ({ ...prev, city: e.target.value }))}
-                      data-testid="input-filter-city"
-                    />
-                    <Input
-                      placeholder="Pincode"
-                      value={searchFilters.pincode}
-                      onChange={(e) => setSearchFilters(prev => ({ ...prev, pincode: e.target.value }))}
-                      data-testid="input-filter-pincode"
-                    />
-                    <Button data-testid="button-search-stores">
+                    <div>
+                      <Label className="text-sm font-medium">City</Label>
+                      <Input
+                        placeholder="Enter city"
+                        value={searchFilters.city}
+                        onChange={(e) => setSearchFilters(prev => ({ ...prev, city: e.target.value }))}
+                        data-testid="input-filter-city"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium">Pincode</Label>
+                      <Input
+                        placeholder="Enter pincode"
+                        value={searchFilters.pincode}
+                        onChange={(e) => setSearchFilters(prev => ({ ...prev, pincode: e.target.value }))}
+                        data-testid="input-filter-pincode"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium">Name (optional)</Label>
+                      <Input
+                        placeholder="Store name"
+                        value={searchFilters.name}
+                        onChange={(e) => setSearchFilters(prev => ({ ...prev, name: e.target.value }))}
+                        data-testid="input-filter-name"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium">ID (optional)</Label>
+                      <Input
+                        placeholder="Store ID"
+                        value={searchFilters.id}
+                        onChange={(e) => setSearchFilters(prev => ({ ...prev, id: e.target.value }))}
+                        data-testid="input-filter-id"
+                      />
+                    </div>
+                  </div>
+                  <div className="mt-4 flex justify-end">
+                    <Button data-testid="button-search-stores" className="flex items-center gap-2">
                       <i className="fas fa-search"></i>
+                      Search
                     </Button>
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Popular Retailers Section */}
+              {popularRetailers.length > 0 && (
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+                    <i className="fas fa-star text-yellow-500"></i>
+                    Popular Retailers
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+                    {popularRetailers.slice(0, 5).map((retailer: any) => (
+                      <Card 
+                        key={retailer.id} 
+                        className="hover:shadow-md transition-shadow cursor-pointer border-l-4 border-l-yellow-400"
+                        onClick={() => setSelectedStore(retailer)}
+                      >
+                        <CardContent className="p-4">
+                          <div className="text-center">
+                            <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center mx-auto mb-2">
+                              <i className="fas fa-store text-primary-foreground text-sm"></i>
+                            </div>
+                            <h4 className="font-medium text-sm text-foreground truncate">{retailer.name}</h4>
+                            <div className="flex items-center justify-center gap-1 mt-1">
+                              <i className="fas fa-star text-yellow-500 text-xs"></i>
+                              <span className="text-xs text-muted-foreground">
+                                {retailer.rating ? parseFloat(retailer.rating).toFixed(1) : '4.5'}
+                              </span>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-1">{retailer.city}</p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Store Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -342,12 +459,15 @@ export default function ShopOwnerDashboard() {
                         </div>
                         <div className="flex items-center justify-between">
                           <div className="flex items-center text-sm text-muted-foreground">
-                            <i className="fas fa-star text-yellow-400 mr-1"></i>
-                            {store.rating} rating
+                            <i className="fas fa-star text-yellow-500 mr-1"></i>
+                            <span>{store.rating ? parseFloat(store.rating).toFixed(1) : '4.5'}</span>
                           </div>
-                          <div className="text-sm font-medium text-foreground">
-                            {store.listings?.length || 0} products
+                          <div className="text-xs text-muted-foreground">
+                            ID: {store.id.slice(-8)}
                           </div>
+                        </div>
+                        <div className="text-sm font-medium text-foreground">
+                          {store.listings?.length || 0} products
                         </div>
                       </div>
                       
@@ -709,6 +829,34 @@ export default function ShopOwnerDashboard() {
                         </div>
                       )}
                       
+                      {/* Delivery Boy Assignment Section */}
+                      {(order.status === 'ACCEPTED' || order.status === 'READY') && (
+                        <div className="border-t border-border pt-4 mt-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <h5 className="font-medium text-foreground mb-2">Delivery Assignment</h5>
+                              {order.assignedDeliveryBoy ? (
+                                <div className="flex items-center gap-2 text-sm text-green-600">
+                                  <i className="fas fa-user-check"></i>
+                                  <span>Assigned to: {order.assignedDeliveryBoy.name}</span>
+                                </div>
+                              ) : (
+                                <p className="text-sm text-muted-foreground">No delivery boy assigned</p>
+                              )}
+                            </div>
+                            <Button 
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setDeliveryBoyAssignmentModal({ isOpen: true, order })}
+                              className="flex items-center gap-2"
+                            >
+                              <i className="fas fa-truck"></i>
+                              {order.assignedDeliveryBoy ? 'Change Delivery Boy' : 'Assign Delivery Boy'}
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+
                       <div className="flex items-center justify-between pt-4 mt-4 border-t border-border">
                         <div>
                           <div className="font-semibold text-foreground">Total: ₹{order.totalAmount}</div>
@@ -841,6 +989,7 @@ export default function ShopOwnerDashboard() {
                 <p className="text-muted-foreground">Track your transaction history and balance</p>
               </div>
 
+              {/* Overall Summary */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
                 <Card>
                   <CardContent className="p-6">
@@ -891,6 +1040,59 @@ export default function ShopOwnerDashboard() {
                 </Card>
               </div>
 
+              {/* Individual Retailer Balances */}
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+                  <i className="fas fa-users text-primary"></i>
+                  Individual Retailer Balances
+                </h3>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {retailerBalances.length > 0 ? (
+                    retailerBalances.map((retailer: any) => (
+                      <Card key={retailer.retailerId} className="hover:shadow-md transition-shadow">
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
+                                <i className="fas fa-store text-primary-foreground text-sm"></i>
+                              </div>
+                              <div>
+                                <h4 className="font-medium text-foreground">{retailer.retailerName}</h4>
+                                <p className="text-xs text-muted-foreground">ID: {retailer.retailerId.slice(-8)}</p>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <p className={`font-semibold ${retailer.currentBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                ₹{Math.abs(retailer.currentBalance).toFixed(2)}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {retailer.currentBalance >= 0 ? 'Credit' : 'Debit'}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                              <p className="text-muted-foreground">Total Credits</p>
+                              <p className="font-medium text-green-600">₹{retailer.totalCredits.toFixed(2)}</p>
+                            </div>
+                            <div>
+                              <p className="text-muted-foreground">Total Debits</p>
+                              <p className="font-medium text-red-600">₹{retailer.totalDebits.toFixed(2)}</p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))
+                  ) : (
+                    <div className="lg:col-span-2 text-center text-muted-foreground py-8">
+                      <i className="fas fa-chart-line text-4xl mb-4"></i>
+                      <p>No retailer transactions yet</p>
+                      <p className="text-sm">Start placing orders to see retailer balances</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
               <Card>
                 <CardContent className="p-6">
                   <h3 className="text-lg font-semibold text-foreground mb-4">Transaction History</h3>
@@ -928,6 +1130,81 @@ export default function ShopOwnerDashboard() {
           )}
         </main>
       </div>
+
+      {/* Delivery Boy Assignment Modal */}
+      <Dialog open={deliveryBoyAssignmentModal.isOpen} onOpenChange={(open) => !open && setDeliveryBoyAssignmentModal({ isOpen: false, order: null })}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Assign Delivery Boy</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label className="text-sm font-medium">Order Details</Label>
+              <p className="text-sm text-muted-foreground">
+                Order #{deliveryBoyAssignmentModal.order?.id?.slice(-8)} - ₹{deliveryBoyAssignmentModal.order?.totalAmount}
+              </p>
+            </div>
+            <div>
+              <Label className="text-sm font-medium">Select Delivery Boy</Label>
+              <Select value={selectedDeliveryBoyId} onValueChange={setSelectedDeliveryBoyId}>
+                <SelectTrigger className="mt-2">
+                  <SelectValue placeholder="Choose a delivery boy" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableDeliveryBoys.map((deliveryBoy: any) => (
+                    <SelectItem key={deliveryBoy.id} value={deliveryBoy.id}>
+                      <div className="flex items-center gap-2">
+                        <i className="fas fa-user text-muted-foreground"></i>
+                        <span>{deliveryBoy.name}</span>
+                        <span className="text-xs text-muted-foreground">({deliveryBoy.phone})</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                  <SelectItem value="enter-id">
+                    <div className="flex items-center gap-2">
+                      <i className="fas fa-keyboard text-muted-foreground"></i>
+                      <span>Enter Delivery Boy ID</span>
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              {selectedDeliveryBoyId === 'enter-id' && (
+                <Input
+                  placeholder="Enter delivery boy ID"
+                  className="mt-2"
+                  onChange={(e) => setSelectedDeliveryBoyId(e.target.value)}
+                />
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Button 
+                onClick={() => {
+                  if (selectedDeliveryBoyId && selectedDeliveryBoyId !== 'enter-id') {
+                    assignDeliveryBoyMutation.mutate({
+                      orderId: deliveryBoyAssignmentModal.order?.id,
+                      deliveryBoyId: selectedDeliveryBoyId
+                    });
+                  }
+                }}
+                disabled={!selectedDeliveryBoyId || selectedDeliveryBoyId === 'enter-id' || assignDeliveryBoyMutation.isPending}
+                className="flex-1"
+              >
+                {assignDeliveryBoyMutation.isPending ? 'Assigning...' : 'Assign Delivery Boy'}
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setDeliveryBoyAssignmentModal({ isOpen: false, order: null });
+                  setSelectedDeliveryBoyId('');
+                }}
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <StoreCatalogModal 
         store={selectedStore}
