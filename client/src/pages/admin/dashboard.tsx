@@ -8,11 +8,13 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Header from "@/components/layout/header";
 import AddProductModal from "@/components/modals/add-product-modal";
+import { NavigationSidebar, NavigationItem } from "@/components/ui/navigation-sidebar";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
 export default function AdminDashboard() {
   const [activeSection, setActiveSection] = useState('overview');
+  const [isNavigationOpen, setIsNavigationOpen] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [userFilter, setUserFilter] = useState('');
@@ -141,69 +143,9 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header />
+      <Header onNavigationMenuClick={() => setIsNavigationOpen(true)} />
       
-      <div className="flex h-[calc(100vh-80px)]">
-        {/* Sidebar */}
-        <aside className="w-64 bg-card border-r border-border p-6">
-          <nav className="space-y-2">
-            <Button
-              onClick={() => setActiveSection('overview')}
-              variant={activeSection === 'overview' ? "default" : "ghost"}
-              className="w-full justify-start"
-              data-testid="button-nav-overview"
-            >
-              <i className="fas fa-tachometer-alt mr-3"></i>
-              Overview
-            </Button>
-            <Button
-              onClick={() => setActiveSection('users')}
-              variant={activeSection === 'users' ? "default" : "ghost"}
-              className="w-full justify-start"
-              data-testid="button-nav-users"
-            >
-              <i className="fas fa-users mr-3"></i>
-              User Management
-            </Button>
-            <Button
-              onClick={() => setActiveSection('stores')}
-              variant={activeSection === 'stores' ? "default" : "ghost"}
-              className="w-full justify-start"
-              data-testid="button-nav-stores"
-            >
-              <i className="fas fa-store mr-3"></i>
-              Store Oversight
-            </Button>
-            <Button
-              onClick={() => setActiveSection('catalog')}
-              variant={activeSection === 'catalog' ? "default" : "ghost"}
-              className="w-full justify-start"
-              data-testid="button-nav-catalog"
-            >
-              <i className="fas fa-boxes mr-3"></i>
-              Product Catalog
-            </Button>
-            <Button
-              onClick={() => setActiveSection('orders')}
-              variant={activeSection === 'orders' ? "default" : "ghost"}
-              className="w-full justify-start"
-              data-testid="button-nav-orders"
-            >
-              <i className="fas fa-receipt mr-3"></i>
-              Order Monitoring
-            </Button>
-            <Button
-              onClick={() => setActiveSection('analytics')}
-              variant={activeSection === 'analytics' ? "default" : "ghost"}
-              className="w-full justify-start"
-              data-testid="button-nav-analytics"
-            >
-              <i className="fas fa-chart-line mr-3"></i>
-              Analytics
-            </Button>
-          </nav>
-        </aside>
-
+      <div className="h-[calc(100vh-80px)]">
         {/* Main Content */}
         <main className="flex-1 p-6 overflow-auto">
           {/* Overview Section */}
@@ -896,6 +838,74 @@ export default function AdminDashboard() {
         isOpen={showAddModal} 
         onClose={() => setShowAddModal(false)} 
       />
+      
+      {/* Navigation Sidebar */}
+      <NavigationSidebar
+        isOpen={isNavigationOpen}
+        onClose={() => setIsNavigationOpen(false)}
+        title="Navigation"
+      >
+        <NavigationItem
+          onClick={() => {
+            setActiveSection('overview');
+            setIsNavigationOpen(false);
+          }}
+          active={activeSection === 'overview'}
+          icon="fas fa-tachometer-alt"
+          label="Overview"
+          testId="button-nav-overview-navigation"
+        />
+        <NavigationItem
+          onClick={() => {
+            setActiveSection('users');
+            setIsNavigationOpen(false);
+          }}
+          active={activeSection === 'users'}
+          icon="fas fa-users"
+          label="User Management"
+          testId="button-nav-users-navigation"
+        />
+        <NavigationItem
+          onClick={() => {
+            setActiveSection('stores');
+            setIsNavigationOpen(false);
+          }}
+          active={activeSection === 'stores'}
+          icon="fas fa-store"
+          label="Store Oversight"
+          testId="button-nav-stores-navigation"
+        />
+        <NavigationItem
+          onClick={() => {
+            setActiveSection('catalog');
+            setIsNavigationOpen(false);
+          }}
+          active={activeSection === 'catalog'}
+          icon="fas fa-boxes"
+          label="Product Catalog"
+          testId="button-nav-catalog-navigation"
+        />
+        <NavigationItem
+          onClick={() => {
+            setActiveSection('orders');
+            setIsNavigationOpen(false);
+          }}
+          active={activeSection === 'orders'}
+          icon="fas fa-receipt"
+          label="Order Monitoring"
+          testId="button-nav-orders-navigation"
+        />
+        <NavigationItem
+          onClick={() => {
+            setActiveSection('analytics');
+            setIsNavigationOpen(false);
+          }}
+          active={activeSection === 'analytics'}
+          icon="fas fa-chart-line"
+          label="Analytics"
+          testId="button-nav-analytics-navigation"
+        />
+      </NavigationSidebar>
     </div>
   );
 }

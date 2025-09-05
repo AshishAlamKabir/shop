@@ -10,14 +10,14 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import Header from "@/components/layout/header";
 import StoreCatalogModal from "@/components/modals/store-catalog-modal";
-import { MobileSidebar, SidebarNavItem } from "@/components/ui/mobile-sidebar";
+import { NavigationSidebar, NavigationItem } from "@/components/ui/navigation-sidebar";
 import { useCartStore } from "@/store/cart";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
 export default function ShopOwnerDashboard() {
   const [activeSection, setActiveSection] = useState('explore');
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isNavigationOpen, setIsNavigationOpen] = useState(false);
   const [selectedStore, setSelectedStore] = useState<any>(null);
   const [searchFilters, setSearchFilters] = useState({ search: '', city: '', pincode: '', name: '', id: '' });
   const [deliveryType, setDeliveryType] = useState('PICKUP');
@@ -287,56 +287,9 @@ export default function ShopOwnerDashboard() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header onMenuClick={() => setIsSidebarOpen(true)} />
+      <Header onNavigationMenuClick={() => setIsNavigationOpen(true)} />
       
-      <div className="flex h-[calc(100vh-80px)]">
-        {/* Desktop Sidebar - Hidden on Mobile */}
-        <aside className="hidden md:block w-64 bg-card border-r border-border p-6">
-          <nav className="space-y-2">
-            <Button
-              onClick={() => setActiveSection('explore')}
-              variant={activeSection === 'explore' ? "default" : "ghost"}
-              className="w-full justify-start"
-              data-testid="button-nav-explore"
-            >
-              <i className="fas fa-search mr-3"></i>
-              Explore Stores
-            </Button>
-            <Button
-              onClick={() => setActiveSection('cart')}
-              variant={activeSection === 'cart' ? "default" : "ghost"}
-              className="w-full justify-start"
-              data-testid="button-nav-cart"
-            >
-              <i className="fas fa-shopping-cart mr-3"></i>
-              Cart
-              {getItemCount() > 0 && (
-                <Badge className="ml-auto" data-testid="badge-cart-count">
-                  {getItemCount()}
-                </Badge>
-              )}
-            </Button>
-            <Button
-              onClick={() => setActiveSection('orders')}
-              variant={activeSection === 'orders' ? "default" : "ghost"}
-              className="w-full justify-start"
-              data-testid="button-nav-orders"
-            >
-              <i className="fas fa-receipt mr-3"></i>
-              My Orders
-            </Button>
-            <Button
-              onClick={() => setActiveSection('khatabook')}
-              variant={activeSection === 'khatabook' ? "default" : "ghost"}
-              className="w-full justify-start"
-              data-testid="button-nav-khatabook"
-            >
-              <i className="fas fa-book mr-3"></i>
-              Khatabook
-            </Button>
-          </nav>
-        </aside>
-
+      <div className="h-[calc(100vh-80px)]">
         {/* Main Content */}
         <main className="flex-1 p-6 overflow-auto">
           {/* Explore Stores Section */}
@@ -1228,54 +1181,54 @@ export default function ShopOwnerDashboard() {
         }}
       />
 
-      {/* Mobile Sidebar */}
-      <MobileSidebar
-        isOpen={isSidebarOpen}
-        onClose={() => setIsSidebarOpen(false)}
+      {/* Navigation Sidebar */}
+      <NavigationSidebar
+        isOpen={isNavigationOpen}
+        onClose={() => setIsNavigationOpen(false)}
         title="Navigation"
       >
-        <SidebarNavItem
+        <NavigationItem
           onClick={() => {
             setActiveSection('explore');
-            setIsSidebarOpen(false);
+            setIsNavigationOpen(false);
           }}
           active={activeSection === 'explore'}
           icon="fas fa-search"
           label="Explore Stores"
-          testId="button-nav-explore-mobile"
+          testId="button-nav-explore-navigation"
         />
-        <SidebarNavItem
+        <NavigationItem
           onClick={() => {
             setActiveSection('cart');
-            setIsSidebarOpen(false);
+            setIsNavigationOpen(false);
           }}
           active={activeSection === 'cart'}
           icon="fas fa-shopping-cart"
           label="Cart"
           badge={getItemCount()}
-          testId="button-nav-cart-mobile"
+          testId="button-nav-cart-navigation"
         />
-        <SidebarNavItem
+        <NavigationItem
           onClick={() => {
             setActiveSection('orders');
-            setIsSidebarOpen(false);
+            setIsNavigationOpen(false);
           }}
           active={activeSection === 'orders'}
           icon="fas fa-receipt"
           label="My Orders"
-          testId="button-nav-orders-mobile"
+          testId="button-nav-orders-navigation"
         />
-        <SidebarNavItem
+        <NavigationItem
           onClick={() => {
             setActiveSection('khatabook');
-            setIsSidebarOpen(false);
+            setIsNavigationOpen(false);
           }}
           active={activeSection === 'khatabook'}
           icon="fas fa-book"
           label="Khatabook"
-          testId="button-nav-khatabook-mobile"
+          testId="button-nav-khatabook-navigation"
         />
-      </MobileSidebar>
+      </NavigationSidebar>
     </div>
   );
 }

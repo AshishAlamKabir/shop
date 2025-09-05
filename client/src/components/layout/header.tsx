@@ -6,9 +6,10 @@ import { ProfileSidebar } from "@/components/ui/profile-sidebar";
 
 interface HeaderProps {
   onMenuClick?: () => void;
+  onNavigationMenuClick?: () => void;
 }
 
-export default function Header({ onMenuClick }: HeaderProps = {}) {
+export default function Header({ onMenuClick, onNavigationMenuClick }: HeaderProps = {}) {
   const [showProfileSidebar, setShowProfileSidebar] = useState(false);
   const { user } = useAuth();
 
@@ -34,19 +35,6 @@ export default function Header({ onMenuClick }: HeaderProps = {}) {
         </div>
         
         <div className="flex items-center space-x-4">
-          {/* Mobile Menu Button - Show for non-Admin roles */}
-          {onMenuClick && user?.role !== 'ADMIN' && (
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={onMenuClick}
-              className="md:hidden"
-              data-testid="button-mobile-menu"
-            >
-              <i className="fas fa-bars"></i>
-            </Button>
-          )}
-          
           {/* Notifications */}
           <Button variant="ghost" size="sm" className="relative" data-testid="button-notifications">
             <i className="fas fa-bell"></i>
@@ -54,19 +42,6 @@ export default function Header({ onMenuClick }: HeaderProps = {}) {
               3
             </span>
           </Button>
-          
-          {/* Menu Button for Retailers, Shop Owners, and Delivery Boys */}
-          {onMenuClick && user?.role !== 'ADMIN' && (
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={onMenuClick}
-              className="hidden md:block"
-              data-testid="button-menu"
-            >
-              <i className="fas fa-bars"></i>
-            </Button>
-          )}
           
           {/* Profile Icon */}
           <Button 
@@ -83,6 +58,18 @@ export default function Header({ onMenuClick }: HeaderProps = {}) {
             <span className="font-medium text-foreground hidden sm:block">{user?.fullName}</span>
             <i className="fas fa-user text-sm text-muted-foreground"></i>
           </Button>
+          
+          {/* Navigation Menu Button */}
+          {onNavigationMenuClick && (
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={onNavigationMenuClick}
+              data-testid="button-navigation-menu"
+            >
+              <i className="fas fa-bars"></i>
+            </Button>
+          )}
         </div>
       </div>
       

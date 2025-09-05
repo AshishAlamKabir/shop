@@ -12,13 +12,13 @@ import Header from "@/components/layout/header";
 import EnhancedKhatabook from "@/components/enhanced-khatabook";
 import AddFromCatalogModal from "@/components/modals/add-from-catalog-modal";
 import AddManualProductModal from "@/components/modals/add-manual-product-modal";
-import { MobileSidebar, SidebarNavItem } from "@/components/ui/mobile-sidebar";
+import { NavigationSidebar, NavigationItem } from "@/components/ui/navigation-sidebar";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
 export default function RetailerDashboard() {
   const [activeSection, setActiveSection] = useState('store');
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isNavigationOpen, setIsNavigationOpen] = useState(false);
   const [newDeliveryBoy, setNewDeliveryBoy] = useState({ name: '', phone: '', address: '' });
   const [editingDeliveryBoy, setEditingDeliveryBoy] = useState<any>(null);
   const [paymentModal, setPaymentModal] = useState<{ isOpen: boolean; order: any }>({ isOpen: false, order: null });
@@ -265,65 +265,9 @@ export default function RetailerDashboard() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header onMenuClick={() => setIsSidebarOpen(true)} />
+      <Header onNavigationMenuClick={() => setIsNavigationOpen(true)} />
       
-      <div className="flex h-[calc(100vh-80px)]">
-        {/* Desktop Sidebar - Hidden on Mobile */}
-        <aside className="hidden md:block w-64 bg-card border-r border-border p-6">
-          <nav className="space-y-2">
-            <Button
-              onClick={() => setActiveSection('store')}
-              variant={activeSection === 'store' ? "default" : "ghost"}
-              className="w-full justify-start"
-              data-testid="button-nav-store"
-            >
-              <i className="fas fa-store mr-3"></i>
-              My Store
-            </Button>
-            <Button
-              onClick={() => setActiveSection('listings')}
-              variant={activeSection === 'listings' ? "default" : "ghost"}
-              className="w-full justify-start"
-              data-testid="button-nav-listings"
-            >
-              <i className="fas fa-box mr-3"></i>
-              Inventory
-            </Button>
-            <Button
-              onClick={() => setActiveSection('orders')}
-              variant={activeSection === 'orders' ? "default" : "ghost"}
-              className="w-full justify-start"
-              data-testid="button-nav-orders"
-            >
-              <i className="fas fa-receipt mr-3"></i>
-              Orders
-              {pendingOrders.length > 0 && (
-                <Badge className="ml-auto" data-testid="badge-pending-orders">
-                  {pendingOrders.length}
-                </Badge>
-              )}
-            </Button>
-            <Button
-              onClick={() => setActiveSection('khatabook')}
-              variant={activeSection === 'khatabook' ? "default" : "ghost"}
-              className="w-full justify-start"
-              data-testid="button-nav-khatabook"
-            >
-              <i className="fas fa-book mr-3"></i>
-              Khatabook
-            </Button>
-            <Button
-              onClick={() => setActiveSection('delivery-boys')}
-              variant={activeSection === 'delivery-boys' ? "default" : "ghost"}
-              className="w-full justify-start"
-              data-testid="button-nav-delivery-boys"
-            >
-              <i className="fas fa-motorcycle mr-3"></i>
-              Delivery Boy
-            </Button>
-          </nav>
-        </aside>
-
+      <div className="h-[calc(100vh-80px)]">
         {/* Main Content */}
         <main className="flex-1 p-6 overflow-auto">
           {/* Store Profile Section */}
@@ -1021,64 +965,64 @@ export default function RetailerDashboard() {
         storeId={store?.id || ''}
       />
 
-      {/* Mobile Sidebar */}
-      <MobileSidebar
-        isOpen={isSidebarOpen}
-        onClose={() => setIsSidebarOpen(false)}
+      {/* Navigation Sidebar */}
+      <NavigationSidebar
+        isOpen={isNavigationOpen}
+        onClose={() => setIsNavigationOpen(false)}
         title="Navigation"
       >
-        <SidebarNavItem
+        <NavigationItem
           onClick={() => {
             setActiveSection('store');
-            setIsSidebarOpen(false);
+            setIsNavigationOpen(false);
           }}
           active={activeSection === 'store'}
           icon="fas fa-store"
           label="My Store"
-          testId="button-nav-store-mobile"
+          testId="button-nav-store-navigation"
         />
-        <SidebarNavItem
+        <NavigationItem
           onClick={() => {
             setActiveSection('listings');
-            setIsSidebarOpen(false);
+            setIsNavigationOpen(false);
           }}
           active={activeSection === 'listings'}
           icon="fas fa-box"
           label="Inventory"
-          testId="button-nav-listings-mobile"
+          testId="button-nav-listings-navigation"
         />
-        <SidebarNavItem
+        <NavigationItem
           onClick={() => {
             setActiveSection('orders');
-            setIsSidebarOpen(false);
+            setIsNavigationOpen(false);
           }}
           active={activeSection === 'orders'}
           icon="fas fa-receipt"
           label="Orders"
           badge={pendingOrders.length}
-          testId="button-nav-orders-mobile"
+          testId="button-nav-orders-navigation"
         />
-        <SidebarNavItem
+        <NavigationItem
           onClick={() => {
             setActiveSection('khatabook');
-            setIsSidebarOpen(false);
+            setIsNavigationOpen(false);
           }}
           active={activeSection === 'khatabook'}
           icon="fas fa-book"
           label="Khatabook"
-          testId="button-nav-khatabook-mobile"
+          testId="button-nav-khatabook-navigation"
         />
-        <SidebarNavItem
+        <NavigationItem
           onClick={() => {
             setActiveSection('delivery-boys');
-            setIsSidebarOpen(false);
+            setIsNavigationOpen(false);
           }}
           active={activeSection === 'delivery-boys'}
           icon="fas fa-motorcycle"
           label="Delivery Boy"
-          testId="button-nav-delivery-boys-mobile"
+          testId="button-nav-delivery-boys-navigation"
         />
-      </MobileSidebar>
+      </NavigationSidebar>
     </div>
   );
 }

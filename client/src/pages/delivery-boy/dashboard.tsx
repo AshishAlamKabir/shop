@@ -8,14 +8,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import Header from "@/components/layout/header";
-import { MobileSidebar, SidebarNavItem } from "@/components/ui/mobile-sidebar";
+import { NavigationSidebar, NavigationItem } from "@/components/ui/navigation-sidebar";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 
 export default function DeliveryBoyDashboard() {
   const [activeSection, setActiveSection] = useState('orders');
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isNavigationOpen, setIsNavigationOpen] = useState(false);
   const [paymentModal, setPaymentModal] = useState<{ isOpen: boolean; order: any }>({ isOpen: false, order: null });
   const [paymentChangeModal, setPaymentChangeModal] = useState<{ isOpen: boolean; order: any }>({ isOpen: false, order: null });
   const [paymentAmount, setPaymentAmount] = useState('');
@@ -123,7 +123,7 @@ export default function DeliveryBoyDashboard() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 to-accent/10">
-      <Header onMenuClick={() => setIsSidebarOpen(true)} />
+      <Header onNavigationMenuClick={() => setIsNavigationOpen(true)} />
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-foreground mb-2">Delivery Dashboard</h1>
@@ -354,24 +354,24 @@ export default function DeliveryBoyDashboard() {
           </DialogContent>
         </Dialog>
 
-        {/* Mobile Sidebar */}
-        <MobileSidebar
-          isOpen={isSidebarOpen}
-          onClose={() => setIsSidebarOpen(false)}
+        {/* Navigation Sidebar */}
+        <NavigationSidebar
+          isOpen={isNavigationOpen}
+          onClose={() => setIsNavigationOpen(false)}
           title="Navigation"
         >
-          <SidebarNavItem
+          <NavigationItem
             onClick={() => {
               setActiveSection('orders');
-              setIsSidebarOpen(false);
+              setIsNavigationOpen(false);
             }}
             active={activeSection === 'orders'}
             icon="fas fa-truck"
             label="My Deliveries"
             badge={orders.length}
-            testId="button-nav-orders-mobile"
+            testId="button-nav-orders-navigation"
           />
-        </MobileSidebar>
+        </NavigationSidebar>
       </div>
     </div>
   );
