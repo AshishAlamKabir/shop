@@ -100,6 +100,11 @@ export interface IStorage {
   
   // Khatabook operations
   createKhatabookEntry(entry: InsertKhatabook): Promise<Khatabook>;
+  
+  // Admin overview operations
+  getAllUsers(): Promise<User[]>;
+  getAllOrdersForAdmin(): Promise<any[]>;
+  getSystemAnalytics(): Promise<any>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -983,6 +988,60 @@ export class DatabaseStorage implements IStorage {
       .having(sql`COUNT(${orders.id}) > 0`);
     
     return retailerBalances;
+  }
+
+  // Admin overview operations
+  async getAllUsers(): Promise<User[]> {
+    return await db.select().from(users).orderBy(desc(users.createdAt));
+  }
+
+  async getAllOrdersForAdmin(): Promise<any[]> {
+    return await db.query.orders.findMany({
+      with: {
+        owner: true,
+        retailer: true,
+        store: true,
+        items: {
+          with: {
+            listing: {
+              with: {
+                product: true
+              }
+            }
+          }
+        }
+      },
+      orderBy: desc(orders.createdAt),
+      limit: 50
+    });
+  }
+
+  async getSystemAnalytics(): Promise<any> {
+    const totalUsers = await db.select({ count: sql`count(*)` }).from(users);
+    const totalStores = await db.select({ count: sql`count(*)` }).from(stores);
+    const totalProducts = await db.select({ count: sql`count(*)` }).from(productCatalog);
+    const totalOrders = await db.select({ count: sql`count(*)` }).from(orders);
+    
+    const usersByRole = await db.select({
+      role: users.role,
+      count: sql`count(*)`
+    }).from(users).groupBy(users.role);
+
+    const ordersByStatus = await db.select({
+      status: orders.status,
+      count: sql`count(*)`
+    }).from(orders).groupBy(orders.status);
+
+    return {
+      totals: {
+        users: totalUsers[0]?.count || 0,
+        stores: totalStores[0]?.count || 0,
+        products: totalProducts[0]?.count || 0,
+        orders: totalOrders[0]?.count || 0
+      },
+      usersByRole,
+      ordersByStatus
+    };
   }
 }
 

@@ -187,6 +187,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin routes - User Management
+  app.get('/api/admin/users', authenticateToken, requireRole('ADMIN'), async (req: any, res) => {
+    try {
+      const { page = 1, limit = 20, role, search } = req.query;
+      // For now, we'll get all users. In a real system, you'd implement pagination and filtering
+      const users = await storage.getAllUsers();
+      res.json(users);
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to fetch users' });
+    }
+  });
+
+  app.get('/api/admin/stores', authenticateToken, requireRole('ADMIN'), async (req: any, res) => {
+    try {
+      const { search, city, status } = req.query;
+      const stores = await storage.getStores({ search, city });
+      res.json(stores);
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to fetch stores' });
+    }
+  });
+
+  app.get('/api/admin/orders', authenticateToken, requireRole('ADMIN'), async (req: any, res) => {
+    try {
+      const { status, page = 1, limit = 20 } = req.query;
+      const orders = await storage.getAllOrdersForAdmin();
+      res.json(orders);
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to fetch orders' });
+    }
+  });
+
+  app.get('/api/admin/analytics', authenticateToken, requireRole('ADMIN'), async (req: any, res) => {
+    try {
+      const analytics = await storage.getSystemAnalytics();
+      res.json(analytics);
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to fetch analytics' });
+    }
+  });
+
   // Retailer access to global catalog for adding products
   app.get('/api/retailer/catalog', authenticateToken, requireRole('RETAILER'), async (req: any, res) => {
     try {
@@ -976,10 +1017,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get individual shop owner balances for retailers
   app.get('/api/retailer/shop-owner-balances', authenticateToken, requireRole('RETAILER'), async (req: any, res) => {
     try {
-      const { data: orders } = await storage.getOrdersByRetailer(req.user.id);
+      const orders = await storage.getOrdersByRetailer(req.user.id);
       
       // Get unique shop owners from orders
-      const shopOwnerIds = [...new Set(orders.map(order => order.ownerId))];
+      const shopOwnerIds = [...new Set(orders.map((order: any) => order.ownerId))];
       
       const balances = await Promise.all(
         shopOwnerIds.map(async (shopOwnerId) => {
