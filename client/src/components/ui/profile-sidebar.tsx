@@ -1,9 +1,12 @@
-import React from "react";
+import React, { useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { useAuth } from "@/hooks/use-auth";
+import EditProfileModal from "@/components/modals/edit-profile-modal";
+import ChangePasswordModal from "@/components/modals/change-password-modal";
+import SettingsModal from "@/components/modals/settings-modal";
 
 interface ProfileSidebarProps {
   isOpen: boolean;
@@ -12,6 +15,9 @@ interface ProfileSidebarProps {
 
 export function ProfileSidebar({ isOpen, onClose }: ProfileSidebarProps) {
   const { user, logout } = useAuth();
+  const [showEditProfile, setShowEditProfile] = useState(false);
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
   const getRoleDisplay = (role: string) => {
     return role.replace('_', ' ');
@@ -108,6 +114,7 @@ export function ProfileSidebar({ isOpen, onClose }: ProfileSidebarProps) {
             <Button 
               variant="outline" 
               className="w-full justify-start"
+              onClick={() => setShowEditProfile(true)}
               data-testid="button-edit-profile"
             >
               <i className="fas fa-edit mr-2"></i>
@@ -117,6 +124,7 @@ export function ProfileSidebar({ isOpen, onClose }: ProfileSidebarProps) {
             <Button 
               variant="outline" 
               className="w-full justify-start"
+              onClick={() => setShowChangePassword(true)}
               data-testid="button-change-password"
             >
               <i className="fas fa-key mr-2"></i>
@@ -126,6 +134,7 @@ export function ProfileSidebar({ isOpen, onClose }: ProfileSidebarProps) {
             <Button 
               variant="outline" 
               className="w-full justify-start"
+              onClick={() => setShowSettings(true)}
               data-testid="button-settings"
             >
               <i className="fas fa-cog mr-2"></i>
@@ -150,6 +159,22 @@ export function ProfileSidebar({ isOpen, onClose }: ProfileSidebarProps) {
           </div>
         </div>
       </SheetContent>
+      
+      {/* Modals */}
+      <EditProfileModal 
+        isOpen={showEditProfile} 
+        onClose={() => setShowEditProfile(false)} 
+      />
+      
+      <ChangePasswordModal 
+        isOpen={showChangePassword} 
+        onClose={() => setShowChangePassword(false)} 
+      />
+      
+      <SettingsModal 
+        isOpen={showSettings} 
+        onClose={() => setShowSettings(false)} 
+      />
     </Sheet>
   );
 }

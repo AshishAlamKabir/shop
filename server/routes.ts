@@ -141,6 +141,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
+  // Update user profile
+  app.patch('/api/auth/profile', authenticateToken, async (req: any, res) => {
+    try {
+      const { fullName, email, phone } = req.body;
+      
+      // Check if email is being changed and if it's already in use
+      if (email && email !== req.user.email) {
+        const existingUser = await storage.getUserByEmail(email);
+        if (existingUser && existingUser.id !== req.user.id) {
+          return res.status(400).json({ message: 'Email already in use' });
+        }
+      }
+
+      const updatedUser = await storage.updateUser(req.user.id, {
+        fullName,
+        email,
+        phone
+      });
+
+      res.json({
+        user: {
+          id: updatedUser.id,
+          email: updatedUser.email,
+          fullName: updatedUser.fullName,
+          role: updatedUser.role,
+          phone: updatedUser.phone
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to update profile' });
+    }
+  });
+
+  // Change user password
+  app.post('/api/auth/change-password', authenticateToken, async (req: any, res) => {
+    try {
+      const { currentPassword, newPassword } = req.body;
+      
+      // Verify current password
+      const user = await storage.getUserById(req.user.id);
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      const isValidPassword = await bcrypt.compare(currentPassword, user.passwordHash);
+      if (!isValidPassword) {
+        return res.status(400).json({ message: 'Current password is incorrect' });
+      }
+
+      // Hash new password
+      const newPasswordHash = await bcrypt.hash(newPassword, 10);
+      
+      await storage.updateUser(req.user.id, {
+        passwordHash: newPasswordHash
+      });
+
+      res.json({ message: 'Password changed successfully' });
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to change password' });
+    }
+  });
+
   // Admin routes - Product Catalog
   app.post('/api/admin/catalog', authenticateToken, requireRole('ADMIN'), async (req: any, res) => {
     try {
