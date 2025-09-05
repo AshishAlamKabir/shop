@@ -1,0 +1,38 @@
+Register as Retailer,Shop,Delivery Boy, Admin by Phone number , email(optional),name.
+Login with (phone Number and otp)
+A.Retailer(Account)
+1.My Store 
+Information(Can Be edit by the store owner) 
+(Store Name,City ,Pin Code,Status, Address),
+store rating, active products , pending orders.
+2.Inventory: In this section retailer can add products . 
+There will be two ways to add products to retailers' stores.
+a) Retailers can add a product on their own . 
+b) Retailer can select the retailer store category then can add products from a global store maintained and edited by admins. 
+            3.Orders : In this section shop owner
+		a) When a Shop owner orders from a retailer account in this section orders will appear. 
+		b)A particular order/orders can be transferred to a delivery boy by a retailer .
+	4. Khatabook
+a) Add a section where retailers can see individual shop owners (Current Balance,Total Credits,Total Debits) and also see the total (Current Balance,Total Credits,Total Debits) adding all accounts of shop owners.
+	5.Deliver Boy
+		a)Retailers can add any delivery boys account to their shop.When  a new delivery boy is added it will appear in the "Delivery Boy” Section of retailers account.
+		b)Retailers can not create any delivery boys account . Delivery boy accounts will be created by delivery boys individually.
+
+B.Shop Owner(Account)
+	1.Explore stores.(Discover retailers and browse their products)
+Shop owners can add retailer  to a section  by Entering (City,Pincode,Name(optional), ID(optional)), search(button)
+Show popular retailers accounts with rating ranking.Inside retailers store shopowner can brows add products to cart.
+            2.Cart  
+a)From stores Shop owners can add products to cart.From cart shop owners can order.
+After order, it will be shown in “my orders” Section.
+	3.My Orders:
+All the orders will appear .
+Retailer can make a order to appear in a delivery boys account.
+Button(Select delivery Boy: select from recent or select by entering ID or select from(Available Delivery boys(suggested by system(X))))
+	4.Khatabook:
+			a)a) Add a section where shop owners can see individual retailers (Current Balance,Total Credits,Total Debits) and also see the total (Current Balance,Total Credits,Total Debits) adding all accounts of retailers.
+
+C.Delivery Boy(Account)
+	1.User can register with a phone number and select “Delivery boy”.	
+2.delivery boy will get delivery details from retailers accounts , at the time of delivery delivery boy can edit the payment if the shopowner wants to pay less or more .
+3.At the time of delivery before paying delivery boy will edit the payment amount before paying and after receiving the edited amount retailer ,shopowner will get notified(show in khatabook) what the amount and udate the khatabook. Amount approval will be taken from shopowner before updating the khatabook.	
