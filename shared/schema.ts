@@ -82,6 +82,7 @@ export const orders = pgTable("orders", {
   amountAdjustedBy: varchar("amount_adjusted_by"), // shop owner user id
   amountAdjustedAt: timestamp("amount_adjusted_at"),
   adjustmentNote: text("adjustment_note"),
+  assignedDeliveryBoyId: varchar("assigned_delivery_boy_id"), // delivery boy assigned to this order
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

@@ -43,6 +43,7 @@ export interface IStorage {
   getOrdersByRetailer(retailerId: string): Promise<any[]>;
   getOrder(id: string): Promise<any>;
   updateOrderStatus(id: string, status: string): Promise<Order>;
+  assignOrderToDeliveryBoy(orderId: string, deliveryBoyId: string): Promise<Order>;
   
   // Order items
   createOrderItems(items: InsertOrderItem[]): Promise<OrderItem[]>;
@@ -291,6 +292,14 @@ export class DatabaseStorage implements IStorage {
 
   async updateOrderStatus(id: string, status: string): Promise<Order> {
     const [order] = await db.update(orders).set({ status: status as any, updatedAt: new Date() }).where(eq(orders.id, id)).returning();
+    return order;
+  }
+
+  async assignOrderToDeliveryBoy(orderId: string, deliveryBoyId: string): Promise<Order> {
+    const [order] = await db.update(orders).set({ 
+      assignedDeliveryBoyId: deliveryBoyId, 
+      updatedAt: new Date() 
+    }).where(eq(orders.id, orderId)).returning();
     return order;
   }
 

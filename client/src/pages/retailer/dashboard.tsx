@@ -9,6 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import Header from "@/components/layout/header";
+import EnhancedKhatabook from "@/components/enhanced-khatabook";
+import AddFromCatalogModal from "@/components/modals/add-from-catalog-modal";
+import AddManualProductModal from "@/components/modals/add-manual-product-modal";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
@@ -20,6 +23,17 @@ export default function RetailerDashboard() {
   const [paymentAmount, setPaymentAmount] = useState('');
   const [paymentNote, setPaymentNote] = useState('');
   const [recentlyCreatedDeliveryBoy, setRecentlyCreatedDeliveryBoy] = useState<any>(null);
+  const [showManualModal, setShowManualModal] = useState(false);
+  const [showCatalogModal, setShowCatalogModal] = useState(false);
+  const [editingStore, setEditingStore] = useState(false);
+  const [storeFormData, setStoreFormData] = useState({
+    name: '',
+    address: '',
+    city: '',
+    pincode: '',
+    phone: '',
+    description: ''
+  });
   const { toast } = useToast();
 
   const { data: store } = useQuery({
@@ -194,6 +208,33 @@ export default function RetailerDashboard() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/retailer/delivery-boys'] });
       toast({ title: "Delivery boy updated successfully" });
+    }
+  });
+
+  const updateStoreMutation = useMutation({
+    mutationFn: async (storeData: any) => {
+      await apiRequest('POST', '/api/retailer/store', storeData);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/retailer/store/me'] });
+      toast({ title: "Store information updated successfully" });
+      setEditingStore(false);
+    },
+    onError: () => {
+      toast({ title: "Failed to update store information", variant: "destructive" });
+    }
+  });
+
+  const assignDeliveryBoyMutation = useMutation({
+    mutationFn: async ({ orderId, deliveryBoyId }: { orderId: string; deliveryBoyId: string }) => {
+      await apiRequest('POST', `/api/orders/${orderId}/assign-delivery-boy`, { deliveryBoyId });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/retailer/orders'] });
+      toast({ title: "Delivery boy assigned successfully" });
+    },
+    onError: () => {
+      toast({ title: "Failed to assign delivery boy", variant: "destructive" });
     }
   });
 
@@ -402,12 +443,25 @@ export default function RetailerDashboard() {
               <div className="flex items-center justify-between mb-6">
                 <div>
                   <h2 className="text-2xl font-bold text-foreground">Inventory Management</h2>
-                  <p className="text-muted-foreground">Add products from catalog and manage pricing</p>
+                  <p className="text-muted-foreground">Add products manually or from global catalog</p>
                 </div>
-                <Button data-testid="button-add-listing">
-                  <i className="fas fa-plus mr-2"></i>
-                  Add from Catalog
-                </Button>
+                <div className="flex gap-3">
+                  <Button 
+                    variant="outline"
+                    onClick={() => setShowManualModal(true)}
+                    data-testid="button-add-manual-product"
+                  >
+                    <i className="fas fa-plus mr-2"></i>
+                    Add Manually
+                  </Button>
+                  <Button 
+                    onClick={() => setShowCatalogModal(true)}
+                    data-testid="button-add-from-catalog"
+                  >
+                    <i className="fas fa-search mr-2"></i>
+                    Add from Catalog
+                  </Button>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -613,99 +667,11 @@ export default function RetailerDashboard() {
             </div>
           )}
 
-          {/* Khatabook Section */}
+          {/* Enhanced Khatabook Section */}
           {activeSection === 'khatabook' && (
-            <div>
-              <div className="mb-6">
-                <h2 className="text-2xl font-bold text-foreground mb-2">Khatabook</h2>
-                <p className="text-muted-foreground">Track your payment collections and balance</p>
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-muted-foreground">Current Balance</p>
-                        <p className="text-2xl font-bold text-foreground">
-                          ₹{ledgerSummary?.currentBalance?.toFixed(2) || '0.00'}
-                        </p>
-                      </div>
-                      <div className="bg-blue-100 p-3 rounded-full">
-                        <i className="fas fa-wallet text-blue-600"></i>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-muted-foreground">Total Credits</p>
-                        <p className="text-2xl font-bold text-green-600">
-                          ₹{ledgerSummary?.totalCredits ? parseFloat(ledgerSummary.totalCredits).toFixed(2) : '0.00'}
-                        </p>
-                      </div>
-                      <div className="bg-green-100 p-3 rounded-full">
-                        <i className="fas fa-arrow-up text-green-600"></i>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-muted-foreground">Total Debits</p>
-                        <p className="text-2xl font-bold text-red-600">
-                          ₹{ledgerSummary?.totalDebits ? parseFloat(ledgerSummary.totalDebits).toFixed(2) : '0.00'}
-                        </p>
-                      </div>
-                      <div className="bg-red-100 p-3 rounded-full">
-                        <i className="fas fa-arrow-down text-red-600"></i>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              <Card>
-                <CardContent className="p-6">
-                  <h3 className="text-lg font-semibold text-foreground mb-4">Transaction History</h3>
-                  <div className="space-y-3">
-                    {ledgerEntries?.entries?.map((entry: any) => (
-                      <div key={entry.id} className="flex items-center justify-between p-3 border border-border rounded-lg">
-                        <div className="flex items-center space-x-3">
-                          <div className={`w-3 h-3 rounded-full ${entry.entryType === 'CREDIT' ? 'bg-green-600' : 'bg-red-600'}`}></div>
-                          <div>
-                            <div className="font-medium text-foreground">{entry.description}</div>
-                            <div className="text-sm text-muted-foreground">
-                              {new Date(entry.createdAt).toLocaleDateString()} • {entry.transactionType.replace('_', ' ')}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className={`font-semibold ${entry.entryType === 'CREDIT' ? 'text-green-600' : 'text-red-600'}`}>
-                            {entry.entryType === 'CREDIT' ? '+' : '-'}₹{parseFloat(entry.amount).toFixed(2)}
-                          </div>
-                          <div className="text-sm text-muted-foreground">
-                            Bal: ₹{parseFloat(entry.balance).toFixed(2)}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                    {(!ledgerEntries?.entries || ledgerEntries.entries.length === 0) && (
-                      <div className="text-center text-muted-foreground py-8">
-                        No transactions yet. Payment confirmations will appear here as ledger entries.
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+            <EnhancedKhatabook />
           )}
+
 
           {/* Delivery Boys Section */}
           {activeSection === 'delivery-boys' && (
@@ -1038,6 +1004,20 @@ export default function RetailerDashboard() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Manual Product Modal */}
+      <AddManualProductModal 
+        isOpen={showManualModal}
+        onClose={() => setShowManualModal(false)}
+        storeId={store?.id || ''}
+      />
+
+      {/* Catalog Selection Modal */}
+      <AddFromCatalogModal 
+        isOpen={showCatalogModal}
+        onClose={() => setShowCatalogModal(false)}
+        storeId={store?.id || ''}
+      />
     </div>
   );
 }

@@ -187,6 +187,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Retailer access to global catalog for adding products
+  app.get('/api/retailer/catalog', authenticateToken, requireRole('RETAILER'), async (req: any, res) => {
+    try {
+      const { search, page = 1, limit = 50 } = req.query;
+      const products = await storage.getProducts({ search, page: parseInt(page), limit: parseInt(limit) });
+      res.json(products);
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to fetch products' });
+    }
+  });
+
   // Retailer routes - Store management
   app.post('/api/retailer/store', authenticateToken, requireRole('RETAILER'), async (req: any, res) => {
     try {
@@ -621,6 +632,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Assign order to delivery boy
+  app.post('/api/orders/:id/assign-delivery-boy', authenticateToken, requireRole('RETAILER'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { deliveryBoyId } = req.body;
+      
+      const order = await storage.getOrder(id);
+      if (!order || order.retailerId !== req.user.id) {
+        return res.status(404).json({ message: 'Order not found' });
+      }
+
+      // Verify delivery boy belongs to retailer
+      const deliveryBoy = await storage.getDeliveryBoy(deliveryBoyId);
+      if (!deliveryBoy || deliveryBoy.retailerId !== req.user.id) {
+        return res.status(400).json({ message: 'Invalid delivery boy' });
+      }
+
+      // Update order with delivery boy assignment
+      await storage.assignOrderToDeliveryBoy(id, deliveryBoyId);
+      
+      await storage.createOrderEvent({
+        orderId: id,
+        type: 'ASSIGNED_DELIVERY_BOY',
+        message: `Order assigned to delivery boy: ${deliveryBoy.name}`
+      });
+
+      emitOrderEvent(id, order.ownerId, order.retailerId, 'deliveryBoyAssigned', {
+        orderId: id,
+        deliveryBoy: deliveryBoy.name,
+        deliveryBoyPhone: deliveryBoy.phone
+      });
+
+      res.json({ message: 'Order assigned to delivery boy successfully' });
+    } catch (error) {
+      res.status(400).json({ message: 'Failed to assign order to delivery boy' });
+    }
+  });
+
   app.get('/api/orders/:id/timeline', authenticateToken, async (req: any, res) => {
     try {
       const { id } = req.params;
@@ -908,6 +957,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Ledger summary error:', error);
       res.status(500).json({ message: 'Failed to fetch ledger summary' });
+    }
+  });
+
+  // Get individual shop owner balances for retailers
+  app.get('/api/retailer/shop-owner-balances', authenticateToken, requireRole('RETAILER'), async (req: any, res) => {
+    try {
+      const { data: orders } = await storage.getOrdersByRetailer(req.user.id);
+      
+      // Get unique shop owners from orders
+      const shopOwnerIds = [...new Set(orders.map(order => order.ownerId))];
+      
+      const balances = await Promise.all(
+        shopOwnerIds.map(async (shopOwnerId) => {
+          const summary = await storage.getLedgerSummary(req.user.id, shopOwnerId);
+          const shopOwner = await storage.getUser(shopOwnerId);
+          const entries = await storage.getLedgerEntries(req.user.id, { 
+            counterpartyId: shopOwnerId,
+            limit: 10
+          });
+          
+          return {
+            shopOwnerId,
+            shopOwnerName: shopOwner?.fullName || 'Unknown',
+            shopOwnerEmail: shopOwner?.email,
+            currentBalance: summary.currentBalance || 0,
+            totalCredits: summary.totalCredits || 0,
+            totalDebits: summary.totalDebits || 0,
+            recentEntries: entries.entries || []
+          };
+        })
+      );
+
+      // Calculate overall totals
+      const totalBalance = balances.reduce((sum, b) => sum + parseFloat(b.currentBalance.toString()), 0);
+      const totalCredits = balances.reduce((sum, b) => sum + parseFloat(b.totalCredits.toString()), 0);
+      const totalDebits = balances.reduce((sum, b) => sum + parseFloat(b.totalDebits.toString()), 0);
+
+      res.json({
+        shopOwnerBalances: balances,
+        totals: {
+          currentBalance: totalBalance,
+          totalCredits: totalCredits,
+          totalDebits: totalDebits
+        }
+      });
+    } catch (error) {
+      console.error('Shop owner balances error:', error);
+      res.status(500).json({ message: 'Failed to fetch shop owner balances' });
     }
   });
 
