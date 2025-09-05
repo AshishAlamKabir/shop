@@ -1,0 +1,97 @@
+User Registration and Login
+
+Registration Options: Retailer, Shop Owner, Delivery Boy, Admin.
+
+Required Details: Phone Number (mandatory), Name (mandatory), Email (optional).
+
+Login Method: Phone Number with OTP authentication.
+
+A. Retailer Account
+
+My Store
+
+Editable information: Store Name, City, Pin Code, Status, Address.
+
+Display: Store rating, Active products, Pending orders.
+
+Inventory Management
+
+Retailers can add products in two ways:
+a) Add products manually.
+b) Select store category and add products from a Global Store (maintained and updated by Admin).
+
+Orders
+
+All shop owner orders appear in this section.
+
+Retailer can assign orders to delivery boys.
+
+Khatabook
+
+View financial details for each shop owner: Current Balance, Total Credits, Total Debits.
+
+View consolidated financial details across all shop owners.
+
+Delivery Boys
+
+Retailers can add delivery boys’ accounts to their shop (only if the delivery boy has self-registered).
+
+Retailers cannot create delivery boy accounts.
+
+B. Shop Owner Account
+
+Explore Stores
+
+Search retailers by City, Pin Code, Name (optional), ID (optional).
+
+Discover popular retailers ranked by ratings.
+
+Browse retailer stores and add products to cart.
+
+Cart
+
+Add products from retailer stores to cart.
+
+Place orders directly from cart.
+
+After ordering, details appear in My Orders.
+
+My Orders
+
+Displays all placed orders.
+
+Retailer can assign a delivery boy.
+
+Delivery Boy selection options:
+
+Recent Delivery Boys
+
+Enter Delivery Boy ID
+
+Choose from system-suggested available Delivery Boys
+
+Khatabook
+
+View financial details for each retailer: Current Balance, Total Credits, Total Debits.
+
+View consolidated financial details across all retailers.
+
+C. Delivery Boy Account
+
+Registration
+
+Register with Phone Number and select "Delivery Boy" as account type.
+
+Delivery Management
+
+Receive delivery details from retailer accounts.
+
+At delivery, edit payment amount if the shop owner adjusts payment (less/more).
+
+Payment & Khatabook Updates
+
+Delivery Boy edits payment before transaction.
+
+Shop Owner approval is required before updating Khatabook.
+
+Once approved, the updated amount reflects in both Retailer’s and Shop Owner’s Khatabook.
