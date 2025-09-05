@@ -269,7 +269,17 @@ export default function ShopOwnerDashboard() {
 
     toast({ 
       title: "Added to cart!", 
-      description: `${quantity}x ${item.product.name} from ${listing.storeName}` 
+      description: `${quantity}x ${item.product.name} from ${listing.storeName}`,
+      action: (
+        <Button
+          size="sm"
+          onClick={() => setActiveSection('cart')}
+          className="ml-auto"
+        >
+          <i className="fas fa-shopping-cart mr-1"></i>
+          View Cart
+        </Button>
+      )
     });
   };
 
@@ -1210,6 +1220,10 @@ export default function ShopOwnerDashboard() {
         store={selectedStore}
         isOpen={!!selectedStore}
         onClose={() => setSelectedStore(null)}
+        onNavigateToCart={() => {
+          setSelectedStore(null);
+          setActiveSection('cart');
+        }}
       />
     </div>
   );

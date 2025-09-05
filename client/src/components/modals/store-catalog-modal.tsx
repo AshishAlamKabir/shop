@@ -9,9 +9,10 @@ interface StoreCatalogModalProps {
   store: any;
   isOpen: boolean;
   onClose: () => void;
+  onNavigateToCart?: () => void;
 }
 
-export default function StoreCatalogModal({ store, isOpen, onClose }: StoreCatalogModalProps) {
+export default function StoreCatalogModal({ store, isOpen, onClose, onNavigateToCart }: StoreCatalogModalProps) {
   const { addToCart } = useCartStore();
   const { toast } = useToast();
 
@@ -40,7 +41,17 @@ export default function StoreCatalogModal({ store, isOpen, onClose }: StoreCatal
     
     toast({ 
       title: "Added to cart!", 
-      description: `${listing.product.name} has been added to your cart.` 
+      description: `${listing.product.name} has been added to your cart.`,
+      action: onNavigateToCart ? (
+        <Button
+          size="sm"
+          onClick={onNavigateToCart}
+          className="ml-auto"
+        >
+          <i className="fas fa-shopping-cart mr-1"></i>
+          View Cart
+        </Button>
+      ) : undefined
     });
   };
 
