@@ -34,6 +34,7 @@ async function seedDatabase() {
       { email: 'admin@test.com', password: 'admin123', role: 'ADMIN' as const, fullName: 'Test Admin' },
       { email: 'retailer@test.com', password: 'retailer123', role: 'RETAILER' as const, fullName: 'Test Retailer' },
       { email: 'shop@test.com', password: 'shop123', role: 'SHOP_OWNER' as const, fullName: 'Test Shop Owner' },
+      { email: 'delivery@test.com', password: 'delivery123', role: 'DELIVERY_BOY' as const, fullName: 'Test Delivery Boy' },
     ];
 
     for (const testUser of testUsers) {
@@ -50,7 +51,7 @@ async function seedDatabase() {
     }
 
     // Create remaining users
-    for (let i = 0; i < 47; i++) {
+    for (let i = 0; i < 46; i++) {
       const firstName = getRandomElement(firstNames);
       const lastName = getRandomElement(lastNames);
       let role: 'ADMIN' | 'RETAILER' | 'SHOP_OWNER';
@@ -288,6 +289,7 @@ async function seedDatabase() {
 • Admin: admin@test.com / admin123
 • Retailer: retailer@test.com / retailer123  
 • Shop Owner: shop@test.com / shop123
+• Delivery Boy: delivery@test.com / delivery123
 • Others: [name].[surname][number]@example.com / password123
     `);
 

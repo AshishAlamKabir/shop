@@ -1,11 +1,11 @@
 import { 
-  users, stores, productCatalog, listings, orders, orderItems, orderEvents, fcmTokens, khatabook, paymentAuditTrail, deliveryBoys,
+  users, stores, productCatalog, listings, orders, orderItems, orderEvents, fcmTokens, khatabook, paymentAuditTrail, deliveryBoys, paymentChangeRequests,
   type User, type InsertUser, type Store, type InsertStore,
   type ProductCatalog, type InsertProductCatalog, type Listing, type InsertListing,
   type Order, type InsertOrder, type OrderItem, type InsertOrderItem,
   type OrderEvent, type InsertOrderEvent, type FcmToken, type InsertFcmToken,
   type Khatabook, type InsertKhatabook, type PaymentAuditTrail, type InsertPaymentAuditTrail,
-  type DeliveryBoy, type InsertDeliveryBoy
+  type DeliveryBoy, type InsertDeliveryBoy, type PaymentChangeRequest, type InsertPaymentChangeRequest
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, asc, like, or, sql } from "drizzle-orm";
@@ -84,6 +84,22 @@ export interface IStorage {
   getDeliveryBoyByPhone(phone: string, retailerId?: string): Promise<DeliveryBoy | undefined>;
   updateDeliveryBoy(id: string, deliveryBoy: Partial<InsertDeliveryBoy>): Promise<DeliveryBoy>;
   deleteDeliveryBoy(id: string): Promise<void>;
+  
+  // Delivery boy order management
+  getOrdersForDeliveryBoy(deliveryBoyUserId: string): Promise<any[]>;
+  getOrderForDeliveryBoy(orderId: string, deliveryBoyUserId: string): Promise<any>;
+  
+  // Payment change requests
+  createPaymentChangeRequest(request: InsertPaymentChangeRequest): Promise<PaymentChangeRequest>;
+  getPaymentChangeRequest(id: string): Promise<any>;
+  getPaymentChangeRequestsForShopOwner(shopOwnerId: string): Promise<any[]>;
+  updatePaymentChangeRequestStatus(id: string, status: string): Promise<PaymentChangeRequest>;
+  
+  // Order amount updates
+  updateOrderAmount(orderId: string, newAmount: string): Promise<Order>;
+  
+  // Khatabook operations
+  createKhatabookEntry(entry: InsertKhatabook): Promise<Khatabook>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -685,6 +701,214 @@ export class DatabaseStorage implements IStorage {
 
   async deleteDeliveryBoy(id: string): Promise<void> {
     await db.delete(deliveryBoys).where(eq(deliveryBoys.id, id));
+  }
+
+  // Delivery boy order management
+  async getOrdersForDeliveryBoy(deliveryBoyUserId: string): Promise<any[]> {
+    const result = await db
+      .select({
+        id: orders.id,
+        status: orders.status,
+        totalAmount: orders.totalAmount,
+        deliveryType: orders.deliveryType,
+        deliveryAt: orders.deliveryAt,
+        note: orders.note,
+        createdAt: orders.createdAt,
+        store: {
+          id: stores.id,
+          name: stores.name,
+          address: stores.address,
+          city: stores.city,
+          pincode: stores.pincode,
+        },
+        owner: {
+          id: users.id,
+          fullName: users.fullName,
+          phone: users.phone,
+        }
+      })
+      .from(orders)
+      .innerJoin(stores, eq(orders.storeId, stores.id))
+      .innerJoin(users, eq(orders.ownerId, users.id))
+      .where(
+        and(
+          eq(orders.assignedDeliveryBoyId, deliveryBoyUserId),
+          or(
+            eq(orders.status, 'READY'),
+            eq(orders.status, 'OUT_FOR_DELIVERY')
+          )
+        )
+      )
+      .orderBy(desc(orders.createdAt));
+    
+    return result;
+  }
+
+  async getOrderForDeliveryBoy(orderId: string, deliveryBoyUserId: string): Promise<any> {
+    const [result] = await db
+      .select({
+        id: orders.id,
+        status: orders.status,
+        totalAmount: orders.totalAmount,
+        deliveryType: orders.deliveryType,
+        deliveryAt: orders.deliveryAt,
+        note: orders.note,
+        paymentReceived: orders.paymentReceived,
+        amountReceived: orders.amountReceived,
+        remainingBalance: orders.remainingBalance,
+        isPartialPayment: orders.isPartialPayment,
+        createdAt: orders.createdAt,
+        ownerId: orders.ownerId,
+        retailerId: orders.retailerId,
+        store: {
+          id: stores.id,
+          name: stores.name,
+          address: stores.address,
+          city: stores.city,
+          pincode: stores.pincode,
+        },
+        owner: {
+          id: users.id,
+          fullName: users.fullName,
+          phone: users.phone,
+        }
+      })
+      .from(orders)
+      .innerJoin(stores, eq(orders.storeId, stores.id))
+      .innerJoin(users, eq(orders.ownerId, users.id))
+      .where(
+        and(
+          eq(orders.id, orderId),
+          eq(orders.assignedDeliveryBoyId, deliveryBoyUserId)
+        )
+      );
+    
+    return result;
+  }
+
+  // Payment change requests
+  async createPaymentChangeRequest(request: InsertPaymentChangeRequest): Promise<PaymentChangeRequest> {
+    const [result] = await db.insert(paymentChangeRequests).values(request).returning();
+    return result;
+  }
+
+  async getPaymentChangeRequest(id: string): Promise<any> {
+    const [result] = await db
+      .select({
+        id: paymentChangeRequests.id,
+        orderId: paymentChangeRequests.orderId,
+        deliveryBoyId: paymentChangeRequests.deliveryBoyId,
+        originalAmount: paymentChangeRequests.originalAmount,
+        requestedAmount: paymentChangeRequests.requestedAmount,
+        reason: paymentChangeRequests.reason,
+        status: paymentChangeRequests.status,
+        approvedBy: paymentChangeRequests.approvedBy,
+        approvedAt: paymentChangeRequests.approvedAt,
+        createdAt: paymentChangeRequests.createdAt,
+        order: {
+          id: orders.id,
+          ownerId: orders.ownerId,
+          retailerId: orders.retailerId,
+          status: orders.status,
+        }
+      })
+      .from(paymentChangeRequests)
+      .innerJoin(orders, eq(paymentChangeRequests.orderId, orders.id))
+      .where(eq(paymentChangeRequests.id, id));
+    
+    return result;
+  }
+
+  async getPaymentChangeRequestsForShopOwner(shopOwnerId: string): Promise<any[]> {
+    const result = await db
+      .select({
+        id: paymentChangeRequests.id,
+        orderId: paymentChangeRequests.orderId,
+        originalAmount: paymentChangeRequests.originalAmount,
+        requestedAmount: paymentChangeRequests.requestedAmount,
+        reason: paymentChangeRequests.reason,
+        status: paymentChangeRequests.status,
+        createdAt: paymentChangeRequests.createdAt,
+        deliveryBoy: {
+          id: users.id,
+          fullName: users.fullName,
+        },
+        order: {
+          id: orders.id,
+          status: orders.status,
+        }
+      })
+      .from(paymentChangeRequests)
+      .innerJoin(orders, eq(paymentChangeRequests.orderId, orders.id))
+      .innerJoin(users, eq(paymentChangeRequests.deliveryBoyId, users.id))
+      .where(
+        and(
+          eq(orders.ownerId, shopOwnerId),
+          eq(paymentChangeRequests.status, 'PENDING')
+        )
+      )
+      .orderBy(desc(paymentChangeRequests.createdAt));
+    
+    return result;
+  }
+
+  async updatePaymentChangeRequestStatus(id: string, status: string): Promise<PaymentChangeRequest> {
+    const [result] = await db
+      .update(paymentChangeRequests)
+      .set({ 
+        status,
+        approvedAt: status === 'APPROVED' ? new Date() : undefined
+      })
+      .where(eq(paymentChangeRequests.id, id))
+      .returning();
+    
+    return result;
+  }
+
+  // Order amount updates
+  async updateOrderAmount(orderId: string, newAmount: string): Promise<Order> {
+    const [result] = await db
+      .update(orders)
+      .set({ 
+        totalAmount: newAmount,
+        updatedAt: new Date()
+      })
+      .where(eq(orders.id, orderId))
+      .returning();
+    
+    return result;
+  }
+
+  // Khatabook operations
+  async createKhatabookEntry(entry: InsertKhatabook): Promise<Khatabook> {
+    // Calculate the new balance
+    const currentBalance = await this.getCurrentBalance(entry.userId, entry.counterpartyId);
+    const newBalance = entry.entryType === 'CREDIT' 
+      ? (currentBalance + parseFloat(entry.amount.toString()))
+      : (currentBalance - parseFloat(entry.amount.toString()));
+    
+    const [result] = await db.insert(khatabook).values({
+      ...entry,
+      balance: newBalance.toString()
+    }).returning();
+    
+    return result;
+  }
+
+  private async getCurrentBalance(userId: string, counterpartyId?: string): Promise<number> {
+    const conditions = [eq(khatabook.userId, userId)];
+    if (counterpartyId) {
+      conditions.push(eq(khatabook.counterpartyId, counterpartyId));
+    }
+
+    const [result] = await db
+      .select({ balance: khatabook.balance })
+      .from(khatabook)
+      .where(and(...conditions))
+      .orderBy(desc(khatabook.createdAt))
+      .limit(1);
+    
+    return result ? parseFloat(result.balance.toString()) : 0;
   }
 }
 

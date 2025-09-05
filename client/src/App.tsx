@@ -9,6 +9,7 @@ import Login from "@/pages/login";
 import AdminDashboard from "@/pages/admin/dashboard";
 import RetailerDashboard from "@/pages/retailer/dashboard";
 import ShopOwnerDashboard from "@/pages/shop-owner/dashboard";
+import DeliveryBoyDashboard from "@/pages/delivery-boy/dashboard";
 import NotFound from "@/pages/not-found";
 import ToastNotifications from "@/components/toast-notifications";
 
@@ -37,11 +38,13 @@ function AppContent() {
         if (user.role === 'ADMIN') return <AdminDashboard />;
         if (user.role === 'RETAILER') return <RetailerDashboard />;
         if (user.role === 'SHOP_OWNER') return <ShopOwnerDashboard />;
+        if (user.role === 'DELIVERY_BOY') return <DeliveryBoyDashboard />;
         return <NotFound />;
       }} />
       <Route path="/admin/*" component={() => user.role === 'ADMIN' ? <AdminDashboard /> : <NotFound />} />
       <Route path="/retailer/*" component={() => user.role === 'RETAILER' ? <RetailerDashboard /> : <NotFound />} />
       <Route path="/shop/*" component={() => user.role === 'SHOP_OWNER' ? <ShopOwnerDashboard /> : <NotFound />} />
+      <Route path="/delivery/*" component={() => user.role === 'DELIVERY_BOY' ? <DeliveryBoyDashboard /> : <NotFound />} />
       <Route component={NotFound} />
     </Switch>
   );

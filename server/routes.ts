@@ -1239,5 +1239,280 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Delivery Boy routes
+  app.get('/api/delivery/orders', authenticateToken, requireRole('DELIVERY_BOY'), async (req: any, res) => {
+    try {
+      // Get orders assigned to this delivery boy
+      const orders = await storage.getOrdersForDeliveryBoy(req.user.id);
+      res.json(orders);
+    } catch (error) {
+      console.error('Delivery orders error:', error);
+      res.status(500).json({ message: 'Failed to fetch delivery orders' });
+    }
+  });
+
+  app.get('/api/delivery/orders/:id', authenticateToken, requireRole('DELIVERY_BOY'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const order = await storage.getOrderForDeliveryBoy(id, req.user.id);
+      
+      if (!order) {
+        return res.status(404).json({ message: 'Order not found or not assigned to you' });
+      }
+      
+      res.json(order);
+    } catch (error) {
+      console.error('Delivery order details error:', error);
+      res.status(500).json({ message: 'Failed to fetch order details' });
+    }
+  });
+
+  app.post('/api/delivery/orders/:id/request-payment-change', authenticateToken, requireRole('DELIVERY_BOY'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { newAmount, reason } = req.body;
+      
+      const order = await storage.getOrderForDeliveryBoy(id, req.user.id);
+      if (!order) {
+        return res.status(404).json({ message: 'Order not found or not assigned to you' });
+      }
+      
+      if (order.status !== 'OUT_FOR_DELIVERY') {
+        return res.status(400).json({ message: 'Payment changes only allowed during delivery' });
+      }
+      
+      // Create payment change request
+      const changeRequest = await storage.createPaymentChangeRequest({
+        orderId: id,
+        deliveryBoyId: req.user.id,
+        originalAmount: order.totalAmount,
+        requestedAmount: newAmount,
+        reason,
+        status: 'PENDING'
+      });
+      
+      // Notify shop owner via WebSocket
+      const shopOwnerClient = clients.get(order.ownerId);
+      if (shopOwnerClient && shopOwnerClient.readyState === WebSocket.OPEN) {
+        shopOwnerClient.send(JSON.stringify({
+          type: 'PAYMENT_CHANGE_REQUEST',
+          orderId: id,
+          originalAmount: order.totalAmount,
+          requestedAmount: newAmount,
+          reason,
+          requestId: changeRequest.id
+        }));
+      }
+      
+      await storage.createOrderEvent({
+        orderId: id,
+        type: 'PAYMENT_CHANGE_REQUESTED',
+        message: `Delivery boy requested payment change from ₹${order.totalAmount} to ₹${newAmount}. Reason: ${reason}`
+      });
+      
+      res.json({ 
+        message: 'Payment change request sent to shop owner',
+        requestId: changeRequest.id
+      });
+    } catch (error) {
+      console.error('Payment change request error:', error);
+      res.status(500).json({ message: 'Failed to create payment change request' });
+    }
+  });
+
+  app.post('/api/delivery/orders/:id/confirm-payment', authenticateToken, requireRole('DELIVERY_BOY'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { amountReceived, paymentMethod = 'CASH' } = req.body;
+      
+      const order = await storage.getOrderForDeliveryBoy(id, req.user.id);
+      if (!order) {
+        return res.status(404).json({ message: 'Order not found or not assigned to you' });
+      }
+      
+      if (order.status !== 'OUT_FOR_DELIVERY') {
+        return res.status(400).json({ message: 'Can only confirm payment during delivery' });
+      }
+      
+      // Update order with payment information
+      await storage.updateOrderPayment(id, {
+        paymentReceived: true,
+        amountReceived,
+        originalAmountReceived: order.totalAmount,
+        remainingBalance: (parseFloat(order.totalAmount) - parseFloat(amountReceived)).toString(),
+        isPartialPayment: parseFloat(amountReceived) < parseFloat(order.totalAmount),
+        paymentReceivedAt: new Date(),
+        paymentReceivedBy: req.user.id
+      });
+      
+      // Update order status to completed
+      await storage.updateOrderStatus(id, 'COMPLETED');
+      
+      // Create khatabook entries
+      await storage.createKhatabookEntry({
+        userId: order.ownerId, // shop owner
+        counterpartyId: order.retailerId,
+        orderId: id,
+        entryType: 'DEBIT',
+        transactionType: 'PAYMENT_RECEIVED',
+        amount: amountReceived,
+        description: `Payment received for order #${id.slice(-8)}`,
+        referenceId: id,
+        metadata: JSON.stringify({ 
+          paymentMethod,
+          deliveryBoyId: req.user.id,
+          deliveryBoyName: req.user.fullName
+        })
+      });
+      
+      await storage.createKhatabookEntry({
+        userId: order.retailerId,
+        counterpartyId: order.ownerId,
+        orderId: id,
+        entryType: 'CREDIT',
+        transactionType: 'PAYMENT_CREDIT',
+        amount: amountReceived,
+        description: `Payment received from ${order.owner?.fullName || 'customer'} for order #${id.slice(-8)}`,
+        referenceId: id,
+        metadata: JSON.stringify({ 
+          paymentMethod,
+          deliveryBoyId: req.user.id,
+          deliveryBoyName: req.user.fullName
+        })
+      });
+      
+      // Create order events
+      await storage.createOrderEvent({
+        orderId: id,
+        type: 'PAYMENT_RECEIVED',
+        message: `Payment of ₹${amountReceived} received by ${req.user.fullName}`
+      });
+      
+      await storage.createOrderEvent({
+        orderId: id,
+        type: 'COMPLETED',
+        message: `Order completed by delivery boy ${req.user.fullName}`
+      });
+      
+      // Notify both shop owner and retailer
+      [order.ownerId, order.retailerId].forEach(userId => {
+        const client = clients.get(userId);
+        if (client && client.readyState === WebSocket.OPEN) {
+          client.send(JSON.stringify({
+            type: 'ORDER_COMPLETED',
+            orderId: id,
+            amountReceived,
+            paymentMethod,
+            deliveryBoy: req.user.fullName
+          }));
+        }
+      });
+      
+      res.json({ 
+        message: 'Payment confirmed and order completed',
+        amountReceived,
+        remainingBalance: (parseFloat(order.totalAmount) - parseFloat(amountReceived)).toString()
+      });
+    } catch (error) {
+      console.error('Payment confirmation error:', error);
+      res.status(500).json({ message: 'Failed to confirm payment' });
+    }
+  });
+
+  // Shop Owner payment change approval routes
+  app.get('/api/shop-owner/payment-change-requests', authenticateToken, requireRole('SHOP_OWNER'), async (req: any, res) => {
+    try {
+      const requests = await storage.getPaymentChangeRequestsForShopOwner(req.user.id);
+      res.json(requests);
+    } catch (error) {
+      console.error('Payment change requests error:', error);
+      res.status(500).json({ message: 'Failed to fetch payment change requests' });
+    }
+  });
+
+  app.post('/api/shop-owner/payment-change-requests/:id/approve', authenticateToken, requireRole('SHOP_OWNER'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const request = await storage.getPaymentChangeRequest(id);
+      
+      if (!request || request.order?.ownerId !== req.user.id) {
+        return res.status(404).json({ message: 'Payment change request not found' });
+      }
+      
+      if (request.status !== 'PENDING') {
+        return res.status(400).json({ message: 'Request already processed' });
+      }
+      
+      // Update the order amount
+      await storage.updateOrderAmount(request.orderId, request.requestedAmount);
+      
+      // Update request status
+      await storage.updatePaymentChangeRequestStatus(id, 'APPROVED');
+      
+      // Create order event
+      await storage.createOrderEvent({
+        orderId: request.orderId,
+        type: 'PAYMENT_CHANGE_APPROVED',
+        message: `Payment change approved by shop owner. New amount: ₹${request.requestedAmount}`
+      });
+      
+      // Notify delivery boy
+      const deliveryBoyClient = clients.get(request.deliveryBoyId);
+      if (deliveryBoyClient && deliveryBoyClient.readyState === WebSocket.OPEN) {
+        deliveryBoyClient.send(JSON.stringify({
+          type: 'PAYMENT_CHANGE_APPROVED',
+          orderId: request.orderId,
+          newAmount: request.requestedAmount
+        }));
+      }
+      
+      res.json({ message: 'Payment change approved' });
+    } catch (error) {
+      console.error('Payment change approval error:', error);
+      res.status(500).json({ message: 'Failed to approve payment change' });
+    }
+  });
+
+  app.post('/api/shop-owner/payment-change-requests/:id/reject', authenticateToken, requireRole('SHOP_OWNER'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { reason } = req.body;
+      const request = await storage.getPaymentChangeRequest(id);
+      
+      if (!request || request.order?.ownerId !== req.user.id) {
+        return res.status(404).json({ message: 'Payment change request not found' });
+      }
+      
+      if (request.status !== 'PENDING') {
+        return res.status(400).json({ message: 'Request already processed' });
+      }
+      
+      // Update request status
+      await storage.updatePaymentChangeRequestStatus(id, 'REJECTED');
+      
+      // Create order event
+      await storage.createOrderEvent({
+        orderId: request.orderId,
+        type: 'PAYMENT_CHANGE_REJECTED',
+        message: `Payment change rejected by shop owner. Reason: ${reason || 'No reason provided'}`
+      });
+      
+      // Notify delivery boy
+      const deliveryBoyClient = clients.get(request.deliveryBoyId);
+      if (deliveryBoyClient && deliveryBoyClient.readyState === WebSocket.OPEN) {
+        deliveryBoyClient.send(JSON.stringify({
+          type: 'PAYMENT_CHANGE_REJECTED',
+          orderId: request.orderId,
+          reason: reason || 'No reason provided'
+        }));
+      }
+      
+      res.json({ message: 'Payment change rejected' });
+    } catch (error) {
+      console.error('Payment change rejection error:', error);
+      res.status(500).json({ message: 'Failed to reject payment change' });
+    }
+  });
+
   return httpServer;
 }

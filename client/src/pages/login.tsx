@@ -7,9 +7,10 @@ import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 
 const demoAccounts = [
-  { email: 'admin@gmail.com', role: 'Admin', icon: 'fas fa-user-shield' },
-  { email: 'retail@gmail.com', role: 'Retailer', icon: 'fas fa-store' },
-  { email: 'shop@gmail.com', role: 'Shop Owner', icon: 'fas fa-shopping-cart' }
+  { email: 'admin@test.com', role: 'Admin', icon: 'fas fa-user-shield' },
+  { email: 'retailer@test.com', role: 'Retailer', icon: 'fas fa-store' },
+  { email: 'shop@test.com', role: 'Shop Owner', icon: 'fas fa-shopping-cart' },
+  { email: 'delivery@test.com', role: 'Delivery Boy', icon: 'fas fa-truck' }
 ];
 
 export default function Login() {
@@ -39,7 +40,11 @@ export default function Login() {
 
   const fillLogin = (demoEmail: string) => {
     setEmail(demoEmail);
-    setPassword('12345678');
+    if (demoEmail === 'admin@test.com') setPassword('admin123');
+    else if (demoEmail === 'retailer@test.com') setPassword('retailer123');
+    else if (demoEmail === 'shop@test.com') setPassword('shop123');
+    else if (demoEmail === 'delivery@test.com') setPassword('delivery123');
+    else setPassword('password123');
   };
 
   return (

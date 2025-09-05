@@ -149,6 +149,19 @@ export const deliveryBoys = pgTable("delivery_boys", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+export const paymentChangeRequests = pgTable("payment_change_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  orderId: varchar("order_id").notNull(),
+  deliveryBoyId: varchar("delivery_boy_id").notNull(),
+  originalAmount: decimal("original_amount", { precision: 10, scale: 2 }).notNull(),
+  requestedAmount: decimal("requested_amount", { precision: 10, scale: 2 }).notNull(),
+  reason: text("reason").notNull(),
+  status: text("status").notNull().default('PENDING'), // PENDING, APPROVED, REJECTED
+  approvedBy: varchar("approved_by"), // shop owner user id
+  approvedAt: timestamp("approved_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ one, many }) => ({
   store: one(stores, { fields: [users.id], references: [stores.ownerId] }),
@@ -211,6 +224,12 @@ export const paymentAuditTrailRelations = relations(paymentAuditTrail, ({ one })
 
 export const deliveryBoysRelations = relations(deliveryBoys, ({ one }) => ({
   retailer: one(users, { fields: [deliveryBoys.retailerId], references: [users.id] }),
+}));
+
+export const paymentChangeRequestsRelations = relations(paymentChangeRequests, ({ one }) => ({
+  order: one(orders, { fields: [paymentChangeRequests.orderId], references: [orders.id] }),
+  deliveryBoy: one(users, { fields: [paymentChangeRequests.deliveryBoyId], references: [users.id] }),
+  approver: one(users, { fields: [paymentChangeRequests.approvedBy], references: [users.id] }),
 }));
 
 // Insert schemas
@@ -277,6 +296,11 @@ export const insertDeliveryBoySchema = createInsertSchema(deliveryBoys).omit({
   updatedAt: true,
 });
 
+export const insertPaymentChangeRequestSchema = createInsertSchema(paymentChangeRequests).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -300,3 +324,5 @@ export type PaymentAuditTrail = typeof paymentAuditTrail.$inferSelect;
 export type InsertPaymentAuditTrail = z.infer<typeof insertPaymentAuditTrailSchema>;
 export type DeliveryBoy = typeof deliveryBoys.$inferSelect;
 export type InsertDeliveryBoy = z.infer<typeof insertDeliveryBoySchema>;
+export type PaymentChangeRequest = typeof paymentChangeRequests.$inferSelect;
+export type InsertPaymentChangeRequest = z.infer<typeof insertPaymentChangeRequestSchema>;
