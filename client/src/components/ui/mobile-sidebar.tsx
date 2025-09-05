@@ -14,7 +14,7 @@ export function MobileSidebar({ isOpen, onClose, title, children }: MobileSideba
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
       <SheetContent 
-        side="right" 
+        side="left" 
         className="w-80 p-0"
         data-testid="mobile-sidebar"
       >
