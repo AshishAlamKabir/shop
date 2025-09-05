@@ -10,12 +10,14 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import Header from "@/components/layout/header";
 import StoreCatalogModal from "@/components/modals/store-catalog-modal";
+import { MobileSidebar, SidebarNavItem } from "@/components/ui/mobile-sidebar";
 import { useCartStore } from "@/store/cart";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
 export default function ShopOwnerDashboard() {
   const [activeSection, setActiveSection] = useState('explore');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [selectedStore, setSelectedStore] = useState<any>(null);
   const [searchFilters, setSearchFilters] = useState({ search: '', city: '', pincode: '', name: '', id: '' });
   const [deliveryType, setDeliveryType] = useState('PICKUP');
@@ -285,11 +287,11 @@ export default function ShopOwnerDashboard() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header />
+      <Header onMenuClick={() => setIsSidebarOpen(true)} />
       
       <div className="flex h-[calc(100vh-80px)]">
-        {/* Sidebar */}
-        <aside className="w-64 bg-card border-r border-border p-6">
+        {/* Desktop Sidebar - Hidden on Mobile */}
+        <aside className="hidden md:block w-64 bg-card border-r border-border p-6">
           <nav className="space-y-2">
             <Button
               onClick={() => setActiveSection('explore')}
@@ -1225,6 +1227,55 @@ export default function ShopOwnerDashboard() {
           setActiveSection('cart');
         }}
       />
+
+      {/* Mobile Sidebar */}
+      <MobileSidebar
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
+        title="Navigation"
+      >
+        <SidebarNavItem
+          onClick={() => {
+            setActiveSection('explore');
+            setIsSidebarOpen(false);
+          }}
+          active={activeSection === 'explore'}
+          icon="fas fa-search"
+          label="Explore Stores"
+          testId="button-nav-explore-mobile"
+        />
+        <SidebarNavItem
+          onClick={() => {
+            setActiveSection('cart');
+            setIsSidebarOpen(false);
+          }}
+          active={activeSection === 'cart'}
+          icon="fas fa-shopping-cart"
+          label="Cart"
+          badge={getItemCount()}
+          testId="button-nav-cart-mobile"
+        />
+        <SidebarNavItem
+          onClick={() => {
+            setActiveSection('orders');
+            setIsSidebarOpen(false);
+          }}
+          active={activeSection === 'orders'}
+          icon="fas fa-receipt"
+          label="My Orders"
+          testId="button-nav-orders-mobile"
+        />
+        <SidebarNavItem
+          onClick={() => {
+            setActiveSection('khatabook');
+            setIsSidebarOpen(false);
+          }}
+          active={activeSection === 'khatabook'}
+          icon="fas fa-book"
+          label="Khatabook"
+          testId="button-nav-khatabook-mobile"
+        />
+      </MobileSidebar>
     </div>
   );
 }

@@ -3,7 +3,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
 
-export default function Header() {
+interface HeaderProps {
+  onMenuClick?: () => void;
+}
+
+export default function Header({ onMenuClick }: HeaderProps = {}) {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const { user, logout } = useAuth();
 
@@ -29,6 +33,19 @@ export default function Header() {
         </div>
         
         <div className="flex items-center space-x-4">
+          {/* Mobile Menu Button - Show for non-Admin roles */}
+          {onMenuClick && user?.role !== 'ADMIN' && (
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={onMenuClick}
+              className="md:hidden"
+              data-testid="button-mobile-menu"
+            >
+              <i className="fas fa-bars"></i>
+            </Button>
+          )}
+          
           {/* Notifications */}
           <Button variant="ghost" size="sm" className="relative" data-testid="button-notifications">
             <i className="fas fa-bell"></i>
@@ -36,6 +53,19 @@ export default function Header() {
               3
             </span>
           </Button>
+          
+          {/* Menu Button for Retailers, Shop Owners, and Delivery Boys */}
+          {onMenuClick && user?.role !== 'ADMIN' && (
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={onMenuClick}
+              className="hidden md:block"
+              data-testid="button-menu"
+            >
+              <i className="fas fa-bars"></i>
+            </Button>
+          )}
           
           {/* User Menu */}
           <div className="relative">
