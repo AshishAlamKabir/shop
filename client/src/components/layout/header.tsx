@@ -2,14 +2,15 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
+import { ProfileSidebar } from "@/components/ui/profile-sidebar";
 
 interface HeaderProps {
   onMenuClick?: () => void;
 }
 
 export default function Header({ onMenuClick }: HeaderProps = {}) {
-  const [showUserMenu, setShowUserMenu] = useState(false);
-  const { user, logout } = useAuth();
+  const [showProfileSidebar, setShowProfileSidebar] = useState(false);
+  const { user } = useAuth();
 
   const getRoleDisplay = (role: string) => {
     return role.replace('_', ' ');
@@ -67,44 +68,29 @@ export default function Header({ onMenuClick }: HeaderProps = {}) {
             </Button>
           )}
           
-          {/* User Menu */}
-          <div className="relative">
-            <Button 
-              variant="ghost" 
-              onClick={() => setShowUserMenu(!showUserMenu)}
-              className="flex items-center space-x-2"
-              data-testid="button-user-menu"
-            >
-              <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
-                <span className="text-sm font-medium text-primary-foreground">
-                  {getUserInitials(user?.fullName || '')}
-                </span>
-              </div>
-              <span className="font-medium text-foreground">{user?.fullName}</span>
-              <i className="fas fa-chevron-down text-xs text-muted-foreground"></i>
-            </Button>
-            
-            {showUserMenu && (
-              <div className="absolute right-0 mt-2 w-48 bg-popover border border-border rounded-md shadow-lg z-50">
-                <div className="py-1">
-                  <Button 
-                    variant="ghost" 
-                    onClick={() => {
-                      logout();
-                      setShowUserMenu(false);
-                    }}
-                    className="w-full justify-start text-sm"
-                    data-testid="button-logout"
-                  >
-                    <i className="fas fa-sign-out-alt mr-2"></i>
-                    Sign Out
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
+          {/* Profile Icon */}
+          <Button 
+            variant="ghost" 
+            onClick={() => setShowProfileSidebar(true)}
+            className="flex items-center space-x-2"
+            data-testid="button-profile"
+          >
+            <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
+              <span className="text-sm font-medium text-primary-foreground">
+                {getUserInitials(user?.fullName || '')}
+              </span>
+            </div>
+            <span className="font-medium text-foreground hidden sm:block">{user?.fullName}</span>
+            <i className="fas fa-user text-sm text-muted-foreground"></i>
+          </Button>
         </div>
       </div>
+      
+      {/* Profile Sidebar */}
+      <ProfileSidebar 
+        isOpen={showProfileSidebar} 
+        onClose={() => setShowProfileSidebar(false)} 
+      />
     </header>
   );
 }
