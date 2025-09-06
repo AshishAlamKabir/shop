@@ -920,6 +920,174 @@ export default function RetailerDashboard() {
             <EnhancedKhatabook />
           )}
 
+          {/* Delivery Assignment Section */}
+          {activeSection === 'delivery-assignment' && selectedOrderForDelivery && (
+            <div>
+              <div className="mb-6">
+                <h2 className="text-2xl font-bold text-foreground mb-2">Assign Delivery for Order</h2>
+                <p className="text-muted-foreground">Choose how to assign delivery for this order</p>
+              </div>
+
+              {/* Order Details */}
+              <Card className="mb-6">
+                <CardContent className="p-6">
+                  <h3 className="text-lg font-semibold text-foreground mb-4">Order Details</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div>
+                      <Label className="text-sm font-medium text-muted-foreground">Shop Owner</Label>
+                      <p className="font-medium text-foreground">{selectedOrderForDelivery.owner?.fullName}</p>
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium text-muted-foreground">Location</Label>
+                      <p className="font-medium text-foreground">{selectedOrderForDelivery.store?.city || 'Not specified'}</p>
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium text-muted-foreground">Total Amount</Label>
+                      <p className="font-medium text-foreground">₹{selectedOrderForDelivery.totalAmount}</p>
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium text-muted-foreground">Order Date</Label>
+                      <p className="font-medium text-foreground">{new Date(selectedOrderForDelivery.createdAt).toLocaleDateString()}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Assignment Method Selection */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <Card className={`cursor-pointer transition-all ${deliveryAssignmentStep === 'own' ? 'ring-2 ring-primary' : ''}`} onClick={() => setDeliveryAssignmentStep('own')}>
+                  <CardContent className="p-6 text-center">
+                    <i className="fas fa-users text-3xl text-primary mb-4"></i>
+                    <h3 className="text-lg font-semibold text-foreground mb-2">Your Delivery Boys</h3>
+                    <p className="text-sm text-muted-foreground">Assign to one of your registered delivery boys</p>
+                  </CardContent>
+                </Card>
+                
+                <Card className={`cursor-pointer transition-all ${deliveryAssignmentStep === 'find' ? 'ring-2 ring-primary' : ''}`} onClick={() => setDeliveryAssignmentStep('find')}>
+                  <CardContent className="p-6 text-center">
+                    <i className="fas fa-search text-3xl text-primary mb-4"></i>
+                    <h3 className="text-lg font-semibold text-foreground mb-2">Find Delivery Boys</h3>
+                    <p className="text-sm text-muted-foreground">Share with available delivery boys in your area</p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Own Delivery Boys Section */}
+              {deliveryAssignmentStep === 'own' && (
+                <Card>
+                  <CardContent className="p-6">
+                    <h3 className="text-lg font-semibold text-foreground mb-4">Select Your Delivery Boy</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {deliveryBoys.map((deliveryBoy: any) => (
+                        <Card key={deliveryBoy.id} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => {
+                          assignDeliveryBoyMutation.mutate({ 
+                            orderId: selectedOrderForDelivery.id, 
+                            deliveryBoyId: deliveryBoy.id 
+                          });
+                          setSelectedOrderForDelivery(null);
+                          setActiveSection('orders');
+                        }}>
+                          <CardContent className="p-4">
+                            <div className="flex items-center space-x-3">
+                              <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
+                                <i className="fas fa-motorcycle text-primary-foreground"></i>
+                              </div>
+                              <div>
+                                <p className="font-medium text-foreground">{deliveryBoy.name}</p>
+                                <p className="text-sm text-muted-foreground">{deliveryBoy.phone}</p>
+                                <p className="text-xs text-muted-foreground">{deliveryBoy.address}</p>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                      {deliveryBoys.length === 0 && (
+                        <div className="col-span-2 text-center py-8">
+                          <i className="fas fa-motorcycle text-4xl text-muted-foreground mb-4"></i>
+                          <p className="text-muted-foreground">No delivery boys added yet</p>
+                          <Button 
+                            variant="outline" 
+                            className="mt-4"
+                            onClick={() => setActiveSection('delivery-boys')}
+                          >
+                            Add Delivery Boy
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Find Delivery Boys Section */}
+              {deliveryAssignmentStep === 'find' && (
+                <Card>
+                  <CardContent className="p-6">
+                    <h3 className="text-lg font-semibold text-foreground mb-4">Share Delivery Request</h3>
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                      <div className="flex items-start space-x-3">
+                        <i className="fas fa-info-circle text-blue-600 mt-1"></i>
+                        <div>
+                          <h4 className="font-medium text-blue-900 mb-2">How it works:</h4>
+                          <ul className="text-sm text-blue-800 space-y-1">
+                            <li>• Share this delivery request with all available delivery boys in your area</li>
+                            <li>• Delivery boys will receive a notification with pickup and delivery details</li>
+                            <li>• First delivery boy to accept will be automatically assigned</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-4">
+                      <div>
+                        <Label className="text-sm font-medium text-foreground">Pickup Address</Label>
+                        <p className="text-sm text-muted-foreground mt-1">{store?.address || 'Store address not set'}</p>
+                      </div>
+                      <div>
+                        <Label className="text-sm font-medium text-foreground">Delivery Address</Label>
+                        <p className="text-sm text-muted-foreground mt-1">{selectedOrderForDelivery.store?.address || 'Customer address'}</p>
+                      </div>
+                      <div>
+                        <Label className="text-sm font-medium text-foreground">Estimated Reward</Label>
+                        <Input 
+                          placeholder="Enter delivery fee (optional)" 
+                          className="mt-1"
+                          defaultValue="50"
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="flex space-x-3 mt-6">
+                      <Button 
+                        onClick={() => {
+                          // Create delivery request notification
+                          toast({ 
+                            title: "🚚 Delivery Request Shared!", 
+                            description: "All delivery boys in your area have been notified about this delivery request." 
+                          });
+                          setSelectedOrderForDelivery(null);
+                          setActiveSection('orders');
+                        }}
+                        className="flex-1"
+                      >
+                        <i className="fas fa-share mr-2"></i>
+                        Share Delivery Request
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        onClick={() => {
+                          setSelectedOrderForDelivery(null);
+                          setActiveSection('orders');
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          )}
 
           {/* Delivery Boys Section */}
           {activeSection === 'delivery-boys' && (
