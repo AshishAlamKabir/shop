@@ -1059,14 +1059,26 @@ export default function RetailerDashboard() {
                     
                     <div className="flex space-x-3 mt-6">
                       <Button 
-                        onClick={() => {
-                          // Create delivery request notification
-                          toast({ 
-                            title: "🚚 Delivery Request Shared!", 
-                            description: "All delivery boys in your area have been notified about this delivery request." 
-                          });
-                          setSelectedOrderForDelivery(null);
-                          setActiveSection('orders');
+                        onClick={async () => {
+                          try {
+                            await apiRequest('POST', `/api/orders/${selectedOrderForDelivery.id}/share-delivery`, {
+                              estimatedReward: '50',
+                              pickupAddress: store?.address || 'Store pickup location',
+                              deliveryAddress: selectedOrderForDelivery.store?.address || 'Customer delivery location'
+                            });
+                            toast({ 
+                              title: "🚚 Delivery Request Shared!", 
+                              description: "All delivery boys in your area have been notified about this delivery request." 
+                            });
+                            setSelectedOrderForDelivery(null);
+                            setActiveSection('orders');
+                          } catch (error) {
+                            toast({ 
+                              title: "Failed to share delivery request", 
+                              description: "Please try again later",
+                              variant: "destructive" 
+                            });
+                          }
                         }}
                         className="flex-1"
                       >

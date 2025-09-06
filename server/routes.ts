@@ -73,6 +73,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   };
 
+  // Helper function to broadcast delivery notifications to all delivery boys
+  const broadcastToDeliveryBoys = (event: string, payload: any) => {
+    clients.forEach((client, userId) => {
+      if (client.readyState === WebSocket.OPEN) {
+        // We'll check if user is delivery boy when sending
+        client.send(JSON.stringify({ type: event, payload }));
+      }
+    });
+  };
+
   // Authentication routes
   app.post('/api/auth/register', async (req, res) => {
     try {
@@ -1701,6 +1711,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(deliveryRequest);
     } catch (error) {
       res.status(400).json({ message: 'Failed to create delivery request' });
+    }
+  });
+
+  // Share delivery request for order - broadcasts to all delivery boys
+  app.post('/api/orders/:orderId/share-delivery', authenticateToken, requireRole('RETAILER'), async (req: any, res) => {
+    try {
+      const { orderId } = req.params;
+      const { estimatedReward, pickupAddress, deliveryAddress } = req.body;
+      
+      const order = await storage.getOrder(orderId);
+      if (!order || order.retailerId !== req.user.id) {
+        return res.status(404).json({ message: 'Order not found' });
+      }
+
+      // Create a shared delivery request
+      const deliveryRequest = await storage.createDeliveryRequest({
+        retailerId: req.user.id,
+        description: `Delivery for order - ${order.owner?.fullName}`,
+        title: `Order Delivery - ${order.owner?.fullName}`,
+        pickupAddress: pickupAddress || 'Store pickup location',
+        deliveryAddress: deliveryAddress || 'Customer delivery location',
+        estimatedPayment: estimatedReward || '50',
+        orderId: orderId
+      });
+
+      // Broadcast to all delivery boys
+      broadcastToDeliveryBoys('newDeliveryRequest', {
+        requestId: deliveryRequest.id,
+        orderId: orderId,
+        description: deliveryRequest.description,
+        pickupAddress: deliveryRequest.pickupAddress,
+        deliveryAddress: deliveryRequest.deliveryAddress,
+        estimatedPayment: deliveryRequest.estimatedPayment,
+        retailer: req.user.fullName
+      });
+
+      res.json({ message: 'Delivery request shared successfully', requestId: deliveryRequest.id });
+    } catch (error) {
+      console.error('Error sharing delivery request:', error);
+      res.status(400).json({ message: 'Failed to share delivery request' });
     }
   });
 
