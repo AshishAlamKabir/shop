@@ -1,11 +1,12 @@
 import { 
-  users, stores, productCatalog, listings, orders, orderItems, orderEvents, fcmTokens, khatabook, paymentAuditTrail, deliveryBoys, paymentChangeRequests,
+  users, stores, productCatalog, listings, orders, orderItems, orderEvents, fcmTokens, khatabook, paymentAuditTrail, deliveryBoys, deliveryRequests, paymentChangeRequests,
   type User, type InsertUser, type Store, type InsertStore,
   type ProductCatalog, type InsertProductCatalog, type Listing, type InsertListing,
   type Order, type InsertOrder, type OrderItem, type InsertOrderItem,
   type OrderEvent, type InsertOrderEvent, type FcmToken, type InsertFcmToken,
   type Khatabook, type InsertKhatabook, type PaymentAuditTrail, type InsertPaymentAuditTrail,
-  type DeliveryBoy, type InsertDeliveryBoy, type PaymentChangeRequest, type InsertPaymentChangeRequest
+  type DeliveryBoy, type InsertDeliveryBoy, type DeliveryRequest, type InsertDeliveryRequest,
+  type PaymentChangeRequest, type InsertPaymentChangeRequest
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, asc, like, or, sql } from "drizzle-orm";
@@ -107,6 +108,16 @@ export interface IStorage {
   getAllUsers(): Promise<User[]>;
   getAllOrdersForAdmin(): Promise<any[]>;
   getSystemAnalytics(): Promise<any>;
+
+  // Delivery request operations
+  createDeliveryRequest(request: InsertDeliveryRequest): Promise<DeliveryRequest>;
+  getDeliveryRequest(id: string): Promise<DeliveryRequest | undefined>;
+  getDeliveryRequestsByRetailer(retailerId: string): Promise<DeliveryRequest[]>;
+  getOpenDeliveryRequests(): Promise<DeliveryRequest[]>;
+  getAcceptedDeliveryRequestsByDeliveryBoy(deliveryBoyId: string): Promise<DeliveryRequest[]>;
+  acceptDeliveryRequest(id: string, deliveryBoyId: string): Promise<DeliveryRequest>;
+  rejectDeliveryRequest(id: string): Promise<DeliveryRequest>;
+  completeDeliveryRequest(id: string, notes?: string): Promise<DeliveryRequest>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1054,6 +1065,75 @@ export class DatabaseStorage implements IStorage {
       usersByRole,
       ordersByStatus
     };
+  }
+
+  // Delivery request operations
+  async createDeliveryRequest(request: InsertDeliveryRequest): Promise<DeliveryRequest> {
+    const [deliveryRequest] = await db.insert(deliveryRequests).values(request).returning();
+    return deliveryRequest;
+  }
+
+  async getDeliveryRequest(id: string): Promise<DeliveryRequest | undefined> {
+    const [request] = await db.select().from(deliveryRequests).where(eq(deliveryRequests.id, id));
+    return request || undefined;
+  }
+
+  async getDeliveryRequestsByRetailer(retailerId: string): Promise<DeliveryRequest[]> {
+    return await db.select().from(deliveryRequests)
+      .where(eq(deliveryRequests.retailerId, retailerId))
+      .orderBy(desc(deliveryRequests.createdAt));
+  }
+
+  async getOpenDeliveryRequests(): Promise<DeliveryRequest[]> {
+    return await db.select().from(deliveryRequests)
+      .where(eq(deliveryRequests.status, 'OPEN'))
+      .orderBy(desc(deliveryRequests.createdAt));
+  }
+
+  async getAcceptedDeliveryRequestsByDeliveryBoy(deliveryBoyId: string): Promise<DeliveryRequest[]> {
+    return await db.select().from(deliveryRequests)
+      .where(and(
+        eq(deliveryRequests.acceptedBy, deliveryBoyId),
+        eq(deliveryRequests.status, 'ACCEPTED')
+      ))
+      .orderBy(desc(deliveryRequests.acceptedAt));
+  }
+
+  async acceptDeliveryRequest(id: string, deliveryBoyId: string): Promise<DeliveryRequest> {
+    const [request] = await db.update(deliveryRequests)
+      .set({ 
+        status: 'ACCEPTED', 
+        acceptedBy: deliveryBoyId, 
+        acceptedAt: new Date(),
+        updatedAt: new Date()
+      })
+      .where(eq(deliveryRequests.id, id))
+      .returning();
+    return request;
+  }
+
+  async rejectDeliveryRequest(id: string): Promise<DeliveryRequest> {
+    const [request] = await db.update(deliveryRequests)
+      .set({ 
+        status: 'REJECTED',
+        updatedAt: new Date()
+      })
+      .where(eq(deliveryRequests.id, id))
+      .returning();
+    return request;
+  }
+
+  async completeDeliveryRequest(id: string, notes?: string): Promise<DeliveryRequest> {
+    const [request] = await db.update(deliveryRequests)
+      .set({ 
+        status: 'COMPLETED', 
+        completedAt: new Date(),
+        notes,
+        updatedAt: new Date()
+      })
+      .where(eq(deliveryRequests.id, id))
+      .returning();
+    return request;
   }
 }
 
