@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
+import logoUrl from "../assets/logo.png";
 
 const demoAccounts = [
   { email: 'admin@test.com', role: 'Admin', icon: 'fas fa-user-shield' },
@@ -52,8 +53,8 @@ export default function Login() {
       <Card className="w-full max-w-md mx-4 shadow-xl">
         <CardContent className="p-8">
           <div className="text-center mb-8">
-            <div className="w-16 h-16 bg-primary rounded-xl flex items-center justify-center mx-auto mb-4">
-              <i className="fas fa-store text-2xl text-primary-foreground"></i>
+            <div className="w-20 h-20 flex items-center justify-center mx-auto mb-4">
+              <img src={logoUrl} alt="ShopLink Logo" className="w-full h-full object-contain" />
             </div>
             <h1 className="text-2xl font-bold text-foreground">ShopLink</h1>
             <p className="text-muted-foreground mt-2">B2B Commerce Platform</p>
