@@ -56,7 +56,7 @@ export default function Login() {
             <div className="w-20 h-20 flex items-center justify-center mx-auto mb-4">
               <img src={logoUrl} alt="ShopLink Logo" className="w-full h-full object-contain" />
             </div>
-            <h1 className="text-2xl font-bold text-foreground">ShopLink</h1>
+            <h1 className="text-2xl font-bold text-foreground">Shop Now</h1>
             <p className="text-muted-foreground mt-2">B2B Commerce Platform</p>
           </div>
           
