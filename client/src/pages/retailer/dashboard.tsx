@@ -543,16 +543,17 @@ export default function RetailerDashboard() {
           {/* Inventory Section */}
           {activeSection === 'listings' && (
             <div>
-              <div className="flex items-center justify-between mb-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
                 <div>
-                  <h2 className="text-2xl font-bold text-foreground">Inventory Management</h2>
-                  <p className="text-muted-foreground">Add products manually or from global catalog</p>
+                  <h2 className="text-xl sm:text-2xl font-bold text-foreground">Inventory Management</h2>
+                  <p className="text-sm sm:text-base text-muted-foreground">Add products manually or from global catalog</p>
                 </div>
-                <div className="flex gap-3">
+                <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                   <Button 
                     variant="outline"
                     onClick={() => setShowManualModal(true)}
                     data-testid="button-add-manual-product"
+                    className="w-full sm:w-auto"
                   >
                     <i className="fas fa-plus mr-2"></i>
                     Add Manually
@@ -560,6 +561,7 @@ export default function RetailerDashboard() {
                   <Button 
                     onClick={() => setShowCatalogModal(true)}
                     data-testid="button-add-from-catalog"
+                    className="w-full sm:w-auto"
                   >
                     <i className="fas fa-search mr-2"></i>
                     Add from Catalog
