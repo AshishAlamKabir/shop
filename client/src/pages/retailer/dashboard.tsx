@@ -37,6 +37,13 @@ export default function RetailerDashboard() {
     phone: '',
     description: ''
   });
+  const [editingListing, setEditingListing] = useState<any>(null);
+  const [editListingForm, setEditListingForm] = useState({
+    priceRetail: '',
+    priceWholesale: '',
+    stockQty: '',
+    available: true
+  });
   const { toast } = useToast();
 
   const { data: store } = useQuery({
@@ -278,6 +285,26 @@ export default function RetailerDashboard() {
     }
   });
 
+  const updateListingMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      await apiRequest('PUT', `/api/retailer/listings/${id}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/retailer/listings'] });
+      toast({ title: "Product updated successfully" });
+      setEditingListing(null);
+      setEditListingForm({
+        priceRetail: '',
+        priceWholesale: '',
+        stockQty: '',
+        available: true
+      });
+    },
+    onError: () => {
+      toast({ title: "Failed to update product", variant: "destructive" });
+    }
+  });
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'PENDING': return 'bg-yellow-100 text-yellow-800';
@@ -290,6 +317,36 @@ export default function RetailerDashboard() {
   };
 
   const pendingOrders = orders.filter((order: any) => order.status === 'PENDING');
+
+  const handleEditListing = (listing: any) => {
+    setEditingListing(listing);
+    setEditListingForm({
+      priceRetail: listing.priceRetail.toString(),
+      priceWholesale: listing.priceWholesale?.toString() || '',
+      stockQty: listing.stockQty?.toString() || '',
+      available: listing.available
+    });
+  };
+
+  const handleSaveListing = () => {
+    if (!editingListing) return;
+    
+    const updateData = {
+      priceRetail: parseFloat(editListingForm.priceRetail),
+      priceWholesale: editListingForm.priceWholesale ? parseFloat(editListingForm.priceWholesale) : null,
+      stockQty: parseInt(editListingForm.stockQty),
+      available: editListingForm.available
+    };
+
+    updateListingMutation.mutate({ id: editingListing.id, data: updateData });
+  };
+
+  const toggleListingAvailability = (listing: any) => {
+    updateListingMutation.mutate({ 
+      id: listing.id, 
+      data: { available: !listing.available }
+    });
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -544,13 +601,21 @@ export default function RetailerDashboard() {
                         </div>
                       </div>
                       <div className="mt-4 flex space-x-2">
-                        <Button variant="outline" size="sm" className="flex-1" data-testid={`button-edit-listing-${listing.id}`}>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="flex-1" 
+                          onClick={() => handleEditListing(listing)}
+                          data-testid={`button-edit-listing-${listing.id}`}
+                        >
+                          <i className="fas fa-edit mr-1"></i>
                           Edit
                         </Button>
                         <Button 
                           variant="outline" 
                           size="sm"
-                          className="text-destructive border-destructive hover:bg-destructive/10"
+                          onClick={() => toggleListingAvailability(listing)}
+                          className={listing.available ? "text-orange-600 border-orange-600 hover:bg-orange-50" : "text-green-600 border-green-600 hover:bg-green-50"}
                           data-testid={`button-toggle-listing-${listing.id}`}
                         >
                           <i className={`fas ${listing.available ? 'fa-pause' : 'fa-play'}`}></i>
@@ -560,6 +625,107 @@ export default function RetailerDashboard() {
                   </Card>
                 ))}
               </div>
+
+              {/* Edit Listing Modal */}
+              <Dialog open={!!editingListing} onOpenChange={(open) => !open && setEditingListing(null)}>
+                <DialogContent className="sm:max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Edit Product Details</DialogTitle>
+                  </DialogHeader>
+                  
+                  {editingListing && (
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
+                        <img 
+                          src={editingListing.product.imageUrl || 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=60&h=60'} 
+                          alt={editingListing.product.name}
+                          className="w-12 h-12 rounded object-cover"
+                        />
+                        <div>
+                          <h4 className="font-medium">{editingListing.product.name}</h4>
+                          <p className="text-sm text-muted-foreground">{editingListing.product.brand} • {editingListing.product.size}</p>
+                        </div>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <Label htmlFor="editPriceRetail">Retail Price (₹)</Label>
+                          <Input
+                            id="editPriceRetail"
+                            type="number"
+                            step="0.01"
+                            value={editListingForm.priceRetail}
+                            onChange={(e) => setEditListingForm(prev => ({ ...prev, priceRetail: e.target.value }))}
+                            className="mt-1"
+                          />
+                        </div>
+                        
+                        <div>
+                          <Label htmlFor="editStockQty">Stock Quantity</Label>
+                          <Input
+                            id="editStockQty"
+                            type="number"
+                            value={editListingForm.stockQty}
+                            onChange={(e) => setEditListingForm(prev => ({ ...prev, stockQty: e.target.value }))}
+                            className="mt-1"
+                          />
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <Label htmlFor="editPriceWholesale">Wholesale Price (₹) - Optional</Label>
+                        <Input
+                          id="editPriceWholesale"
+                          type="number"
+                          step="0.01"
+                          value={editListingForm.priceWholesale}
+                          onChange={(e) => setEditListingForm(prev => ({ ...prev, priceWholesale: e.target.value }))}
+                          className="mt-1"
+                          placeholder="Leave empty if not applicable"
+                        />
+                      </div>
+                      
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id="editAvailable"
+                          checked={editListingForm.available}
+                          onChange={(e) => setEditListingForm(prev => ({ ...prev, available: e.target.checked }))}
+                          className="rounded"
+                        />
+                        <Label htmlFor="editAvailable">Available for sale</Label>
+                      </div>
+                      
+                      <div className="flex space-x-3 pt-4">
+                        <Button 
+                          variant="outline" 
+                          onClick={() => setEditingListing(null)} 
+                          className="flex-1"
+                        >
+                          Cancel
+                        </Button>
+                        <Button 
+                          onClick={handleSaveListing} 
+                          className="flex-1"
+                          disabled={updateListingMutation.isPending}
+                        >
+                          {updateListingMutation.isPending ? (
+                            <>
+                              <i className="fas fa-spinner fa-spin mr-2"></i>
+                              Updating...
+                            </>
+                          ) : (
+                            <>
+                              <i className="fas fa-save mr-2"></i>
+                              Save Changes
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </DialogContent>
+              </Dialog>
             </div>
           )}
 
