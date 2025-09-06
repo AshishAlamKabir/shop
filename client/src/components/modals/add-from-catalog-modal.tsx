@@ -142,21 +142,21 @@ export default function AddFromCatalogModal({ isOpen, onClose, storeId }: AddFro
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden w-[95vw] sm:w-full">
         <DialogHeader>
-          <DialogTitle>Add Products to Your Store</DialogTitle>
+          <DialogTitle className="text-lg sm:text-xl">Add Products to Your Store</DialogTitle>
         </DialogHeader>
         
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col h-[70vh]">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="search">Search Catalog</TabsTrigger>
-            <TabsTrigger value="previous">My Usual Products ({previousProducts.length})</TabsTrigger>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col h-[75vh] sm:h-[70vh]">
+          <TabsList className="grid w-full grid-cols-2 mb-2">
+            <TabsTrigger value="search" className="text-xs sm:text-sm">Search Catalog</TabsTrigger>
+            <TabsTrigger value="previous" className="text-xs sm:text-sm">My Usual Products ({previousProducts.length})</TabsTrigger>
           </TabsList>
           
-          <div className="flex gap-6 flex-1 mt-4">
-            <TabsContent value="search" className="flex-1 mt-0">
-              <div className="mb-4">
-                <Label htmlFor="search">Search Products by Name</Label>
+          <div className="flex flex-col lg:flex-row gap-4 lg:gap-6 flex-1 mt-2">
+            <TabsContent value="search" className="flex-1 mt-0 lg:flex-initial lg:w-3/5">
+              <div className="mb-3">
+                <Label htmlFor="search" className="text-sm font-medium">Search Products by Name</Label>
                 <Input
                   id="search"
                   value={searchQuery}
@@ -166,17 +166,19 @@ export default function AddFromCatalogModal({ isOpen, onClose, storeId }: AddFro
                 />
               </div>
               
-              <div className="space-y-2 overflow-y-auto h-full">
+              <div className="space-y-2 overflow-y-auto h-[40vh] lg:h-full">
                 {isLoading ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <i className="fas fa-spinner fa-spin text-2xl mb-2"></i>
+                  <div className="text-center py-6 text-muted-foreground">
+                    <i className="fas fa-spinner fa-spin text-xl sm:text-2xl mb-2"></i>
                     <br />Loading products...
                   </div>
                 ) : products.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <i className="fas fa-search text-3xl mb-3"></i>
+                  <div className="text-center py-6 text-muted-foreground">
+                    <i className="fas fa-search text-2xl sm:text-3xl mb-3"></i>
                     <br />
-                    {searchQuery ? 'No products found for your search' : 'Start typing to search products'}
+                    <span className="text-sm sm:text-base">
+                      {searchQuery ? 'No products found for your search' : 'Start typing to search products'}
+                    </span>
                   </div>
                 ) : (
                   products.map((product: any) => (
@@ -187,20 +189,20 @@ export default function AddFromCatalogModal({ isOpen, onClose, storeId }: AddFro
                       }`}
                       onClick={() => handleProductSelect(product)}
                     >
-                      <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-4">
+                      <CardContent className="p-3">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                          <div className="flex items-center gap-3">
                             <img 
                               src={product.imageUrl || 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=60&h=60'} 
                               alt={product.name}
-                              className="w-12 h-12 rounded object-cover"
+                              className="w-10 h-10 sm:w-12 sm:h-12 rounded object-cover flex-shrink-0"
                             />
-                            <div className="flex-1">
-                              <h4 className="font-medium">{product.name}</h4>
-                              <p className="text-sm text-muted-foreground">{product.brand} • {product.size}</p>
-                              <div className="flex items-center gap-2 mt-1">
-                                <Badge variant="outline">{product.unit}</Badge>
-                                {product.isWholesale && <Badge>Wholesale</Badge>}
+                            <div className="flex-1 min-w-0">
+                              <h4 className="font-medium text-sm sm:text-base truncate">{product.name}</h4>
+                              <p className="text-xs sm:text-sm text-muted-foreground">{product.brand} • {product.size}</p>
+                              <div className="flex items-center gap-1 sm:gap-2 mt-1 flex-wrap">
+                                <Badge variant="outline" className="text-xs">{product.unit}</Badge>
+                                {product.isWholesale && <Badge className="text-xs">Wholesale</Badge>}
                               </div>
                             </div>
                           </div>
@@ -211,7 +213,7 @@ export default function AddFromCatalogModal({ isOpen, onClose, storeId }: AddFro
                               e.stopPropagation();
                               handleQuickAdd(product);
                             }}
-                            className="ml-4"
+                            className="w-full sm:w-auto sm:ml-4 text-xs sm:text-sm"
                           >
                             <i className="fas fa-plus mr-1"></i>
                             Add to Store
@@ -224,19 +226,19 @@ export default function AddFromCatalogModal({ isOpen, onClose, storeId }: AddFro
               </div>
             </TabsContent>
             
-            <TabsContent value="previous" className="flex-1 mt-0">
-              <div className="mb-4">
-                <h3 className="font-medium text-foreground">Products You Usually Keep</h3>
-                <p className="text-sm text-muted-foreground">Quick add your frequently stocked items</p>
+            <TabsContent value="previous" className="flex-1 mt-0 lg:flex-initial lg:w-3/5">
+              <div className="mb-3">
+                <h3 className="font-medium text-foreground text-sm sm:text-base">Products You Usually Keep</h3>
+                <p className="text-xs sm:text-sm text-muted-foreground">Quick add your frequently stocked items</p>
               </div>
               
-              <div className="space-y-2 overflow-y-auto h-full">
+              <div className="space-y-2 overflow-y-auto h-[40vh] lg:h-full">
                 {previousProducts.length === 0 ? (
-                  <div className="text-center py-12 text-muted-foreground">
-                    <i className="fas fa-history text-3xl mb-3"></i>
+                  <div className="text-center py-8 text-muted-foreground">
+                    <i className="fas fa-history text-2xl sm:text-3xl mb-3"></i>
                     <br />
-                    <h3 className="text-lg font-medium mb-2">No previous products yet</h3>
-                    <p className="text-sm">Start adding products from the catalog to build your usual inventory</p>
+                    <h3 className="text-base sm:text-lg font-medium mb-2">No previous products yet</h3>
+                    <p className="text-xs sm:text-sm px-4">Start adding products from the catalog to build your usual inventory</p>
                   </div>
                 ) : (
                   previousProducts.map((product: any) => (
@@ -244,21 +246,21 @@ export default function AddFromCatalogModal({ isOpen, onClose, storeId }: AddFro
                       key={product.id} 
                       className="cursor-pointer transition-colors hover:bg-muted/50"
                     >
-                      <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-4">
+                      <CardContent className="p-3">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                          <div className="flex items-center gap-3">
                             <img 
                               src={product.imageUrl || 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=60&h=60'} 
                               alt={product.name}
-                              className="w-12 h-12 rounded object-cover"
+                              className="w-10 h-10 sm:w-12 sm:h-12 rounded object-cover flex-shrink-0"
                             />
-                            <div className="flex-1">
-                              <h4 className="font-medium">{product.name}</h4>
-                              <p className="text-sm text-muted-foreground">{product.brand} • {product.size}</p>
-                              <div className="flex items-center gap-2 mt-1">
-                                <Badge variant="outline">{product.unit}</Badge>
-                                {product.isWholesale && <Badge>Wholesale</Badge>}
-                                <Badge variant="secondary">Previously stocked</Badge>
+                            <div className="flex-1 min-w-0">
+                              <h4 className="font-medium text-sm sm:text-base truncate">{product.name}</h4>
+                              <p className="text-xs sm:text-sm text-muted-foreground">{product.brand} • {product.size}</p>
+                              <div className="flex items-center gap-1 mt-1 flex-wrap">
+                                <Badge variant="outline" className="text-xs">{product.unit}</Badge>
+                                {product.isWholesale && <Badge className="text-xs">Wholesale</Badge>}
+                                <Badge variant="secondary" className="text-xs">Previously stocked</Badge>
                               </div>
                             </div>
                           </div>
@@ -266,7 +268,7 @@ export default function AddFromCatalogModal({ isOpen, onClose, storeId }: AddFro
                             size="sm"
                             variant="default"
                             onClick={() => handleQuickAdd(product)}
-                            className="ml-4"
+                            className="w-full sm:w-auto sm:ml-4 text-xs sm:text-sm"
                           >
                             <i className="fas fa-plus mr-1"></i>
                             Add Again
@@ -280,28 +282,28 @@ export default function AddFromCatalogModal({ isOpen, onClose, storeId }: AddFro
             </TabsContent>
           
           {/* Listing Configuration */}
-          <div className="w-80 border-l pl-6">
-            <h3 className="font-medium mb-4">Product Details</h3>
+          <div className="w-full lg:w-80 border-t lg:border-t-0 lg:border-l pt-4 lg:pt-0 lg:pl-6">
+            <h3 className="font-medium mb-3 text-sm sm:text-base">Product Details</h3>
             
             {selectedProduct ? (
               <>
-                <div className="mb-4 p-4 bg-muted rounded-lg">
+                <div className="mb-3 p-3 bg-muted rounded-lg">
                   <div className="flex items-center gap-3">
                     <img 
                       src={selectedProduct.imageUrl || 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=60&h=60'} 
                       alt={selectedProduct.name}
-                      className="w-12 h-12 rounded object-cover"
+                      className="w-10 h-10 sm:w-12 sm:h-12 rounded object-cover flex-shrink-0"
                     />
-                    <div>
-                      <h4 className="font-medium">{selectedProduct.name}</h4>
-                      <p className="text-sm text-muted-foreground">{selectedProduct.brand} • {selectedProduct.size}</p>
+                    <div className="min-w-0">
+                      <h4 className="font-medium text-sm sm:text-base truncate">{selectedProduct.name}</h4>
+                      <p className="text-xs sm:text-sm text-muted-foreground">{selectedProduct.brand} • {selectedProduct.size}</p>
                     </div>
                   </div>
                 </div>
                 
-                <div className="space-y-4">
+                <div className="space-y-3">
                   <div>
-                    <Label htmlFor="priceRetail">Retail Price (₹) *</Label>
+                    <Label htmlFor="priceRetail" className="text-sm font-medium">Retail Price (₹) *</Label>
                     <Input
                       id="priceRetail"
                       type="number"
@@ -309,12 +311,13 @@ export default function AddFromCatalogModal({ isOpen, onClose, storeId }: AddFro
                       value={listingData.priceRetail}
                       onChange={(e) => setListingData(prev => ({ ...prev, priceRetail: e.target.value }))}
                       placeholder="Enter retail price"
+                      className="text-sm"
                       required
                     />
                   </div>
                   
                   <div>
-                    <Label htmlFor="priceWholesale">Wholesale Price (₹)</Label>
+                    <Label htmlFor="priceWholesale" className="text-sm font-medium">Wholesale Price (₹)</Label>
                     <Input
                       id="priceWholesale"
                       type="number"
@@ -322,17 +325,19 @@ export default function AddFromCatalogModal({ isOpen, onClose, storeId }: AddFro
                       value={listingData.priceWholesale}
                       onChange={(e) => setListingData(prev => ({ ...prev, priceWholesale: e.target.value }))}
                       placeholder="Enter wholesale price"
+                      className="text-sm"
                     />
                   </div>
                   
                   <div>
-                    <Label htmlFor="stockQty">Initial Stock *</Label>
+                    <Label htmlFor="stockQty" className="text-sm font-medium">Initial Stock *</Label>
                     <Input
                       id="stockQty"
                       type="number"
                       value={listingData.stockQty}
                       onChange={(e) => setListingData(prev => ({ ...prev, stockQty: e.target.value }))}
                       placeholder="Enter stock quantity"
+                      className="text-sm"
                       required
                     />
                   </div>
@@ -345,36 +350,38 @@ export default function AddFromCatalogModal({ isOpen, onClose, storeId }: AddFro
                       onChange={(e) => setListingData(prev => ({ ...prev, available: e.target.checked }))}
                       className="rounded border-gray-300"
                     />
-                    <Label htmlFor="available" className="text-sm">Available for sale</Label>
+                    <Label htmlFor="available" className="text-xs sm:text-sm">Available for sale</Label>
                   </div>
                 </div>
                 
-                <div className="flex space-x-3 pt-6">
-                  <Button variant="outline" onClick={handleClose} className="flex-1">
+                <div className="flex space-x-3 pt-4">
+                  <Button variant="outline" onClick={handleClose} className="flex-1 text-xs sm:text-sm">
                     Cancel
                   </Button>
                   <Button 
                     onClick={handleAddListing} 
-                    className="flex-1"
+                    className="flex-1 text-xs sm:text-sm"
                     disabled={createListingMutation.isPending}
                   >
                     {createListingMutation.isPending ? (
                       <>
-                        <i className="fas fa-spinner fa-spin mr-2"></i>
-                        Adding to Store...
+                        <i className="fas fa-spinner fa-spin mr-1 sm:mr-2"></i>
+                        <span className="hidden sm:inline">Adding to Store...</span>
+                        <span className="sm:hidden">Adding...</span>
                       </>
                     ) : (
                       <>
-                        <i className="fas fa-store mr-2"></i>
-                        Add to My Store
+                        <i className="fas fa-store mr-1 sm:mr-2"></i>
+                        <span className="hidden sm:inline">Add to My Store</span>
+                        <span className="sm:hidden">Add to Store</span>
                       </>
                     )}
                   </Button>
                 </div>
               </>
             ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                Select a product from the catalog to configure pricing and stock
+              <div className="text-center py-6 text-muted-foreground px-4">
+                <p className="text-xs sm:text-sm">Select a product from the catalog to configure pricing and stock</p>
               </div>
             )}
           </div>
