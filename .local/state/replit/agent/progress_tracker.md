@@ -11,3 +11,4 @@
 [x] 11. Fixed database seeding issue and verified demo credentials work
 [x] 12. Added cart redirect button for shop owners when products are added to cart - shows "View Cart" button in toast notifications
 [x] 13. Fixed database connection issue and successfully seeded with test accounts
+[x] 14. Added 10 additional dummy orders for Order Management testing with various statuses and scenarios
