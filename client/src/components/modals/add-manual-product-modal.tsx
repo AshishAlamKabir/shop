@@ -45,7 +45,7 @@ export default function AddManualProductModal({ isOpen, onClose, storeId }: AddM
         isWholesale: data.isWholesale
       };
       
-      const product = await apiRequest('POST', '/api/admin/catalog', productData);
+      const product = await apiRequest('POST', '/api/retailer/catalog', productData);
       
       // Then create the listing
       const listingData = {

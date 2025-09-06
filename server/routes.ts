@@ -311,6 +311,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Allow retailers to create products in the global catalog
+  app.post('/api/retailer/catalog', authenticateToken, requireRole('RETAILER'), async (req: any, res) => {
+    try {
+      const productData = insertProductCatalogSchema.parse({
+        ...req.body,
+        createdById: req.user.id
+      });
+      
+      const product = await storage.createProduct(productData);
+      res.status(201).json(product);
+    } catch (error) {
+      res.status(400).json({ message: 'Invalid product data' });
+    }
+  });
+
   // Retailer routes - Store management
   app.post('/api/retailer/store', authenticateToken, requireRole('RETAILER'), async (req: any, res) => {
     try {
