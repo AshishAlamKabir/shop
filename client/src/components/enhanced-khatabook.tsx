@@ -8,6 +8,8 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 export default function EnhancedKhatabook() {
   const [selectedShopOwner, setSelectedShopOwner] = useState<string | null>(null);
+  const [showAllBalances, setShowAllBalances] = useState(false);
+  const [showAllTransactions, setShowAllTransactions] = useState(false);
 
   // Fetch individual shop owner balances
   const { data: balanceData, isLoading } = useQuery({
@@ -23,7 +25,10 @@ export default function EnhancedKhatabook() {
     }
   });
 
-  const shopOwnerBalances = balanceData?.shopOwnerBalances || [];
+  const allShopOwnerBalances = balanceData?.shopOwnerBalances || [];
+  // Sort by current balance (highest first) and show top 5 unless showing all
+  const sortedBalances = allShopOwnerBalances.sort((a: any, b: any) => b.currentBalance - a.currentBalance);
+  const shopOwnerBalances = showAllBalances ? sortedBalances : sortedBalances.slice(0, 5);
   const totals = balanceData?.totals || { currentBalance: 0, totalCredits: 0, totalDebits: 0 };
 
   const selectedShopOwnerData = shopOwnerBalances.find(
@@ -95,7 +100,12 @@ export default function EnhancedKhatabook() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Shop Owner List */}
         <div className="space-y-4">
-          <h3 className="font-semibold text-lg">Shop Owner Balances</h3>
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold text-lg">Shop Owner Balances</h3>
+            <span className="text-sm text-muted-foreground">
+              {showAllBalances ? `Showing all ${allShopOwnerBalances.length}` : `Top 5 of ${allShopOwnerBalances.length}`}
+            </span>
+          </div>
           
           {shopOwnerBalances.length === 0 ? (
             <Card>
@@ -104,52 +114,77 @@ export default function EnhancedKhatabook() {
               </CardContent>
             </Card>
           ) : (
-            shopOwnerBalances.map((balance: any) => (
-              <Card 
-                key={balance.shopOwnerId} 
-                className={`cursor-pointer transition-colors hover:bg-muted/50 ${
-                  selectedShopOwner === balance.shopOwnerId ? 'ring-2 ring-primary' : ''
-                }`}
-                onClick={() => setSelectedShopOwner(balance.shopOwnerId)}
-              >
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <Avatar>
-                        <AvatarFallback>
-                          {balance.shopOwnerName?.charAt(0) || 'S'}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <h4 className="font-medium">{balance.shopOwnerName}</h4>
-                        <p className="text-sm text-muted-foreground">{balance.shopOwnerEmail}</p>
+            <>
+              {shopOwnerBalances.map((balance: any, index: number) => (
+                <Card 
+                  key={balance.shopOwnerId} 
+                  className={`cursor-pointer transition-colors hover:bg-muted/50 ${
+                    selectedShopOwner === balance.shopOwnerId ? 'ring-2 ring-primary' : ''
+                  }`}
+                  onClick={() => setSelectedShopOwner(balance.shopOwnerId)}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="relative">
+                          <Avatar>
+                            <AvatarFallback>
+                              {balance.shopOwnerName?.charAt(0) || 'S'}
+                            </AvatarFallback>
+                          </Avatar>
+                          {!showAllBalances && index < 3 && (
+                            <div className={`absolute -top-1 -right-1 w-5 h-5 rounded-full text-xs flex items-center justify-center font-bold ${
+                              index === 0 ? 'bg-yellow-400 text-yellow-900' :
+                              index === 1 ? 'bg-gray-400 text-gray-900' :
+                              'bg-orange-400 text-orange-900'
+                            }`}>
+                              {index + 1}
+                            </div>
+                          )}
+                        </div>
+                        <div>
+                          <h4 className="font-medium">{balance.shopOwnerName}</h4>
+                          <p className="text-sm text-muted-foreground">{balance.shopOwnerEmail}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className={`font-semibold ${
+                          balance.currentBalance > 0 ? 'text-green-600' : 
+                          balance.currentBalance < 0 ? 'text-red-600' : 
+                          'text-muted-foreground'
+                        }`}>
+                          {formatCurrency(balance.currentBalance)}
+                        </div>
+                        <Badge variant="outline" className="text-xs">
+                          {balance.recentEntries?.length || 0} entries
+                        </Badge>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <div className={`font-semibold ${
-                        balance.currentBalance > 0 ? 'text-green-600' : 
-                        balance.currentBalance < 0 ? 'text-red-600' : 
-                        'text-muted-foreground'
-                      }`}>
-                        {formatCurrency(balance.currentBalance)}
+                    
+                    <div className="mt-3 grid grid-cols-2 gap-4 text-sm">
+                      <div className="text-green-600">
+                        Credits: {formatCurrency(balance.totalCredits)}
                       </div>
-                      <Badge variant="outline" className="text-xs">
-                        {balance.recentEntries?.length || 0} entries
-                      </Badge>
+                      <div className="text-red-600">
+                        Debits: {formatCurrency(balance.totalDebits)}
+                      </div>
                     </div>
-                  </div>
-                  
-                  <div className="mt-3 grid grid-cols-2 gap-4 text-sm">
-                    <div className="text-green-600">
-                      Credits: {formatCurrency(balance.totalCredits)}
-                    </div>
-                    <div className="text-red-600">
-                      Debits: {formatCurrency(balance.totalDebits)}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))
+                  </CardContent>
+                </Card>
+              ))}
+              
+              {/* Show More/Less Button for Balances */}
+              {allShopOwnerBalances.length > 5 && (
+                <Button 
+                  variant="outline" 
+                  className="w-full"
+                  onClick={() => setShowAllBalances(!showAllBalances)}
+                >
+                  <i className={`fas ${showAllBalances ? 'fa-chevron-up' : 'fa-chevron-down'} mr-2`}></i>
+                  {showAllBalances ? 'Show Less' : `Show ${allShopOwnerBalances.length - 5} More`}
+                </Button>
+              )}
+            </>
           )}
         </div>
 
@@ -183,33 +218,56 @@ export default function EnhancedKhatabook() {
                   <Separator />
                   
                   <div>
-                    <h4 className="font-medium mb-3">Recent Transactions</h4>
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="font-medium">Recent Transactions</h4>
+                      <span className="text-sm text-muted-foreground">
+                        {showAllTransactions ? 'All transactions' : 'Recent 5 transactions'}
+                      </span>
+                    </div>
                     {selectedShopOwnerData.recentEntries?.length === 0 ? (
                       <div className="text-muted-foreground text-sm">No transactions yet</div>
                     ) : (
-                      <div className="space-y-2">
-                        {selectedShopOwnerData.recentEntries?.map((entry: any) => (
-                          <div key={entry.id} className="flex items-center justify-between py-2 border-b">
-                            <div>
-                              <div className="text-sm font-medium">{entry.description}</div>
-                              <div className="text-xs text-muted-foreground">
-                                {formatDate(entry.createdAt)}
+                      <>
+                        <div className="space-y-2">
+                          {(showAllTransactions 
+                            ? selectedShopOwnerData.recentEntries 
+                            : selectedShopOwnerData.recentEntries?.slice(0, 5)
+                          )?.map((entry: any) => (
+                            <div key={entry.id} className="flex items-center justify-between py-2 border-b">
+                              <div>
+                                <div className="text-sm font-medium">{entry.description}</div>
+                                <div className="text-xs text-muted-foreground">
+                                  {formatDate(entry.createdAt)} • {entry.transactionType}
+                                </div>
+                              </div>
+                              <div className={`font-semibold ${
+                                entry.entryType === 'CREDIT' ? 'text-green-600' : 'text-red-600'
+                              }`}>
+                                {entry.entryType === 'CREDIT' ? '+' : '-'}{formatCurrency(entry.amount)}
                               </div>
                             </div>
-                            <div className={`font-semibold ${
-                              entry.entryType === 'CREDIT' ? 'text-green-600' : 'text-red-600'
-                            }`}>
-                              {entry.entryType === 'CREDIT' ? '+' : '-'}{formatCurrency(entry.amount)}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
+                          ))}
+                        </div>
+                        
+                        {/* Show More/Less Button for Transactions */}
+                        {selectedShopOwnerData.recentEntries?.length > 5 && (
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="w-full mt-3"
+                            onClick={() => setShowAllTransactions(!showAllTransactions)}
+                          >
+                            <i className={`fas ${showAllTransactions ? 'fa-chevron-up' : 'fa-chevron-down'} mr-2`}></i>
+                            {showAllTransactions ? 'Show Less' : `Show ${selectedShopOwnerData.recentEntries.length - 5} More`}
+                          </Button>
+                        )}
+                      </>
                     )}
                   </div>
                   
                   <Button variant="outline" size="sm" className="w-full">
-                    <i className="fas fa-history mr-2"></i>
-                    View Full History
+                    <i className="fas fa-download mr-2"></i>
+                    Export Statement
                   </Button>
                 </div>
               </CardContent>
