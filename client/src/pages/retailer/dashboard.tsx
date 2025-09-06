@@ -1375,26 +1375,6 @@ export default function RetailerDashboard() {
       >
         <NavigationItem
           onClick={() => {
-            setActiveSection('store');
-            setIsNavigationOpen(false);
-          }}
-          active={activeSection === 'store'}
-          icon="fas fa-store"
-          label="My Store"
-          testId="button-nav-store-navigation"
-        />
-        <NavigationItem
-          onClick={() => {
-            setActiveSection('listings');
-            setIsNavigationOpen(false);
-          }}
-          active={activeSection === 'listings'}
-          icon="fas fa-box"
-          label="Inventory"
-          testId="button-nav-listings-navigation"
-        />
-        <NavigationItem
-          onClick={() => {
             setActiveSection('orders');
             setIsNavigationOpen(false);
           }}
@@ -1403,6 +1383,16 @@ export default function RetailerDashboard() {
           label="Orders"
           badge={pendingOrders.length}
           testId="button-nav-orders-navigation"
+        />
+        <NavigationItem
+          onClick={() => {
+            setActiveSection('delivery-boys');
+            setIsNavigationOpen(false);
+          }}
+          active={activeSection === 'delivery-boys'}
+          icon="fas fa-motorcycle"
+          label="Delivery Boy"
+          testId="button-nav-delivery-boys-navigation"
         />
         <NavigationItem
           onClick={() => {
@@ -1416,13 +1406,23 @@ export default function RetailerDashboard() {
         />
         <NavigationItem
           onClick={() => {
-            setActiveSection('delivery-boys');
+            setActiveSection('listings');
             setIsNavigationOpen(false);
           }}
-          active={activeSection === 'delivery-boys'}
-          icon="fas fa-motorcycle"
-          label="Delivery Boy"
-          testId="button-nav-delivery-boys-navigation"
+          active={activeSection === 'listings'}
+          icon="fas fa-box"
+          label="Inventory"
+          testId="button-nav-listings-navigation"
+        />
+        <NavigationItem
+          onClick={() => {
+            setActiveSection('store');
+            setIsNavigationOpen(false);
+          }}
+          active={activeSection === 'store'}
+          icon="fas fa-store"
+          label="My Store"
+          testId="button-nav-store-navigation"
         />
       </NavigationSidebar>
     </div>
