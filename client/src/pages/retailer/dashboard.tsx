@@ -1117,27 +1117,31 @@ export default function RetailerDashboard() {
               <Card className="mb-6">
                 <CardContent className="p-6">
                   <h3 className="text-lg font-semibold text-foreground mb-4">Find Delivery Boys by Location</h3>
-                  <p className="text-sm text-muted-foreground mb-4">Search for delivery boys who can handle deliveries in specific areas</p>
+                  <p className="text-sm text-muted-foreground mb-4">Search for delivery boys who can handle deliveries in specific PIN CODE areas</p>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     <div>
-                      <Label htmlFor="pickup-location" className="text-sm font-medium text-foreground">Pickup Location</Label>
+                      <Label htmlFor="pickup-location" className="text-sm font-medium text-foreground">Pickup Location (PIN CODE)</Label>
                       <Input
                         id="pickup-location"
                         value={locationSearchForm.pickupLocation}
                         onChange={(e) => setLocationSearchForm({ ...locationSearchForm, pickupLocation: e.target.value })}
-                        placeholder="Enter pickup area/city"
+                        placeholder="Enter pickup PIN CODE"
                         className="mt-2"
+                        maxLength={6}
+                        pattern="[0-9]*"
                       />
                     </div>
                     <div>
-                      <Label htmlFor="delivery-location" className="text-sm font-medium text-foreground">Delivery Location</Label>
+                      <Label htmlFor="delivery-location" className="text-sm font-medium text-foreground">Delivery Location (PIN CODE)</Label>
                       <Input
                         id="delivery-location"
                         value={locationSearchForm.deliveryLocation}
                         onChange={(e) => setLocationSearchForm({ ...locationSearchForm, deliveryLocation: e.target.value })}
-                        placeholder="Enter delivery area/city"
+                        placeholder="Enter delivery PIN CODE"
                         className="mt-2"
+                        maxLength={6}
+                        pattern="[0-9]*"
                       />
                     </div>
                   </div>
@@ -1147,7 +1151,7 @@ export default function RetailerDashboard() {
                       onClick={async () => {
                         if (!locationSearchForm.pickupLocation && !locationSearchForm.deliveryLocation) {
                           toast({ 
-                            title: "Please enter at least one location", 
+                            title: "Please enter at least one PIN CODE", 
                             variant: "destructive" 
                           });
                           return;
@@ -1175,7 +1179,7 @@ export default function RetailerDashboard() {
                           
                           toast({ 
                             title: `Found ${results.length} delivery boys`,
-                            description: results.length === 0 ? "Try searching with different locations" : "Check the results below"
+                            description: results.length === 0 ? "Try searching with different PIN CODEs" : "Check the results below"
                           });
                         } catch (error) {
                           toast({ 

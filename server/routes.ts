@@ -527,7 +527,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { pickupLocation, deliveryLocation } = req.query;
       
       if (!pickupLocation && !deliveryLocation) {
-        return res.status(400).json({ message: 'At least one location is required for search' });
+        return res.status(400).json({ message: 'At least one PIN CODE is required for search' });
       }
       
       const deliveryBoys = await storage.searchDeliveryBoysByLocation(req.user.id, {

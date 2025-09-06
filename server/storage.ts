@@ -747,18 +747,20 @@ export class DatabaseStorage implements IStorage {
       eq(deliveryBoys.isActive, true)
     ];
     
-    // Add location-based search conditions if provided
-    let locationConditions = [];
+    // Add PIN CODE-based search conditions if provided
+    let pincodeConditions = [];
     if (pickupLocation) {
-      locationConditions.push(like(deliveryBoys.address, `%${pickupLocation}%`));
+      // Search for PIN CODE in address field
+      pincodeConditions.push(like(deliveryBoys.address, `%${pickupLocation}%`));
     }
     if (deliveryLocation) {
-      locationConditions.push(like(deliveryBoys.address, `%${deliveryLocation}%`));
+      // Search for PIN CODE in address field
+      pincodeConditions.push(like(deliveryBoys.address, `%${deliveryLocation}%`));
     }
     
-    // If locations provided, add them as OR conditions
-    if (locationConditions.length > 0) {
-      whereConditions.push(or(...locationConditions));
+    // If PIN CODEs provided, add them as OR conditions
+    if (pincodeConditions.length > 0) {
+      whereConditions.push(or(...pincodeConditions));
     }
     
     return await db.select().from(deliveryBoys)
