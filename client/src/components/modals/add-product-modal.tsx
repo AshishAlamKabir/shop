@@ -28,9 +28,10 @@ export default function AddProductModal({ isOpen, onClose }: AddProductModalProp
 
   const createProductMutation = useMutation({
     mutationFn: async (productData: any) => {
-      return await apiRequest('POST', '/api/admin/catalog', productData);
+      return await apiRequest('POST', '/api/retailer/catalog', productData);
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/retailer/catalog'] });
       queryClient.invalidateQueries({ queryKey: ['/api/admin/catalog'] });
       toast({ title: "Product added successfully" });
       onClose();
