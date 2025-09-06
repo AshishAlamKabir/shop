@@ -24,6 +24,8 @@ export default function RetailerDashboard() {
   const [paymentModal, setPaymentModal] = useState<{ isOpen: boolean; order: any }>({ isOpen: false, order: null });
   const [paymentAmount, setPaymentAmount] = useState('');
   const [paymentNote, setPaymentNote] = useState('');
+  const [selectedOrderForDelivery, setSelectedOrderForDelivery] = useState<any>(null);
+  const [deliveryAssignmentStep, setDeliveryAssignmentStep] = useState<'own' | 'find'>('own');
   const [recentlyCreatedDeliveryBoy, setRecentlyCreatedDeliveryBoy] = useState<any>(null);
   const [showManualModal, setShowManualModal] = useState(false);
   const [showCatalogModal, setShowCatalogModal] = useState(false);
@@ -821,7 +823,10 @@ export default function RetailerDashboard() {
                               {order.deliveryType === 'DELIVERY' && (
                                 <Button 
                                   variant="outline"
-                                  onClick={() => setActiveSection('delivery-boys')}
+                                  onClick={() => {
+                                    setSelectedOrderForDelivery(order);
+                                    setActiveSection('delivery-assignment');
+                                  }}
                                   data-testid={`button-assign-delivery-${order.id}`}
                                   className="bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
                                 >
@@ -842,7 +847,10 @@ export default function RetailerDashboard() {
                               {order.deliveryType === 'DELIVERY' && (
                                 <Button 
                                   variant="outline"
-                                  onClick={() => setActiveSection('delivery-boys')}
+                                  onClick={() => {
+                                    setSelectedOrderForDelivery(order);
+                                    setActiveSection('delivery-assignment');
+                                  }}
                                   data-testid={`button-assign-delivery-${order.id}`}
                                   className="bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
                                 >
