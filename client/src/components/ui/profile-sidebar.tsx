@@ -39,11 +39,11 @@ export function ProfileSidebar({ isOpen, onClose }: ProfileSidebarProps) {
 
   const getRoleColor = (role: string) => {
     switch (role) {
-      case 'ADMIN': return 'bg-red-100 text-red-800';
-      case 'RETAILER': return 'bg-blue-100 text-blue-800';
-      case 'SHOP_OWNER': return 'bg-green-100 text-green-800';
-      case 'DELIVERY_BOY': return 'bg-orange-100 text-orange-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'ADMIN': return 'bg-destructive/10 text-destructive';
+      case 'RETAILER': return 'bg-primary/10 text-primary';
+      case 'SHOP_OWNER': return 'bg-accent/10 text-accent';
+      case 'DELIVERY_BOY': return 'bg-secondary/80 text-secondary-foreground';
+      default: return 'bg-muted text-muted-foreground';
     }
   };
 
