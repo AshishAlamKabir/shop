@@ -811,20 +811,46 @@ export default function RetailerDashboard() {
                             </>
                           )}
                           {order.status === 'ACCEPTED' && (
-                            <Button 
-                              onClick={() => updateStatusMutation.mutate({ orderId: order.id, status: 'READY' })}
-                              data-testid={`button-ready-${order.id}`}
-                            >
-                              Mark Ready
-                            </Button>
+                            <>
+                              <Button 
+                                onClick={() => updateStatusMutation.mutate({ orderId: order.id, status: 'READY' })}
+                                data-testid={`button-ready-${order.id}`}
+                              >
+                                Mark Ready
+                              </Button>
+                              {order.deliveryType === 'DELIVERY' && (
+                                <Button 
+                                  variant="outline"
+                                  onClick={() => setActiveSection('delivery-boys')}
+                                  data-testid={`button-assign-delivery-${order.id}`}
+                                  className="bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
+                                >
+                                  <i className="fas fa-motorcycle mr-2"></i>
+                                  Assign to Delivery Boy
+                                </Button>
+                              )}
+                            </>
                           )}
                           {order.status === 'READY' && (
-                            <Button 
-                              onClick={() => updateStatusMutation.mutate({ orderId: order.id, status: 'OUT_FOR_DELIVERY' })}
-                              data-testid={`button-out-for-delivery-${order.id}`}
-                            >
-                              Out for Delivery
-                            </Button>
+                            <>
+                              <Button 
+                                onClick={() => updateStatusMutation.mutate({ orderId: order.id, status: 'OUT_FOR_DELIVERY' })}
+                                data-testid={`button-out-for-delivery-${order.id}`}
+                              >
+                                Out for Delivery
+                              </Button>
+                              {order.deliveryType === 'DELIVERY' && (
+                                <Button 
+                                  variant="outline"
+                                  onClick={() => setActiveSection('delivery-boys')}
+                                  data-testid={`button-assign-delivery-${order.id}`}
+                                  className="bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
+                                >
+                                  <i className="fas fa-motorcycle mr-2"></i>
+                                  Assign to Delivery Boy
+                                </Button>
+                              )}
+                            </>
                           )}
                           {order.status === 'OUT_FOR_DELIVERY' && (
                             <>
