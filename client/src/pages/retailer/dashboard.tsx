@@ -27,6 +27,7 @@ export default function RetailerDashboard() {
   const [recentlyCreatedDeliveryBoy, setRecentlyCreatedDeliveryBoy] = useState<any>(null);
   const [showManualModal, setShowManualModal] = useState(false);
   const [showCatalogModal, setShowCatalogModal] = useState(false);
+  const [deliveryRequestForm, setDeliveryRequestForm] = useState({ description: '', pickupAddress: '', dropoffAddress: '', estimatedReward: '' });
   const [editingStore, setEditingStore] = useState(false);
   const [storeFormData, setStoreFormData] = useState({
     name: '',
@@ -112,6 +113,19 @@ export default function RetailerDashboard() {
         }
       });
       if (!response.ok) throw new Error('Failed to fetch delivery boys');
+      return response.json();
+    }
+  });
+
+  const { data: deliveryRequests = [] } = useQuery({
+    queryKey: ['/api/retailer/delivery-requests'],
+    queryFn: async () => {
+      const response = await fetch('/api/retailer/delivery-requests', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+        }
+      });
+      if (!response.ok) throw new Error('Failed to fetch delivery requests');
       return response.json();
     }
   });
@@ -247,6 +261,20 @@ export default function RetailerDashboard() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/retailer/delivery-boys'] });
       toast({ title: "Delivery boy removed successfully" });
+    }
+  });
+
+  const createDeliveryRequestMutation = useMutation({
+    mutationFn: async (data: { description: string; pickupAddress: string; dropoffAddress: string; estimatedReward?: string }) => {
+      await apiRequest('POST', '/api/retailer/delivery-requests', data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/retailer/delivery-requests'] });
+      toast({ title: "Delivery request posted successfully" });
+      setDeliveryRequestForm({ description: '', pickupAddress: '', dropoffAddress: '', estimatedReward: '' });
+    },
+    onError: () => {
+      toast({ title: "Failed to post delivery request", variant: "destructive" });
     }
   });
 
@@ -916,6 +944,140 @@ export default function RetailerDashboard() {
                     <i className="fas fa-motorcycle text-4xl text-muted-foreground mb-4"></i>
                     <h3 className="text-lg font-semibold text-foreground mb-2">No delivery boys added yet</h3>
                     <p className="text-muted-foreground">Add your first delivery boy to start managing deliveries</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Delivery Requests Section */}
+          {activeSection === 'delivery-requests' && (
+            <div>
+              <div className="mb-6">
+                <h2 className="text-2xl font-bold text-foreground mb-2">Delivery Requests</h2>
+                <p className="text-muted-foreground">Post and manage delivery requests for independent delivery boys</p>
+              </div>
+
+              {/* Create New Delivery Request */}
+              <Card className="mb-6">
+                <CardContent className="p-6">
+                  <h3 className="text-lg font-semibold text-foreground mb-4">Post New Delivery Request</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-sm font-medium text-foreground">Description</Label>
+                      <Textarea
+                        value={deliveryRequestForm.description}
+                        onChange={(e) => setDeliveryRequestForm(prev => ({ ...prev, description: e.target.value }))}
+                        placeholder="Describe what needs to be delivered"
+                        rows={3}
+                        className="mt-2"
+                        data-testid="textarea-delivery-description"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium text-foreground">Estimated Reward (₹)</Label>
+                      <Input
+                        type="number"
+                        value={deliveryRequestForm.estimatedReward}
+                        onChange={(e) => setDeliveryRequestForm(prev => ({ ...prev, estimatedReward: e.target.value }))}
+                        placeholder="Enter estimated reward amount"
+                        className="mt-2"
+                        data-testid="input-estimated-reward"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium text-foreground">Pickup Address</Label>
+                      <Textarea
+                        value={deliveryRequestForm.pickupAddress}
+                        onChange={(e) => setDeliveryRequestForm(prev => ({ ...prev, pickupAddress: e.target.value }))}
+                        placeholder="Enter pickup address"
+                        rows={2}
+                        className="mt-2"
+                        data-testid="textarea-pickup-address"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium text-foreground">Drop-off Address</Label>
+                      <Textarea
+                        value={deliveryRequestForm.dropoffAddress}
+                        onChange={(e) => setDeliveryRequestForm(prev => ({ ...prev, dropoffAddress: e.target.value }))}
+                        placeholder="Enter drop-off address"
+                        rows={2}
+                        className="mt-2"
+                        data-testid="textarea-dropoff-address"
+                      />
+                    </div>
+                  </div>
+                  <div className="mt-4 flex justify-end">
+                    <Button
+                      onClick={() => createDeliveryRequestMutation.mutate(deliveryRequestForm)}
+                      disabled={createDeliveryRequestMutation.isPending || !deliveryRequestForm.description || !deliveryRequestForm.pickupAddress || !deliveryRequestForm.dropoffAddress}
+                      data-testid="button-post-delivery-request"
+                    >
+                      {createDeliveryRequestMutation.isPending ? (
+                        <i className="fas fa-spinner fa-spin mr-2"></i>
+                      ) : (
+                        <i className="fas fa-plus mr-2"></i>
+                      )}
+                      Post Request
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Delivery Requests List */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {deliveryRequests.map((request: any) => (
+                  <Card key={request.id} className="hover:shadow-md transition-shadow" data-testid={`card-delivery-request-${request.id}`}>
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <Badge 
+                          className={
+                            request.status === 'OPEN' ? 'bg-blue-100 text-blue-800' :
+                            request.status === 'ACCEPTED' ? 'bg-green-100 text-green-800' :
+                            request.status === 'REJECTED' ? 'bg-red-100 text-red-800' :
+                            'bg-gray-100 text-gray-800'
+                          }
+                          data-testid={`badge-status-${request.id}`}
+                        >
+                          {request.status}
+                        </Badge>
+                        {request.estimatedReward && (
+                          <div className="text-lg font-semibold text-primary">
+                            ₹{request.estimatedReward}
+                          </div>
+                        )}
+                      </div>
+                      
+                      <h4 className="font-medium text-foreground mb-2" data-testid={`text-description-${request.id}`}>
+                        {request.description}
+                      </h4>
+                      
+                      <div className="space-y-2 text-sm">
+                        <div>
+                          <span className="text-muted-foreground">Pickup:</span>
+                          <p className="text-foreground">{request.pickupAddress}</p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Drop-off:</span>
+                          <p className="text-foreground">{request.dropoffAddress}</p>
+                        </div>
+                        <div className="flex justify-between text-xs text-muted-foreground">
+                          <span>Posted: {new Date(request.createdAt).toLocaleDateString()}</span>
+                          {request.acceptedBy && (
+                            <span>Accepted by delivery boy</span>
+                          )}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+                
+                {deliveryRequests.length === 0 && (
+                  <div className="col-span-full text-center py-12">
+                    <i className="fas fa-truck text-4xl text-muted-foreground mb-4"></i>
+                    <h3 className="text-lg font-semibold text-foreground mb-2">No delivery requests yet</h3>
+                    <p className="text-muted-foreground">Post your first delivery request to connect with delivery boys</p>
                   </div>
                 )}
               </div>
