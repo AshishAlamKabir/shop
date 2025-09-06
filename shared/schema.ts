@@ -6,6 +6,7 @@ import { z } from "zod";
 export const roleEnum = pgEnum('role', ['ADMIN', 'RETAILER', 'SHOP_OWNER', 'DELIVERY_BOY']);
 export const orderStatusEnum = pgEnum('order_status', ['PENDING', 'ACCEPTED', 'REJECTED', 'READY', 'OUT_FOR_DELIVERY', 'COMPLETED', 'CANCELLED']);
 export const deliveryTypeEnum = pgEnum('delivery_type', ['PICKUP', 'DELIVERY']);
+export const deliveryRequestStatusEnum = pgEnum('delivery_request_status', ['OPEN', 'ACCEPTED', 'REJECTED', 'COMPLETED']);
 export const ledgerEntryTypeEnum = pgEnum('ledger_entry_type', ['CREDIT', 'DEBIT']);
 export const ledgerTransactionTypeEnum = pgEnum('ledger_transaction_type', ['ORDER_PLACED', 'ORDER_DEBIT', 'PAYMENT_RECEIVED', 'PAYMENT_CREDIT', 'BALANCE_CLEAR_CREDIT', 'PAYMENT_ADJUSTED', 'ADJUSTMENT', 'REFUND', 'COMMISSION']);
 
@@ -149,6 +150,25 @@ export const deliveryBoys = pgTable("delivery_boys", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+export const deliveryRequests = pgTable("delivery_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  retailerId: varchar("retailer_id").notNull(),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  pickupAddress: text("pickup_address").notNull(),
+  deliveryAddress: text("delivery_address").notNull(),
+  estimatedDistance: decimal("estimated_distance", { precision: 8, scale: 2 }), // in kilometers
+  estimatedPayment: decimal("estimated_payment", { precision: 10, scale: 2 }).notNull(),
+  orderId: varchar("order_id"), // optional link to specific order
+  status: deliveryRequestStatusEnum("status").default('OPEN'),
+  acceptedBy: varchar("accepted_by"), // delivery boy user id
+  acceptedAt: timestamp("accepted_at"),
+  completedAt: timestamp("completed_at"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 export const paymentChangeRequests = pgTable("payment_change_requests", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   orderId: varchar("order_id").notNull(),
@@ -171,6 +191,8 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   createdProducts: many(productCatalog),
   ledgerEntries: many(khatabook),
   deliveryBoys: many(deliveryBoys),
+  deliveryRequests: many(deliveryRequests),
+  acceptedDeliveryRequests: many(deliveryRequests, { relationName: "acceptedDeliveryRequests" }),
 }));
 
 export const storesRelations = relations(stores, ({ one, many }) => ({
@@ -224,6 +246,12 @@ export const paymentAuditTrailRelations = relations(paymentAuditTrail, ({ one })
 
 export const deliveryBoysRelations = relations(deliveryBoys, ({ one }) => ({
   retailer: one(users, { fields: [deliveryBoys.retailerId], references: [users.id] }),
+}));
+
+export const deliveryRequestsRelations = relations(deliveryRequests, ({ one }) => ({
+  retailer: one(users, { fields: [deliveryRequests.retailerId], references: [users.id] }),
+  acceptedBy: one(users, { fields: [deliveryRequests.acceptedBy], references: [users.id], relationName: "acceptedDeliveryRequests" }),
+  order: one(orders, { fields: [deliveryRequests.orderId], references: [orders.id] }),
 }));
 
 export const paymentChangeRequestsRelations = relations(paymentChangeRequests, ({ one }) => ({
@@ -296,6 +324,12 @@ export const insertDeliveryBoySchema = createInsertSchema(deliveryBoys).omit({
   updatedAt: true,
 });
 
+export const insertDeliveryRequestSchema = createInsertSchema(deliveryRequests).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export const insertPaymentChangeRequestSchema = createInsertSchema(paymentChangeRequests).omit({
   id: true,
   createdAt: true,
@@ -324,5 +358,7 @@ export type PaymentAuditTrail = typeof paymentAuditTrail.$inferSelect;
 export type InsertPaymentAuditTrail = z.infer<typeof insertPaymentAuditTrailSchema>;
 export type DeliveryBoy = typeof deliveryBoys.$inferSelect;
 export type InsertDeliveryBoy = z.infer<typeof insertDeliveryBoySchema>;
+export type DeliveryRequest = typeof deliveryRequests.$inferSelect;
+export type InsertDeliveryRequest = z.infer<typeof insertDeliveryRequestSchema>;
 export type PaymentChangeRequest = typeof paymentChangeRequests.$inferSelect;
 export type InsertPaymentChangeRequest = z.infer<typeof insertPaymentChangeRequestSchema>;
