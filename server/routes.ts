@@ -377,7 +377,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Listing creation error:', error);
       console.error('Request body:', req.body);
-      console.error('Store:', store);
       res.status(400).json({ 
         message: 'Invalid listing data', 
         details: error instanceof Error ? error.message : 'Unknown error'
