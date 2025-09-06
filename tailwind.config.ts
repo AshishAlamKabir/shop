@@ -11,6 +11,11 @@ export default {
         sm: "calc(var(--radius) - 4px)",
       },
       colors: {
+        // Brand colors
+        'zomato-red': '#CB202D',
+        'mine-shaft': '#2D2D2D',
+        'desert-storm': '#F4F4F2',
+        'valencia-red': '#D94148',
         background: "var(--background)",
         foreground: "var(--foreground)",
         card: {
