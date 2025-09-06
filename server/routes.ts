@@ -521,6 +521,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Search delivery boys by location route
+  app.get('/api/retailer/delivery-boys/search-by-location', authenticateToken, requireRole('RETAILER'), async (req: any, res) => {
+    try {
+      const { pickupLocation, deliveryLocation } = req.query;
+      
+      if (!pickupLocation && !deliveryLocation) {
+        return res.status(400).json({ message: 'At least one location is required for search' });
+      }
+      
+      const deliveryBoys = await storage.searchDeliveryBoysByLocation(req.user.id, {
+        pickupLocation: pickupLocation as string,
+        deliveryLocation: deliveryLocation as string
+      });
+      
+      res.json(deliveryBoys);
+    } catch (error) {
+      console.error('Error searching delivery boys by location:', error);
+      res.status(500).json({ message: 'Failed to search delivery boys' });
+    }
+  });
+
   // Public routes - Store discovery
   app.get('/api/stores', async (req, res) => {
     try {

@@ -87,6 +87,7 @@ export interface IStorage {
   getDeliveryBoyByPhone(phone: string, retailerId?: string): Promise<DeliveryBoy | undefined>;
   updateDeliveryBoy(id: string, deliveryBoy: Partial<InsertDeliveryBoy>): Promise<DeliveryBoy>;
   deleteDeliveryBoy(id: string): Promise<void>;
+  searchDeliveryBoysByLocation(retailerId: string, locations: { pickupLocation?: string; deliveryLocation?: string }): Promise<DeliveryBoy[]>;
   
   // Delivery boy order management
   getOrdersForDeliveryBoy(deliveryBoyUserId: string): Promise<any[]>;
@@ -735,6 +736,34 @@ export class DatabaseStorage implements IStorage {
 
   async deleteDeliveryBoy(id: string): Promise<void> {
     await db.delete(deliveryBoys).where(eq(deliveryBoys.id, id));
+  }
+
+  async searchDeliveryBoysByLocation(retailerId: string, locations: { pickupLocation?: string; deliveryLocation?: string }): Promise<DeliveryBoy[]> {
+    const { pickupLocation, deliveryLocation } = locations;
+    
+    // Build search conditions for active delivery boys belonging to this retailer
+    let whereConditions = [
+      eq(deliveryBoys.retailerId, retailerId),
+      eq(deliveryBoys.isActive, true)
+    ];
+    
+    // Add location-based search conditions if provided
+    let locationConditions = [];
+    if (pickupLocation) {
+      locationConditions.push(like(deliveryBoys.address, `%${pickupLocation}%`));
+    }
+    if (deliveryLocation) {
+      locationConditions.push(like(deliveryBoys.address, `%${deliveryLocation}%`));
+    }
+    
+    // If locations provided, add them as OR conditions
+    if (locationConditions.length > 0) {
+      whereConditions.push(or(...locationConditions));
+    }
+    
+    return await db.select().from(deliveryBoys)
+      .where(and(...whereConditions))
+      .orderBy(desc(deliveryBoys.createdAt));
   }
 
   // Delivery boy order management

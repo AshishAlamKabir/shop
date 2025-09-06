@@ -46,6 +46,12 @@ export default function RetailerDashboard() {
     stockQty: '',
     available: true
   });
+  const [locationSearchForm, setLocationSearchForm] = useState({
+    pickupLocation: '',
+    deliveryLocation: ''
+  });
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
   const { toast } = useToast();
 
   const { data: store } = useQuery({
@@ -1106,6 +1112,142 @@ export default function RetailerDashboard() {
                 <h2 className="text-2xl font-bold text-foreground mb-2">Delivery Boy Management</h2>
                 <p className="text-muted-foreground">Add and manage your delivery boys</p>
               </div>
+
+              {/* Search Delivery Boys by Location */}
+              <Card className="mb-6">
+                <CardContent className="p-6">
+                  <h3 className="text-lg font-semibold text-foreground mb-4">Find Delivery Boys by Location</h3>
+                  <p className="text-sm text-muted-foreground mb-4">Search for delivery boys who can handle deliveries in specific areas</p>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                      <Label htmlFor="pickup-location" className="text-sm font-medium text-foreground">Pickup Location</Label>
+                      <Input
+                        id="pickup-location"
+                        value={locationSearchForm.pickupLocation}
+                        onChange={(e) => setLocationSearchForm({ ...locationSearchForm, pickupLocation: e.target.value })}
+                        placeholder="Enter pickup area/city"
+                        className="mt-2"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="delivery-location" className="text-sm font-medium text-foreground">Delivery Location</Label>
+                      <Input
+                        id="delivery-location"
+                        value={locationSearchForm.deliveryLocation}
+                        onChange={(e) => setLocationSearchForm({ ...locationSearchForm, deliveryLocation: e.target.value })}
+                        placeholder="Enter delivery area/city"
+                        className="mt-2"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="flex space-x-2">
+                    <Button
+                      onClick={async () => {
+                        if (!locationSearchForm.pickupLocation && !locationSearchForm.deliveryLocation) {
+                          toast({ 
+                            title: "Please enter at least one location", 
+                            variant: "destructive" 
+                          });
+                          return;
+                        }
+                        
+                        setIsSearching(true);
+                        try {
+                          const params = new URLSearchParams();
+                          if (locationSearchForm.pickupLocation) {
+                            params.append('pickupLocation', locationSearchForm.pickupLocation);
+                          }
+                          if (locationSearchForm.deliveryLocation) {
+                            params.append('deliveryLocation', locationSearchForm.deliveryLocation);
+                          }
+                          
+                          const response = await fetch(`/api/retailer/delivery-boys/search-by-location?${params}`, {
+                            headers: {
+                              'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+                            }
+                          });
+                          
+                          if (!response.ok) throw new Error('Failed to search');
+                          const results = await response.json();
+                          setSearchResults(results);
+                          
+                          toast({ 
+                            title: `Found ${results.length} delivery boys`,
+                            description: results.length === 0 ? "Try searching with different locations" : "Check the results below"
+                          });
+                        } catch (error) {
+                          toast({ 
+                            title: "Search failed", 
+                            description: "Please try again later",
+                            variant: "destructive" 
+                          });
+                        } finally {
+                          setIsSearching(false);
+                        }
+                      }}
+                      disabled={isSearching}
+                    >
+                      {isSearching ? (
+                        <i className="fas fa-spinner fa-spin mr-2"></i>
+                      ) : (
+                        <i className="fas fa-search mr-2"></i>
+                      )}
+                      Search Delivery Boys
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setLocationSearchForm({ pickupLocation: '', deliveryLocation: '' });
+                        setSearchResults([]);
+                      }}
+                    >
+                      <i className="fas fa-times mr-2"></i>
+                      Clear
+                    </Button>
+                  </div>
+                  
+                  {/* Search Results */}
+                  {searchResults.length > 0 && (
+                    <div className="mt-6">
+                      <h4 className="text-md font-semibold text-foreground mb-3">
+                        <i className="fas fa-map-marker-alt mr-2"></i>
+                        Search Results ({searchResults.length} found)
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {searchResults.map((deliveryBoy: any) => (
+                          <Card key={deliveryBoy.id} className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950">
+                            <CardContent className="p-4">
+                              <div className="flex items-center space-x-3 mb-3">
+                                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                                  <i className="fas fa-motorcycle text-blue-600 text-lg"></i>
+                                </div>
+                                <div>
+                                  <h5 className="font-semibold text-foreground">{deliveryBoy.name}</h5>
+                                  <span className="text-xs text-green-600 font-medium">Available</span>
+                                </div>
+                              </div>
+                              <div className="space-y-2 text-sm">
+                                <div className="flex items-center text-muted-foreground">
+                                  <i className="fas fa-phone mr-2 w-4"></i>
+                                  <span>{deliveryBoy.phone}</span>
+                                </div>
+                                {deliveryBoy.address && (
+                                  <div className="flex items-center text-muted-foreground">
+                                    <i className="fas fa-map-marker-alt mr-2 w-4"></i>
+                                    <span className="text-xs">{deliveryBoy.address}</span>
+                                  </div>
+                                )}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
 
               {/* Add New Delivery Boy Form */}
               <Card className="mb-6">
