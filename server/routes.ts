@@ -1082,7 +1082,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const orders = await storage.getOrdersByRetailer(req.user.id);
       
       // Get unique shop owners from orders
-      const shopOwnerIds = [...new Set(orders.map((order: any) => order.ownerId))];
+      const shopOwnerIds = Array.from(new Set(orders.map((order: any) => order.ownerId)));
       
       const balances = await Promise.all(
         shopOwnerIds.map(async (shopOwnerId) => {
