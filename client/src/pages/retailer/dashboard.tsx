@@ -17,7 +17,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
 export default function RetailerDashboard() {
-  const [activeSection, setActiveSection] = useState('store');
+  const [activeSection, setActiveSection] = useState('orders');
   const [isNavigationOpen, setIsNavigationOpen] = useState(false);
   const [newDeliveryBoy, setNewDeliveryBoy] = useState({ name: '', phone: '', address: '' });
   const [editingDeliveryBoy, setEditingDeliveryBoy] = useState<any>(null);
