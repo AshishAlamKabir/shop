@@ -65,6 +65,7 @@ export default function Header({ onMenuClick, onNavigationMenuClick }: HeaderPro
               size="sm" 
               onClick={onNavigationMenuClick}
               data-testid="button-navigation-menu"
+              className="bg-[#fa0000]"
             >
               <i className="fas fa-bars"></i>
             </Button>
