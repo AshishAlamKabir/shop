@@ -27,7 +27,7 @@ export default function Header({ onMenuClick, onNavigationMenuClick }: HeaderPro
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
           <img src={logoUrl} alt="ShopLink Logo" className="w-10 h-10 object-contain" />
-          <h1 className="text-xl font-bold text-foreground">ShopLink</h1>
+          <h1 className="text-xl font-bold text-foreground">Shop Now</h1>
           <Badge variant="secondary" data-testid="badge-role">
             {getRoleDisplay(user?.role || '')}
           </Badge>
@@ -72,7 +72,6 @@ export default function Header({ onMenuClick, onNavigationMenuClick }: HeaderPro
           )}
         </div>
       </div>
-      
       {/* Profile Sidebar */}
       <ProfileSidebar 
         isOpen={showProfileSidebar} 
