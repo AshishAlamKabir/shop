@@ -5,7 +5,7 @@ import { storage } from "./storage";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { z } from "zod";
-import { insertUserSchema, insertStoreSchema, insertProductCatalogSchema, insertListingSchema, insertOrderSchema, insertDeliveryBoySchema } from "@shared/schema";
+import { insertUserSchema, insertStoreSchema, insertProductCatalogSchema, insertListingSchema, insertOrderSchema, insertDeliveryBoySchema, insertDeliveryRequestSchema } from "@shared/schema";
 
 const JWT_SECRET = process.env.JWT_SECRET || "supersecret";
 
@@ -1685,6 +1685,132 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(retailerBalances);
     } catch (error) {
       res.status(400).json({ message: 'Failed to fetch retailer balances' });
+    }
+  });
+
+  // Delivery Request Management
+  // Retailer - Create delivery request
+  app.post('/api/delivery-requests', authenticateToken, requireRole('RETAILER'), async (req: any, res) => {
+    try {
+      const validatedData = insertDeliveryRequestSchema.parse({
+        ...req.body,
+        retailerId: req.user.id
+      });
+      
+      const deliveryRequest = await storage.createDeliveryRequest(validatedData);
+      res.status(201).json(deliveryRequest);
+    } catch (error) {
+      res.status(400).json({ message: 'Failed to create delivery request' });
+    }
+  });
+
+  // Retailer - Get own delivery requests
+  app.get('/api/delivery-requests', authenticateToken, requireRole('RETAILER'), async (req: any, res) => {
+    try {
+      const deliveryRequests = await storage.getDeliveryRequestsByRetailer(req.user.id);
+      res.json(deliveryRequests);
+    } catch (error) {
+      res.status(400).json({ message: 'Failed to fetch delivery requests' });
+    }
+  });
+
+  // Delivery Boy - Get open delivery requests
+  app.get('/api/delivery-requests/open', authenticateToken, requireRole('DELIVERY_BOY'), async (req: any, res) => {
+    try {
+      const openRequests = await storage.getOpenDeliveryRequests();
+      res.json(openRequests);
+    } catch (error) {
+      res.status(400).json({ message: 'Failed to fetch open delivery requests' });
+    }
+  });
+
+  // Delivery Boy - Accept delivery request
+  app.post('/api/delivery-requests/:id/accept', authenticateToken, requireRole('DELIVERY_BOY'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const request = await storage.getDeliveryRequest(id);
+      
+      if (!request) {
+        return res.status(404).json({ message: 'Delivery request not found' });
+      }
+      
+      if (request.status !== 'OPEN') {
+        return res.status(400).json({ message: 'Delivery request is no longer available' });
+      }
+
+      await storage.acceptDeliveryRequest(id, req.user.id);
+      
+      // Notify retailer about acceptance
+      const retailerClient = clients.get(request.retailerId);
+      if (retailerClient && retailerClient.readyState === WebSocket.OPEN) {
+        retailerClient.send(JSON.stringify({
+          type: 'deliveryRequestAccepted',
+          payload: { requestId: id, deliveryBoy: req.user.fullName }
+        }));
+      }
+
+      res.json({ message: 'Delivery request accepted successfully' });
+    } catch (error) {
+      res.status(400).json({ message: 'Failed to accept delivery request' });
+    }
+  });
+
+  // Delivery Boy - Reject delivery request
+  app.post('/api/delivery-requests/:id/reject', authenticateToken, requireRole('DELIVERY_BOY'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const request = await storage.getDeliveryRequest(id);
+      
+      if (!request) {
+        return res.status(404).json({ message: 'Delivery request not found' });
+      }
+      
+      if (request.status !== 'OPEN') {
+        return res.status(400).json({ message: 'Delivery request is no longer available' });
+      }
+
+      await storage.rejectDeliveryRequest(id);
+      res.json({ message: 'Delivery request rejected successfully' });
+    } catch (error) {
+      res.status(400).json({ message: 'Failed to reject delivery request' });
+    }
+  });
+
+  // Delivery Boy - Get accepted delivery requests
+  app.get('/api/delivery-requests/accepted', authenticateToken, requireRole('DELIVERY_BOY'), async (req: any, res) => {
+    try {
+      const acceptedRequests = await storage.getAcceptedDeliveryRequestsByDeliveryBoy(req.user.id);
+      res.json(acceptedRequests);
+    } catch (error) {
+      res.status(400).json({ message: 'Failed to fetch accepted delivery requests' });
+    }
+  });
+
+  // Delivery Boy - Complete delivery request
+  app.post('/api/delivery-requests/:id/complete', authenticateToken, requireRole('DELIVERY_BOY'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { notes } = req.body;
+      
+      const request = await storage.getDeliveryRequest(id);
+      if (!request || request.acceptedBy !== req.user.id) {
+        return res.status(404).json({ message: 'Delivery request not found or not assigned to you' });
+      }
+
+      await storage.completeDeliveryRequest(id, notes);
+      
+      // Notify retailer about completion
+      const retailerClient = clients.get(request.retailerId);
+      if (retailerClient && retailerClient.readyState === WebSocket.OPEN) {
+        retailerClient.send(JSON.stringify({
+          type: 'deliveryRequestCompleted',
+          payload: { requestId: id, deliveryBoy: req.user.fullName, notes }
+        }));
+      }
+
+      res.json({ message: 'Delivery request completed successfully' });
+    } catch (error) {
+      res.status(400).json({ message: 'Failed to complete delivery request' });
     }
   });
 
