@@ -12,7 +12,17 @@ export default function ToastNotifications() {
     if (!socket || !isConnected || !user) return;
 
     const handleOrderEvent = (data: any) => {
-      const { event, payload, orderId } = data;
+      const { event, payload, orderId, type } = data;
+      
+      // Handle delivery request notifications
+      if (type === 'newDeliveryRequest' && user.role === 'DELIVERY_BOY') {
+        toast({
+          title: "🚚 New Delivery Request!",
+          description: `${payload.description}\nPickup: ${payload.pickupAddress}\nDelivery: ${payload.deliveryAddress}\nReward: ₹${payload.estimatedPayment}`,
+          duration: 15000,
+        });
+        return;
+      }
       
       switch (event) {
         case 'orderPlaced':

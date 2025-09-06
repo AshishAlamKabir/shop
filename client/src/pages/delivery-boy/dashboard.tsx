@@ -12,17 +12,43 @@ import { NavigationSidebar, NavigationItem } from "@/components/ui/navigation-si
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
+import { useEffect } from "react";
+import { useSocket } from "@/hooks/use-socket";
 
 export default function DeliveryBoyDashboard() {
   const [activeSection, setActiveSection] = useState('orders');
   const [isNavigationOpen, setIsNavigationOpen] = useState(false);
   const [paymentModal, setPaymentModal] = useState<{ isOpen: boolean; order: any }>({ isOpen: false, order: null });
   const [paymentChangeModal, setPaymentChangeModal] = useState<{ isOpen: boolean; order: any }>({ isOpen: false, order: null });
+  const [deliveryRequestModal, setDeliveryRequestModal] = useState<{ isOpen: boolean; request: any }>({ isOpen: false, request: null });
   const [paymentAmount, setPaymentAmount] = useState('');
   const [newAmount, setNewAmount] = useState('');
   const [reason, setReason] = useState('');
   const { toast } = useToast();
   const { user } = useAuth();
+  const { socket, isConnected } = useSocket();
+
+  // Listen for delivery request notifications
+  useEffect(() => {
+    if (!socket || !isConnected || !user || user.role !== 'DELIVERY_BOY') return;
+
+    const handleDeliveryRequest = (event: MessageEvent) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === 'newDeliveryRequest') {
+          setDeliveryRequestModal({ isOpen: true, request: data.payload });
+        }
+      } catch (error) {
+        console.error('Failed to parse delivery request message:', error);
+      }
+    };
+
+    socket.addEventListener('message', handleDeliveryRequest);
+
+    return () => {
+      socket.removeEventListener('message', handleDeliveryRequest);
+    };
+  }, [socket, isConnected, user]);
 
   const { data: orders = [] } = useQuery({
     queryKey: ['/api/delivery/orders'],
@@ -76,6 +102,41 @@ export default function DeliveryBoyDashboard() {
     onError: (error: any) => {
       toast({ 
         title: "Payment confirmation failed", 
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  });
+
+  const acceptDeliveryRequestMutation = useMutation({
+    mutationFn: async (requestId: string) => {
+      return apiRequest('POST', `/api/delivery-requests/${requestId}/accept`);
+    },
+    onSuccess: () => {
+      toast({ title: "✅ Delivery Accepted!", description: "You have accepted this delivery request." });
+      setDeliveryRequestModal({ isOpen: false, request: null });
+      queryClient.invalidateQueries({ queryKey: ['/api/delivery/orders'] });
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Failed to accept delivery", 
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  });
+
+  const rejectDeliveryRequestMutation = useMutation({
+    mutationFn: async (requestId: string) => {
+      return apiRequest('POST', `/api/delivery-requests/${requestId}/reject`);
+    },
+    onSuccess: () => {
+      toast({ title: "❌ Delivery Rejected", description: "You have rejected this delivery request." });
+      setDeliveryRequestModal({ isOpen: false, request: null });
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Failed to reject delivery", 
         description: error.message,
         variant: "destructive"
       });
@@ -373,6 +434,78 @@ export default function DeliveryBoyDashboard() {
           />
         </NavigationSidebar>
       </div>
+
+      {/* Delivery Request Modal */}
+      <Dialog 
+        open={deliveryRequestModal.isOpen} 
+        onOpenChange={(open) => setDeliveryRequestModal({ isOpen: open, request: null })}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>🚚 New Delivery Request</DialogTitle>
+          </DialogHeader>
+          
+          {deliveryRequestModal.request && (
+            <div className="space-y-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h4 className="font-medium text-blue-900 mb-2">{deliveryRequestModal.request.description}</h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-start gap-2">
+                    <i className="fas fa-map-marker-alt text-green-600 mt-1"></i>
+                    <div>
+                      <span className="font-medium">Pickup:</span>
+                      <p className="text-muted-foreground">{deliveryRequestModal.request.pickupAddress}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <i className="fas fa-map-marker-alt text-red-600 mt-1"></i>
+                    <div>
+                      <span className="font-medium">Delivery:</span>
+                      <p className="text-muted-foreground">{deliveryRequestModal.request.deliveryAddress}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <i className="fas fa-money-bill text-green-600"></i>
+                    <span className="font-medium">Reward: ₹{deliveryRequestModal.request.estimatedPayment}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <i className="fas fa-store text-blue-600"></i>
+                    <span className="font-medium">Retailer: {deliveryRequestModal.request.retailer}</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex space-x-3">
+                <Button 
+                  onClick={() => acceptDeliveryRequestMutation.mutate(deliveryRequestModal.request.requestId)}
+                  disabled={acceptDeliveryRequestMutation.isPending}
+                  className="flex-1 bg-green-600 hover:bg-green-700"
+                >
+                  {acceptDeliveryRequestMutation.isPending ? (
+                    <i className="fas fa-spinner fa-spin mr-2"></i>
+                  ) : (
+                    <i className="fas fa-check mr-2"></i>
+                  )}
+                  Accept Delivery
+                </Button>
+                <Button 
+                  variant="outline"
+                  onClick={() => rejectDeliveryRequestMutation.mutate(deliveryRequestModal.request.requestId)}
+                  disabled={rejectDeliveryRequestMutation.isPending}
+                  className="flex-1 border-red-200 text-red-700 hover:bg-red-50"
+                >
+                  {rejectDeliveryRequestMutation.isPending ? (
+                    <i className="fas fa-spinner fa-spin mr-2"></i>
+                  ) : (
+                    <i className="fas fa-times mr-2"></i>
+                  )}
+                  Reject
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

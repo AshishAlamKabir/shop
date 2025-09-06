@@ -1790,16 +1790,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       await storage.acceptDeliveryRequest(id, req.user.id);
       
+      // If this delivery request is linked to an order, automatically assign the order
+      if (request.orderId) {
+        try {
+          await storage.assignOrderToDeliveryBoy(request.orderId, req.user.id);
+          
+          // Create order event for assignment
+          await storage.createOrderEvent({
+            orderId: request.orderId,
+            type: 'ASSIGNED_DELIVERY_BOY',
+            message: `Order automatically assigned to delivery boy: ${req.user.fullName} via shared delivery request`
+          });
+
+          // Get order details for notification
+          const order = await storage.getOrder(request.orderId);
+          if (order) {
+            emitOrderEvent(request.orderId, order.ownerId, order.retailerId, 'deliveryBoyAssigned', {
+              orderId: request.orderId,
+              deliveryBoy: req.user.fullName,
+              deliveryBoyPhone: req.user.phone || 'Not provided'
+            });
+          }
+        } catch (error) {
+          console.error('Failed to assign order to delivery boy:', error);
+        }
+      }
+      
       // Notify retailer about acceptance
       const retailerClient = clients.get(request.retailerId);
       if (retailerClient && retailerClient.readyState === WebSocket.OPEN) {
         retailerClient.send(JSON.stringify({
           type: 'deliveryRequestAccepted',
-          payload: { requestId: id, deliveryBoy: req.user.fullName }
+          payload: { requestId: id, deliveryBoy: req.user.fullName, orderId: request.orderId }
         }));
       }
 
-      res.json({ message: 'Delivery request accepted successfully' });
+      res.json({ message: 'Delivery request accepted and order assigned successfully' });
     } catch (error) {
       res.status(400).json({ message: 'Failed to accept delivery request' });
     }
