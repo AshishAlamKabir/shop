@@ -285,59 +285,131 @@ export default function RetailerDashboard() {
                     <CardContent className="p-6">
                       <div className="flex items-center justify-between mb-4">
                         <h3 className="text-lg font-semibold text-foreground">Store Information</h3>
-                        <Button variant="outline" data-testid="button-edit-store">Edit</Button>
+                        <div className="flex space-x-2">
+                          {editingStore && (
+                            <Button 
+                              variant="outline" 
+                              onClick={() => {
+                                setEditingStore(false);
+                                setStoreFormData({
+                                  name: '',
+                                  address: '',
+                                  city: '',
+                                  pincode: '',
+                                  phone: '',
+                                  description: ''
+                                });
+                              }}
+                              data-testid="button-cancel-store-edit"
+                            >
+                              <i className="fas fa-times mr-2"></i>
+                              Cancel
+                            </Button>
+                          )}
+                          <Button 
+                            variant="outline" 
+                            onClick={() => {
+                              if (editingStore) {
+                                // Save store changes
+                                updateStoreMutation.mutate(storeFormData);
+                              } else {
+                                // Start editing - populate form with current store data
+                                setStoreFormData({
+                                  name: store?.name || '',
+                                  address: store?.address || '',
+                                  city: store?.city || '',
+                                  pincode: store?.pincode || '',
+                                  phone: store?.phone || '',
+                                  description: store?.description || ''
+                                });
+                                setEditingStore(true);
+                              }
+                            }}
+                            disabled={updateStoreMutation.isPending}
+                            data-testid="button-edit-store"
+                          >
+                            {updateStoreMutation.isPending ? (
+                              <i className="fas fa-spinner fa-spin mr-2"></i>
+                            ) : editingStore ? (
+                              <i className="fas fa-save mr-2"></i>
+                            ) : (
+                              <i className="fas fa-edit mr-2"></i>
+                            )}
+                            {editingStore ? 'Save' : 'Edit'}
+                          </Button>
+                        </div>
                       </div>
                       
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                           <Label className="text-sm font-medium text-foreground">Store Name</Label>
                           <Input 
-                            value={store?.name || ''} 
-                            readOnly 
+                            value={editingStore ? storeFormData.name : (store?.name || '')} 
+                            readOnly={!editingStore}
+                            onChange={(e) => editingStore && setStoreFormData(prev => ({ ...prev, name: e.target.value }))}
                             className="mt-2"
+                            placeholder="Enter store name"
                             data-testid="input-store-name"
                           />
                         </div>
                         <div>
                           <Label className="text-sm font-medium text-foreground">City</Label>
                           <Input 
-                            value={store?.city || ''} 
-                            readOnly 
+                            value={editingStore ? storeFormData.city : (store?.city || '')} 
+                            readOnly={!editingStore}
+                            onChange={(e) => editingStore && setStoreFormData(prev => ({ ...prev, city: e.target.value }))}
                             className="mt-2"
+                            placeholder="Enter city"
                             data-testid="input-store-city"
                           />
                         </div>
                         <div>
                           <Label className="text-sm font-medium text-foreground">Pincode</Label>
                           <Input 
-                            value={store?.pincode || ''} 
-                            readOnly 
+                            value={editingStore ? storeFormData.pincode : (store?.pincode || '')} 
+                            readOnly={!editingStore}
+                            onChange={(e) => editingStore && setStoreFormData(prev => ({ ...prev, pincode: e.target.value }))}
                             className="mt-2"
+                            placeholder="Enter pincode"
                             data-testid="input-store-pincode"
                           />
                         </div>
                         <div>
-                          <Label className="text-sm font-medium text-foreground">Status</Label>
-                          <Select value={store?.isOpen ? 'open' : 'closed'}>
-                            <SelectTrigger className="mt-2" data-testid="select-store-status">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="open">Open</SelectItem>
-                              <SelectItem value="closed">Closed</SelectItem>
-                            </SelectContent>
-                          </Select>
+                          <Label className="text-sm font-medium text-foreground">Phone</Label>
+                          <Input 
+                            value={editingStore ? storeFormData.phone : (store?.phone || '')} 
+                            readOnly={!editingStore}
+                            onChange={(e) => editingStore && setStoreFormData(prev => ({ ...prev, phone: e.target.value }))}
+                            className="mt-2"
+                            placeholder="Enter phone number"
+                            data-testid="input-store-phone"
+                          />
                         </div>
                         <div className="md:col-span-2">
                           <Label className="text-sm font-medium text-foreground">Address</Label>
                           <Textarea 
-                            value={store?.address || ''} 
-                            readOnly 
-                            rows={3} 
+                            value={editingStore ? storeFormData.address : (store?.address || '')} 
+                            readOnly={!editingStore}
+                            onChange={(e) => editingStore && setStoreFormData(prev => ({ ...prev, address: e.target.value }))}
+                            rows={2} 
                             className="mt-2"
+                            placeholder="Enter complete address"
                             data-testid="textarea-store-address"
                           />
                         </div>
+                        {editingStore && (
+                          <div className="md:col-span-2">
+                            <Label className="text-sm font-medium text-foreground">Description</Label>
+                            <Textarea 
+                              value={storeFormData.description}
+                              onChange={(e) => setStoreFormData(prev => ({ ...prev, description: e.target.value }))}
+                              rows={2}
+                              className="mt-2"
+                              placeholder="Enter store description (optional)"
+                              data-testid="textarea-store-description"
+                            />
+                          </div>
+                        )}
                       </div>
                     </CardContent>
                   </Card>
