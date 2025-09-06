@@ -745,8 +745,8 @@ export default function RetailerDashboard() {
                     <CardContent className="p-6">
                       <div className="flex items-start justify-between mb-4">
                         <div>
-                          <h4 className="font-semibold text-foreground">#{order.id.slice(-8)}</h4>
-                          <p className="text-sm text-muted-foreground">from {order.owner.fullName}</p>
+                          <h4 className="font-semibold text-foreground">{order.owner.fullName}</h4>
+                          <p className="text-sm text-muted-foreground">{order.store?.city || order.store?.address || 'Location not specified'}</p>
                           <p className="text-xs text-muted-foreground">
                             {new Date(order.createdAt).toLocaleDateString()}
                           </p>
