@@ -784,6 +784,12 @@ export default function RetailerDashboard() {
                           <div className="text-sm text-muted-foreground">
                             {order.deliveryType === 'DELIVERY' ? 'Delivery requested' : 'Pickup requested'}
                           </div>
+                          {order.paymentReceived && (
+                            <div className="flex items-center text-green-600 font-medium mt-2">
+                              <i className="fas fa-check-circle mr-2"></i>
+                              Payment Received ₹{order.amountReceived || order.totalAmount}
+                            </div>
+                          )}
                         </div>
                         <div className="flex space-x-2">
                           {order.status === 'PENDING' && (
@@ -857,12 +863,6 @@ export default function RetailerDashboard() {
                               <i className="fas fa-money-bill mr-2"></i>
                               Record COD Payment
                             </Button>
-                          )}
-                          {order.paymentReceived && (
-                            <div className="flex items-center text-green-600 font-medium">
-                              <i className="fas fa-check-circle mr-2"></i>
-                              Payment Received ₹{order.amountReceived || order.totalAmount}
-                            </div>
                           )}
                         </div>
                       </div>
