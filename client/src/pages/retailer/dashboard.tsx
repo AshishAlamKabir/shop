@@ -824,14 +824,13 @@ export default function RetailerDashboard() {
                                 <Button 
                                   variant="outline"
                                   onClick={() => {
-                                    setSelectedOrderForDelivery(order);
-                                    setActiveSection('delivery-assignment');
+                                    setActiveSection('delivery-boys');
                                   }}
                                   data-testid={`button-assign-delivery-${order.id}`}
                                   className="bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
                                 >
                                   <i className="fas fa-motorcycle mr-2"></i>
-                                  Assign to Delivery Boy
+                                  Assign Delivery
                                 </Button>
                               )}
                             </>
@@ -848,14 +847,13 @@ export default function RetailerDashboard() {
                                 <Button 
                                   variant="outline"
                                   onClick={() => {
-                                    setSelectedOrderForDelivery(order);
-                                    setActiveSection('delivery-assignment');
+                                    setActiveSection('delivery-boys');
                                   }}
                                   data-testid={`button-assign-delivery-${order.id}`}
                                   className="bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
                                 >
                                   <i className="fas fa-motorcycle mr-2"></i>
-                                  Assign to Delivery Boy
+                                  Assign Delivery
                                 </Button>
                               )}
                             </>
