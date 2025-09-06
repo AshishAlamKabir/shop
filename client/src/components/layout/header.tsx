@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
 import { ProfileSidebar } from "@/components/ui/profile-sidebar";
+import logoUrl from "../../../assets/logo.png";
 
 interface HeaderProps {
   onMenuClick?: () => void;
@@ -25,9 +26,7 @@ export default function Header({ onMenuClick, onNavigationMenuClick }: HeaderPro
     <header className="bg-card border-b border-border px-6 py-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
-          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-            <i className="fas fa-store text-primary-foreground"></i>
-          </div>
+          <img src={logoUrl} alt="ShopLink Logo" className="w-10 h-10 object-contain" />
           <h1 className="text-xl font-bold text-foreground">ShopLink</h1>
           <Badge variant="secondary" data-testid="badge-role">
             {getRoleDisplay(user?.role || '')}
