@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
 import { ProfileSidebar } from "@/components/ui/profile-sidebar";
-import logoUrl from "../../../assets/logo.png";
+import logoUrl from "../../assets/logo.png";
 
 interface HeaderProps {
   onMenuClick?: () => void;
