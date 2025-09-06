@@ -70,8 +70,8 @@ export default function AddFromCatalogModal({ isOpen, onClose, storeId }: AddFro
       queryClient.invalidateQueries({ queryKey: ['/api/retailer/listings'] });
       queryClient.invalidateQueries({ queryKey: ['/api/retailer/previous-products'] });
       toast({ 
-        title: "✅ Product Added to Store", 
-        description: "Product is now available for shop owners to order" 
+        title: "✅ Product Added to Inventory", 
+        description: "Product added with default pricing. You can edit quantity and price in Inventory section." 
       });
       setSelectedProduct(null);
       setListingData({
@@ -104,15 +104,17 @@ export default function AddFromCatalogModal({ isOpen, onClose, storeId }: AddFro
   };
 
   const handleQuickAdd = (product: any) => {
-    setSelectedProduct(product);
-    // Pre-fill with suggested prices if available
-    setListingData({
-      priceRetail: '',
-      priceWholesale: '',
-      stockQty: '10', // Default stock
+    // Directly add to inventory with default values
+    const defaultListingData = {
+      storeId,
+      productId: product.id,
+      priceRetail: 50, // Default retail price
+      priceWholesale: product.isWholesale ? 40 : null,
+      stockQty: 10, // Default stock
       available: true
-    });
-    setActiveTab('search'); // Switch to main tab for configuration
+    };
+    
+    createListingMutation.mutate(defaultListingData);
   };
 
   const handleProductSelect = (product: any) => {
@@ -216,7 +218,7 @@ export default function AddFromCatalogModal({ isOpen, onClose, storeId }: AddFro
                             className="w-full sm:w-auto sm:ml-4 text-xs sm:text-sm"
                           >
                             <i className="fas fa-plus mr-1"></i>
-                            Add to Store
+                            Add to Inventory
                           </Button>
                         </div>
                       </CardContent>
@@ -271,7 +273,7 @@ export default function AddFromCatalogModal({ isOpen, onClose, storeId }: AddFro
                             className="w-full sm:w-auto sm:ml-4 text-xs sm:text-sm"
                           >
                             <i className="fas fa-plus mr-1"></i>
-                            Add Again
+                            Add to Inventory
                           </Button>
                         </div>
                       </CardContent>
