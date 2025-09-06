@@ -10,3 +10,4 @@
 [x] 10. Migration completed - application running successfully with working authentication
 [x] 11. Fixed database seeding issue and verified demo credentials work
 [x] 12. Added cart redirect button for shop owners when products are added to cart - shows "View Cart" button in toast notifications
+[x] 13. Fixed database connection issue and successfully seeded with test accounts
