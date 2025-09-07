@@ -556,24 +556,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Delivery boy ID is required for search' });
       }
       
-      const result = await storage.findDeliveryBoyUserById(req.user.id, deliveryBoyId as string);
+      const result = await storage.findDeliveryBoyById(req.user.id, deliveryBoyId as string);
       
       if (!result) {
         return res.status(404).json({ message: 'Delivery boy not found' });
       }
       
       res.json({
-        user: {
-          id: result.user.id,
-          fullName: result.user.fullName,
-          email: result.user.email,
-          phone: result.user.phone,
-          role: result.user.role
+        deliveryBoy: {
+          id: result.deliveryBoy.id,
+          name: result.deliveryBoy.name,
+          phone: result.deliveryBoy.phone,
+          address: result.deliveryBoy.address,
+          isActive: result.deliveryBoy.isActive,
+          retailerId: result.deliveryBoy.retailerId
         },
         alreadyAdded: result.alreadyAdded
       });
     } catch (error) {
       res.status(400).json({ message: 'Failed to search delivery boy' });
+    }
+  });
+
+  // Add existing delivery boy to retailer's account
+  app.post('/api/retailer/delivery-boys/add-existing', authenticateToken, requireRole('RETAILER'), async (req: any, res) => {
+    try {
+      const { deliveryBoyId } = req.body;
+      
+      if (!deliveryBoyId) {
+        return res.status(400).json({ message: 'Delivery boy ID is required' });
+      }
+      
+      const newDeliveryBoy = await storage.addExistingDeliveryBoyToRetailer(req.user.id, deliveryBoyId);
+      
+      res.status(201).json({
+        message: 'Delivery boy added successfully',
+        deliveryBoy: newDeliveryBoy
+      });
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || 'Failed to add delivery boy' });
     }
   });
 

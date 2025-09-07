@@ -1171,12 +1171,12 @@ export default function RetailerDashboard() {
                           if (result.alreadyAdded) {
                             toast({ 
                               title: "Delivery boy already added",
-                              description: `${result.user.fullName} is already in your delivery team`
+                              description: `${result.deliveryBoy.name} is already in your delivery team`
                             });
                           } else {
                             toast({ 
                               title: "Delivery boy found",
-                              description: `Found ${result.user.fullName}. Please verify details and add to your team.`
+                              description: `Found ${result.deliveryBoy.name}. Please verify details and add to your team.`
                             });
                           }
                         } catch (error) {
@@ -1227,7 +1227,7 @@ export default function RetailerDashboard() {
                             <i className="fas fa-motorcycle text-blue-600 dark:text-blue-400 text-2xl"></i>
                           </div>
                           <div>
-                            <h4 className="text-xl font-semibold text-foreground">{searchResults.user.fullName}</h4>
+                            <h4 className="text-xl font-semibold text-foreground">{searchResults.deliveryBoy.name}</h4>
                             <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
                               searchResults.alreadyAdded 
                                 ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' 
@@ -1241,13 +1241,13 @@ export default function RetailerDashboard() {
                           <Button
                             onClick={async () => {
                               try {
-                                const response = await fetch('/api/retailer/delivery-boys/add-user', {
+                                const response = await fetch('/api/retailer/delivery-boys/add-existing', {
                                   method: 'POST',
                                   headers: {
                                     'Content-Type': 'application/json',
                                     'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
                                   },
-                                  body: JSON.stringify({ userId: searchResults.user.id })
+                                  body: JSON.stringify({ deliveryBoyId: searchResults.deliveryBoy.id })
                                 });
                                 
                                 if (!response.ok) {
@@ -1265,7 +1265,7 @@ export default function RetailerDashboard() {
                                 
                                 toast({
                                   title: "Delivery boy added successfully!",
-                                  description: `${searchResults.user.fullName} has been added to your team.`
+                                  description: `${searchResults.deliveryBoy.name} has been added to your team.`
                                 });
                               } catch (error: any) {
                                 toast({
@@ -1289,31 +1289,33 @@ export default function RetailerDashboard() {
                           <div className="flex items-center text-sm">
                             <i className="fas fa-id-card mr-3 w-5 text-muted-foreground"></i>
                             <div>
-                              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">User ID</span>
-                              <p className="text-sm font-mono text-foreground">{searchResults.user.id}</p>
+                              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Delivery Boy ID</span>
+                              <p className="text-sm font-mono text-foreground">{searchResults.deliveryBoy.id}</p>
                             </div>
                           </div>
                           <div className="flex items-center text-sm">
-                            <i className="fas fa-envelope mr-3 w-5 text-muted-foreground"></i>
+                            <i className="fas fa-phone mr-3 w-5 text-muted-foreground"></i>
                             <div>
-                              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Email</span>
-                              <p className="text-sm text-foreground">{searchResults.user.email}</p>
+                              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Phone</span>
+                              <p className="text-sm text-foreground">{searchResults.deliveryBoy.phone || 'Not provided'}</p>
                             </div>
                           </div>
                         </div>
                         <div className="space-y-4">
                           <div className="flex items-center text-sm">
-                            <i className="fas fa-phone mr-3 w-5 text-muted-foreground"></i>
+                            <i className="fas fa-map-marker-alt mr-3 w-5 text-muted-foreground"></i>
                             <div>
-                              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Phone</span>
-                              <p className="text-sm text-foreground">{searchResults.user.phone || 'Not provided'}</p>
+                              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Address</span>
+                              <p className="text-sm text-foreground">{searchResults.deliveryBoy.address || 'Not provided'}</p>
                             </div>
                           </div>
                           <div className="flex items-center text-sm">
-                            <i className="fas fa-user-tag mr-3 w-5 text-muted-foreground"></i>
+                            <i className="fas fa-toggle-on mr-3 w-5 text-muted-foreground"></i>
                             <div>
-                              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Role</span>
-                              <p className="text-sm font-medium text-blue-600 dark:text-blue-400">{searchResults.user.role}</p>
+                              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Status</span>
+                              <p className={`text-sm font-medium ${searchResults.deliveryBoy.isActive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                                {searchResults.deliveryBoy.isActive ? 'Active' : 'Inactive'}
+                              </p>
                             </div>
                           </div>
                         </div>
