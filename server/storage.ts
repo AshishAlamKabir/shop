@@ -764,28 +764,6 @@ export class DatabaseStorage implements IStorage {
       return existingDeliveryBoy;
     }
     
-    // Search in the delivery_boys table (global search)
-    const [globalDeliveryBoy] = await db.select().from(deliveryBoys)
-      .where(
-        and(
-          eq(deliveryBoys.id, deliveryBoyId),
-          eq(deliveryBoys.isActive, true)
-        )
-      );
-    
-    console.log('Global delivery boy in delivery_boys table:', globalDeliveryBoy);
-    
-    if (globalDeliveryBoy) {
-      // Found delivery boy in database, add them to current retailer's account
-      const newDeliveryBoy = await this.createDeliveryBoy({
-        retailerId: retailerId,
-        name: globalDeliveryBoy.name,
-        phone: globalDeliveryBoy.phone,
-        address: globalDeliveryBoy.address || ''
-      });
-      return newDeliveryBoy;
-    }
-    
     // Search for a user with DELIVERY_BOY role using the provided ID
     const [deliveryBoyUser] = await db.select().from(users)
       .where(
