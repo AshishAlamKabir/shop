@@ -1,12 +1,13 @@
 import { 
-  users, stores, productCatalog, listings, orders, orderItems, orderEvents, fcmTokens, khatabook, paymentAuditTrail, deliveryRequests, paymentChangeRequests,
+  users, stores, productCatalog, listings, orders, orderItems, orderEvents, fcmTokens, khatabook, paymentAuditTrail, deliveryRequests, paymentChangeRequests, retailerDeliveryBoys,
   type User, type InsertUser, type Store, type InsertStore,
   type ProductCatalog, type InsertProductCatalog, type Listing, type InsertListing,
   type Order, type InsertOrder, type OrderItem, type InsertOrderItem,
   type OrderEvent, type InsertOrderEvent, type FcmToken, type InsertFcmToken,
   type Khatabook, type InsertKhatabook, type PaymentAuditTrail, type InsertPaymentAuditTrail,
   type DeliveryRequest, type InsertDeliveryRequest,
-  type PaymentChangeRequest, type InsertPaymentChangeRequest
+  type PaymentChangeRequest, type InsertPaymentChangeRequest,
+  type RetailerDeliveryBoy, type InsertRetailerDeliveryBoy
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, asc, like, or, sql } from "drizzle-orm";
@@ -119,6 +120,14 @@ export interface IStorage {
   acceptDeliveryRequest(id: string, deliveryBoyId: string): Promise<DeliveryRequest>;
   rejectDeliveryRequest(id: string): Promise<DeliveryRequest>;
   completeDeliveryRequest(id: string, notes?: string): Promise<DeliveryRequest>;
+
+  // Retailer-Delivery Boy relationship operations
+  addDeliveryBoyToRetailer(retailerId: string, deliveryBoyId: string, addedBy: string, notes?: string): Promise<RetailerDeliveryBoy>;
+  removeDeliveryBoyFromRetailer(retailerId: string, deliveryBoyId: string): Promise<void>;
+  isDeliveryBoyLinkedToRetailer(retailerId: string, deliveryBoyId: string): Promise<boolean>;
+  getLinkedDeliveryBoys(retailerId: string): Promise<any[]>;
+  getLinkedRetailers(deliveryBoyId: string): Promise<any[]>;
+  getRetailerDeliveryBoyRelationship(retailerId: string, deliveryBoyId: string): Promise<RetailerDeliveryBoy | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -750,12 +759,108 @@ export class DatabaseStorage implements IStorage {
       return undefined;
     }
     
-    // Since delivery boys are now just users, they're available to all retailers
-    // No concept of "already added" anymore
+    // Check if this delivery boy is already linked to the retailer
+    const alreadyAdded = await this.isDeliveryBoyLinkedToRetailer(retailerId, deliveryBoyId);
+    
     return {
       user: deliveryBoyUser,
-      alreadyAdded: false
+      alreadyAdded
     };
+  }
+
+  // Retailer-Delivery Boy relationship operations
+  async addDeliveryBoyToRetailer(retailerId: string, deliveryBoyId: string, addedBy: string, notes?: string): Promise<RetailerDeliveryBoy> {
+    const [relationship] = await db.insert(retailerDeliveryBoys).values({
+      retailerId,
+      deliveryBoyId,
+      addedBy,
+      notes,
+      status: 'ACTIVE'
+    }).returning();
+    return relationship;
+  }
+
+  async removeDeliveryBoyFromRetailer(retailerId: string, deliveryBoyId: string): Promise<void> {
+    await db.delete(retailerDeliveryBoys)
+      .where(
+        and(
+          eq(retailerDeliveryBoys.retailerId, retailerId),
+          eq(retailerDeliveryBoys.deliveryBoyId, deliveryBoyId)
+        )
+      );
+  }
+
+  async isDeliveryBoyLinkedToRetailer(retailerId: string, deliveryBoyId: string): Promise<boolean> {
+    const [relationship] = await db.select().from(retailerDeliveryBoys)
+      .where(
+        and(
+          eq(retailerDeliveryBoys.retailerId, retailerId),
+          eq(retailerDeliveryBoys.deliveryBoyId, deliveryBoyId),
+          eq(retailerDeliveryBoys.status, 'ACTIVE')
+        )
+      );
+    return !!relationship;
+  }
+
+  async getLinkedDeliveryBoys(retailerId: string): Promise<any[]> {
+    const result = await db
+      .select({
+        id: users.id,
+        email: users.email,
+        fullName: users.fullName,
+        phone: users.phone,
+        role: users.role,
+        linkedAt: retailerDeliveryBoys.addedAt,
+        notes: retailerDeliveryBoys.notes,
+        relationshipId: retailerDeliveryBoys.id
+      })
+      .from(retailerDeliveryBoys)
+      .innerJoin(users, eq(retailerDeliveryBoys.deliveryBoyId, users.id))
+      .where(
+        and(
+          eq(retailerDeliveryBoys.retailerId, retailerId),
+          eq(retailerDeliveryBoys.status, 'ACTIVE')
+        )
+      )
+      .orderBy(desc(retailerDeliveryBoys.addedAt));
+    
+    return result;
+  }
+
+  async getLinkedRetailers(deliveryBoyId: string): Promise<any[]> {
+    const result = await db
+      .select({
+        id: users.id,
+        email: users.email,
+        fullName: users.fullName,
+        phone: users.phone,
+        role: users.role,
+        linkedAt: retailerDeliveryBoys.addedAt,
+        notes: retailerDeliveryBoys.notes,
+        relationshipId: retailerDeliveryBoys.id
+      })
+      .from(retailerDeliveryBoys)
+      .innerJoin(users, eq(retailerDeliveryBoys.retailerId, users.id))
+      .where(
+        and(
+          eq(retailerDeliveryBoys.deliveryBoyId, deliveryBoyId),
+          eq(retailerDeliveryBoys.status, 'ACTIVE')
+        )
+      )
+      .orderBy(desc(retailerDeliveryBoys.addedAt));
+    
+    return result;
+  }
+
+  async getRetailerDeliveryBoyRelationship(retailerId: string, deliveryBoyId: string): Promise<RetailerDeliveryBoy | undefined> {
+    const [relationship] = await db.select().from(retailerDeliveryBoys)
+      .where(
+        and(
+          eq(retailerDeliveryBoys.retailerId, retailerId),
+          eq(retailerDeliveryBoys.deliveryBoyId, deliveryBoyId)
+        )
+      );
+    return relationship || undefined;
   }
 
 
