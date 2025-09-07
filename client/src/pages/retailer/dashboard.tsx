@@ -1168,9 +1168,12 @@ export default function RetailerDashboard() {
                           const result = await response.json();
                           setSearchResults(result ? [result] : []);
                           
+                          // Refresh the delivery boys list to show the newly added delivery boy
+                          queryClient.invalidateQueries({ queryKey: ['/api/retailer/delivery-boys'] });
+                          
                           toast({ 
-                            title: "Delivery boy found",
-                            description: `Found: ${result.name}`
+                            title: "Delivery boy found and added",
+                            description: `Successfully added ${result.name} to your delivery team`
                           });
                         } catch (error) {
                           toast({ 

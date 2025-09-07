@@ -739,7 +739,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async searchDeliveryBoyById(retailerId: string, deliveryBoyId: string): Promise<DeliveryBoy | undefined> {
-    const [deliveryBoy] = await db.select().from(deliveryBoys)
+    // First, check if the delivery boy already exists in this retailer's list
+    const [existingDeliveryBoy] = await db.select().from(deliveryBoys)
       .where(
         and(
           eq(deliveryBoys.id, deliveryBoyId),
@@ -748,7 +749,31 @@ export class DatabaseStorage implements IStorage {
         )
       );
     
-    return deliveryBoy || undefined;
+    if (existingDeliveryBoy) {
+      return existingDeliveryBoy;
+    }
+    
+    // If not found in retailer's list, search the entire database
+    const [globalDeliveryBoy] = await db.select().from(deliveryBoys)
+      .where(
+        and(
+          eq(deliveryBoys.id, deliveryBoyId),
+          eq(deliveryBoys.isActive, true)
+        )
+      );
+    
+    if (globalDeliveryBoy) {
+      // Found delivery boy in database, add them to current retailer's account
+      const newDeliveryBoy = await this.createDeliveryBoy({
+        retailerId: retailerId,
+        name: globalDeliveryBoy.name,
+        phone: globalDeliveryBoy.phone,
+        address: globalDeliveryBoy.address || ''
+      });
+      return newDeliveryBoy;
+    }
+    
+    return undefined;
   }
 
   // Delivery boy order management
