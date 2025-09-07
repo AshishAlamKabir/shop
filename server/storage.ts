@@ -745,6 +745,16 @@ export class DatabaseStorage implements IStorage {
     await db.delete(deliveryBoys).where(eq(deliveryBoys.id, id));
   }
 
+  async searchDeliveryBoysByLocation(retailerId: string, locations: { pickupLocation?: string; deliveryLocation?: string }): Promise<DeliveryBoy[]> {
+    return await db.select().from(deliveryBoys)
+      .where(
+        and(
+          eq(deliveryBoys.retailerId, retailerId),
+          eq(deliveryBoys.isActive, true)
+        )
+      );
+  }
+
   async searchDeliveryBoyById(retailerId: string, deliveryBoyId: string): Promise<DeliveryBoy | undefined> {
     console.log('searchDeliveryBoyById called with:', { retailerId, deliveryBoyId });
     
