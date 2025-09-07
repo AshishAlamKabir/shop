@@ -1261,7 +1261,7 @@ export default function RetailerDashboard() {
                                 queryClient.invalidateQueries({ queryKey: ['/api/retailer/delivery-boys'] });
                                 
                                 // Update search results to show as added
-                                setSearchResults(prev => ({ ...prev, alreadyAdded: true }));
+                                setSearchResults((prev: any) => ({ ...prev, alreadyAdded: true }));
                                 
                                 toast({
                                   title: "Delivery boy added successfully!",
