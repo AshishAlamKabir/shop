@@ -165,6 +165,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Logout endpoint
+  app.post('/api/auth/logout', authenticateToken, async (req: any, res) => {
+    // In a more complex app, you might invalidate the token in a blacklist
+    // For now, just return success - token cleanup is handled client-side
+    res.json({ message: 'Logout successful' });
+  });
+
   app.get('/api/auth/me', authenticateToken, async (req: any, res) => {
     res.json({
       user: {
