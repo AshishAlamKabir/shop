@@ -1209,190 +1209,131 @@ export default function RetailerDashboard() {
                       Clear
                     </Button>
                   </div>
-                  
-                  {/* Search Results */}
-                  {searchResults && (
-                    <div className="mt-6">
-                      <h4 className="text-md font-semibold text-foreground mb-3">
-                        <i className="fas fa-user-check mr-2"></i>
-                        Search Result
-                      </h4>
-                      <Card className={`${searchResults.alreadyAdded ? 'border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950' : 'border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950'}`}>
-                        <CardContent className="p-6">
-                          <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center space-x-4">
-                              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                                <i className="fas fa-motorcycle text-blue-600 text-xl"></i>
-                              </div>
-                              <div>
-                                <h5 className="text-lg font-semibold text-foreground">{searchResults.user.fullName}</h5>
-                                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                                  searchResults.alreadyAdded ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'
-                                }`}>
-                                  {searchResults.alreadyAdded ? 'Already in your team' : 'Available to add'}
-                                </span>
-                              </div>
-                            </div>
-                            {!searchResults.alreadyAdded && (
-                              <Button
-                                onClick={async () => {
-                                  try {
-                                    const response = await fetch('/api/retailer/delivery-boys/add-user', {
-                                      method: 'POST',
-                                      headers: {
-                                        'Content-Type': 'application/json',
-                                        'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
-                                      },
-                                      body: JSON.stringify({ userId: searchResults.user.id })
-                                    });
-                                    
-                                    if (!response.ok) {
-                                      const error = await response.json();
-                                      throw new Error(error.message);
-                                    }
-                                    
-                                    const result = await response.json();
-                                    
-                                    // Refresh delivery boys list
-                                    queryClient.invalidateQueries({ queryKey: ['/api/retailer/delivery-boys'] });
-                                    
-                                    // Update search results to show as added
-                                    setSearchResults(prev => ({ ...prev, alreadyAdded: true }));
-                                    
-                                    toast({
-                                      title: "Delivery boy added successfully!",
-                                      description: `${searchResults.user.fullName} has been added to your team.`
-                                    });
-                                  } catch (error: any) {
-                                    toast({
-                                      title: "Failed to add delivery boy",
-                                      description: error.message,
-                                      variant: "destructive"
-                                    });
-                                  }
-                                }}
-                                className="bg-green-600 hover:bg-green-700 text-white"
-                              >
-                                <i className="fas fa-plus mr-2"></i>
-                                Add to Team
-                              </Button>
-                            )}
-                          </div>
-                          
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                            <div className="space-y-3">
-                              <div className="flex items-center text-muted-foreground">
-                                <i className="fas fa-id-card mr-3 w-4"></i>
-                                <div>
-                                  <span className="text-xs font-medium text-foreground">User ID:</span>
-                                  <p className="text-xs font-mono">{searchResults.user.id}</p>
-                                </div>
-                              </div>
-                              <div className="flex items-center text-muted-foreground">
-                                <i className="fas fa-envelope mr-3 w-4"></i>
-                                <div>
-                                  <span className="text-xs font-medium text-foreground">Email:</span>
-                                  <p>{searchResults.user.email}</p>
-                                </div>
-                              </div>
-                            </div>
-                            <div className="space-y-3">
-                              <div className="flex items-center text-muted-foreground">
-                                <i className="fas fa-phone mr-3 w-4"></i>
-                                <div>
-                                  <span className="text-xs font-medium text-foreground">Phone:</span>
-                                  <p>{searchResults.user.phone || 'Not provided'}</p>
-                                </div>
-                              </div>
-                              <div className="flex items-center text-muted-foreground">
-                                <i className="fas fa-user-tag mr-3 w-4"></i>
-                                <div>
-                                  <span className="text-xs font-medium text-foreground">Role:</span>
-                                  <p className="text-blue-600 font-medium">{searchResults.user.role}</p>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                          
-                          {searchResults.alreadyAdded && (
-                            <div className="mt-4 p-3 bg-yellow-100 border border-yellow-200 rounded-lg">
-                              <div className="flex items-center text-yellow-800">
-                                <i className="fas fa-info-circle mr-2"></i>
-                                <span className="text-sm font-medium">Already Added</span>
-                              </div>
-                              <p className="text-sm text-yellow-700 mt-1">
-                                This delivery boy is already part of your team and can be found in your delivery boys list.
-                              </p>
-                            </div>
-                          )}
-                        </CardContent>
-                      </Card>
-                    </div>
-                  )}
                 </CardContent>
               </Card>
 
-              {/* Add New Delivery Boy Form */}
-              <Card className="mb-6">
-                <CardContent className="p-6">
-                  <h3 className="text-lg font-semibold text-foreground mb-4">Add New Delivery Boy</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <Label htmlFor="delivery-boy-name" className="text-sm font-medium text-foreground">Full Name</Label>
-                      <Input
-                        id="delivery-boy-name"
-                        value={newDeliveryBoy.name}
-                        onChange={(e) => setNewDeliveryBoy({ ...newDeliveryBoy, name: e.target.value })}
-                        placeholder="Enter delivery boy name"
-                        className="mt-2"
-                        data-testid="input-delivery-boy-name"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="delivery-boy-phone" className="text-sm font-medium text-foreground">Phone Number</Label>
-                      <Input
-                        id="delivery-boy-phone"
-                        value={newDeliveryBoy.phone}
-                        onChange={(e) => setNewDeliveryBoy({ ...newDeliveryBoy, phone: e.target.value })}
-                        placeholder="Enter phone number"
-                        className="mt-2"
-                        data-testid="input-delivery-boy-phone"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="delivery-boy-address" className="text-sm font-medium text-foreground">Address</Label>
-                      <Input
-                        id="delivery-boy-address"
-                        value={newDeliveryBoy.address}
-                        onChange={(e) => setNewDeliveryBoy({ ...newDeliveryBoy, address: e.target.value })}
-                        placeholder="Enter address (optional)"
-                        className="mt-2"
-                        data-testid="input-delivery-boy-address"
-                      />
-                    </div>
-                  </div>
-                  <div className="mt-4">
-                    <Button
-                      onClick={() => {
-                        if (newDeliveryBoy.name && newDeliveryBoy.phone) {
-                          createDeliveryBoyMutation.mutate(newDeliveryBoy);
-                        } else {
-                          toast({ title: "Please fill in required fields", variant: "destructive" });
-                        }
-                      }}
-                      disabled={createDeliveryBoyMutation.isPending}
-                      data-testid="button-add-delivery-boy"
-                    >
-                      {createDeliveryBoyMutation.isPending ? (
-                        <i className="fas fa-spinner fa-spin mr-2"></i>
-                      ) : (
-                        <i className="fas fa-plus mr-2"></i>
+              {/* Search Results Section */}
+              {searchResults && (
+                <Card className="mb-6">
+                  <CardContent className="p-6">
+                    <h3 className="text-lg font-semibold text-foreground mb-4">
+                      <i className="fas fa-search mr-2"></i>
+                      Delivery Boy Search Results
+                    </h3>
+                    <div className={`p-4 rounded-lg border ${searchResults.alreadyAdded ? 'border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950' : 'border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950'}`}>
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center space-x-4">
+                          <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
+                            <i className="fas fa-motorcycle text-blue-600 dark:text-blue-400 text-2xl"></i>
+                          </div>
+                          <div>
+                            <h4 className="text-xl font-semibold text-foreground">{searchResults.user.fullName}</h4>
+                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                              searchResults.alreadyAdded 
+                                ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' 
+                                : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                            }`}>
+                              {searchResults.alreadyAdded ? 'Already in your team' : 'Available to add'}
+                            </span>
+                          </div>
+                        </div>
+                        {!searchResults.alreadyAdded && (
+                          <Button
+                            onClick={async () => {
+                              try {
+                                const response = await fetch('/api/retailer/delivery-boys/add-user', {
+                                  method: 'POST',
+                                  headers: {
+                                    'Content-Type': 'application/json',
+                                    'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+                                  },
+                                  body: JSON.stringify({ userId: searchResults.user.id })
+                                });
+                                
+                                if (!response.ok) {
+                                  const error = await response.json();
+                                  throw new Error(error.message);
+                                }
+                                
+                                const result = await response.json();
+                                
+                                // Refresh delivery boys list
+                                queryClient.invalidateQueries({ queryKey: ['/api/retailer/delivery-boys'] });
+                                
+                                // Update search results to show as added
+                                setSearchResults(prev => ({ ...prev, alreadyAdded: true }));
+                                
+                                toast({
+                                  title: "Delivery boy added successfully!",
+                                  description: `${searchResults.user.fullName} has been added to your team.`
+                                });
+                              } catch (error: any) {
+                                toast({
+                                  title: "Failed to add delivery boy",
+                                  description: error.message,
+                                  variant: "destructive"
+                                });
+                              }
+                            }}
+                            className="bg-green-600 hover:bg-green-700 text-white"
+                            data-testid="button-add-to-team"
+                          >
+                            <i className="fas fa-plus mr-2"></i>
+                            Add to Team
+                          </Button>
+                        )}
+                      </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-4">
+                          <div className="flex items-center text-sm">
+                            <i className="fas fa-id-card mr-3 w-5 text-muted-foreground"></i>
+                            <div>
+                              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">User ID</span>
+                              <p className="text-sm font-mono text-foreground">{searchResults.user.id}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center text-sm">
+                            <i className="fas fa-envelope mr-3 w-5 text-muted-foreground"></i>
+                            <div>
+                              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Email</span>
+                              <p className="text-sm text-foreground">{searchResults.user.email}</p>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="space-y-4">
+                          <div className="flex items-center text-sm">
+                            <i className="fas fa-phone mr-3 w-5 text-muted-foreground"></i>
+                            <div>
+                              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Phone</span>
+                              <p className="text-sm text-foreground">{searchResults.user.phone || 'Not provided'}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center text-sm">
+                            <i className="fas fa-user-tag mr-3 w-5 text-muted-foreground"></i>
+                            <div>
+                              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Role</span>
+                              <p className="text-sm font-medium text-blue-600 dark:text-blue-400">{searchResults.user.role}</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {searchResults.alreadyAdded && (
+                        <div className="mt-6 p-4 bg-yellow-100 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                          <div className="flex items-center text-yellow-800 dark:text-yellow-200">
+                            <i className="fas fa-info-circle mr-2"></i>
+                            <span className="font-medium">Already Added to Team</span>
+                          </div>
+                          <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
+                            This delivery boy is already part of your team and can be found in your delivery boys list below.
+                          </p>
+                        </div>
                       )}
-                      Add Delivery Boy
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Recently Created Delivery Boy Profile */}
               {recentlyCreatedDeliveryBoy && (
