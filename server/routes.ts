@@ -438,30 +438,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Delivery Boy routes for retailers
-  app.post('/api/retailer/delivery-boys', authenticateToken, requireRole('RETAILER'), async (req: any, res) => {
-    try {
-      const deliveryBoyData = insertDeliveryBoySchema.parse({
-        ...req.body,
-        retailerId: req.user.id
-      });
-
-      // Check if delivery boy with same phone number already exists for this retailer
-      const existingDeliveryBoy = await storage.getDeliveryBoyByPhone(deliveryBoyData.phone, req.user.id);
-      if (existingDeliveryBoy) {
-        return res.status(400).json({ 
-          message: 'A delivery boy with this phone number already exists' 
-        });
-      }
-
-      const deliveryBoy = await storage.createDeliveryBoy(deliveryBoyData);
-      res.status(201).json(deliveryBoy);
-    } catch (error) {
-      console.error('Error creating delivery boy:', error);
-      res.status(400).json({ message: 'Failed to create delivery boy' });
-    }
-  });
-
+  // Delivery Boy routes for retailers - Updated to use users table
   app.get('/api/retailer/delivery-boys', authenticateToken, requireRole('RETAILER'), async (req: any, res) => {
     try {
       const deliveryBoys = await storage.getDeliveryBoysByRetailer(req.user.id);
@@ -480,74 +457,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: 'Delivery boy not found' });
       }
       
-      // Check if the delivery boy belongs to the current retailer
-      if (deliveryBoy.retailerId !== req.user.id) {
-        return res.status(403).json({ message: 'Access denied' });
-      }
-      
       res.json(deliveryBoy);
     } catch (error) {
       res.status(500).json({ message: 'Failed to get delivery boy' });
     }
   });
 
-  app.put('/api/retailer/delivery-boys/:id', authenticateToken, requireRole('RETAILER'), async (req: any, res) => {
-    try {
-      const { id } = req.params;
-      const deliveryBoy = await storage.getDeliveryBoy(id);
-      
-      if (!deliveryBoy) {
-        return res.status(404).json({ message: 'Delivery boy not found' });
-      }
-      
-      // Check if the delivery boy belongs to the current retailer
-      if (deliveryBoy.retailerId !== req.user.id) {
-        return res.status(403).json({ message: 'Access denied' });
-      }
-      
-      const updateData = req.body;
-      
-      // If phone number is being updated, check for duplicates
-      if (updateData.phone && updateData.phone !== deliveryBoy.phone) {
-        const existingDeliveryBoy = await storage.getDeliveryBoyByPhone(updateData.phone, req.user.id);
-        if (existingDeliveryBoy) {
-          return res.status(400).json({ 
-            message: 'A delivery boy with this phone number already exists' 
-          });
-        }
-      }
-      
-      const updatedDeliveryBoy = await storage.updateDeliveryBoy(id, updateData);
-      res.json(updatedDeliveryBoy);
-    } catch (error) {
-      console.error('Error updating delivery boy:', error);
-      res.status(400).json({ message: 'Failed to update delivery boy' });
-    }
-  });
 
-  app.delete('/api/retailer/delivery-boys/:id', authenticateToken, requireRole('RETAILER'), async (req: any, res) => {
-    try {
-      const { id } = req.params;
-      const deliveryBoy = await storage.getDeliveryBoy(id);
-      
-      if (!deliveryBoy) {
-        return res.status(404).json({ message: 'Delivery boy not found' });
-      }
-      
-      // Check if the delivery boy belongs to the current retailer
-      if (deliveryBoy.retailerId !== req.user.id) {
-        return res.status(403).json({ message: 'Access denied' });
-      }
-      
-      await storage.deleteDeliveryBoy(id);
-      res.status(204).send();
-    } catch (error) {
-      res.status(500).json({ message: 'Failed to delete delivery boy' });
-    }
-  });
-
-
-  // Search delivery boys by ID route
+  // Search delivery boys by ID route - Updated to use users table
   app.get('/api/retailer/delivery-boys/search-by-id', authenticateToken, requireRole('RETAILER'), async (req: any, res) => {
     try {
       const { deliveryBoyId } = req.query;
@@ -563,64 +480,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       res.json({
-        deliveryBoy: {
-          id: result.deliveryBoy.id,
-          name: result.deliveryBoy.name,
-          phone: result.deliveryBoy.phone,
-          address: result.deliveryBoy.address,
-          isActive: result.deliveryBoy.isActive,
-          retailerId: result.deliveryBoy.retailerId
+        user: {
+          id: result.user.id,
+          fullName: result.user.fullName,
+          email: result.user.email,
+          phone: result.user.phone,
+          role: result.user.role
         },
         alreadyAdded: result.alreadyAdded
       });
     } catch (error) {
       res.status(400).json({ message: 'Failed to search delivery boy' });
-    }
-  });
-
-  // Add existing delivery boy to retailer's account
-  app.post('/api/retailer/delivery-boys/add-existing', authenticateToken, requireRole('RETAILER'), async (req: any, res) => {
-    try {
-      const { deliveryBoyId } = req.body;
-      
-      if (!deliveryBoyId) {
-        return res.status(400).json({ message: 'Delivery boy ID is required' });
-      }
-      
-      const newDeliveryBoy = await storage.addExistingDeliveryBoyToRetailer(req.user.id, deliveryBoyId);
-      
-      res.status(201).json({
-        message: 'Delivery boy added successfully',
-        deliveryBoy: newDeliveryBoy
-      });
-    } catch (error: any) {
-      res.status(400).json({ message: error.message || 'Failed to add delivery boy' });
-    }
-  });
-
-  // Add delivery boy user to retailer's account
-  app.post('/api/retailer/delivery-boys/add-user', authenticateToken, requireRole('RETAILER'), async (req: any, res) => {
-    try {
-      const { userId } = req.body;
-      
-      if (!userId) {
-        return res.status(400).json({ message: 'User ID is required' });
-      }
-      
-      const deliveryBoy = await storage.addDeliveryBoyUserToRetailer(req.user.id, userId);
-      
-      res.status(201).json({
-        message: 'Delivery boy added successfully',
-        deliveryBoy
-      });
-    } catch (error: any) {
-      if (error.message === 'Delivery boy user not found') {
-        return res.status(404).json({ message: 'Delivery boy user not found' });
-      }
-      if (error.message === 'Delivery boy already added to your account') {
-        return res.status(400).json({ message: 'Delivery boy already added to your account' });
-      }
-      res.status(400).json({ message: 'Failed to add delivery boy' });
     }
   });
 
