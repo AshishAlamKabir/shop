@@ -526,11 +526,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { deliveryBoyId } = req.query;
       
+      console.log('Searching for delivery boy ID:', deliveryBoyId);
+      console.log('Retailer ID:', req.user.id);
+      
       if (!deliveryBoyId) {
         return res.status(400).json({ message: 'Delivery boy ID is required for search' });
       }
       
       const deliveryBoy = await storage.searchDeliveryBoyById(req.user.id, deliveryBoyId as string);
+      
+      console.log('Search result:', deliveryBoy);
       
       if (!deliveryBoy) {
         return res.status(404).json({ message: 'Delivery boy not found' });
@@ -538,6 +543,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json(deliveryBoy);
     } catch (error) {
+      console.error('Search error:', error);
       res.status(400).json({ message: 'Failed to search delivery boy' });
     }
   });
