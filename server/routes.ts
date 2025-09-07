@@ -455,23 +455,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/retailer/delivery-boys/:id', authenticateToken, requireRole('RETAILER'), async (req: any, res) => {
-    try {
-      const { id } = req.params;
-      const deliveryBoy = await storage.getDeliveryBoy(id);
-      
-      if (!deliveryBoy) {
-        return res.status(404).json({ message: 'Delivery boy not found' });
-      }
-      
-      res.json(deliveryBoy);
-    } catch (error) {
-      res.status(500).json({ message: 'Failed to get delivery boy' });
-    }
-  });
-
-
-  // Search delivery boys by ID route - Updated to use users table
+  // Search delivery boys by ID route - Updated to use users table (MUST come before :id route)
   app.get('/api/retailer/delivery-boys/search-by-id', authenticateToken, requireRole('RETAILER'), async (req: any, res) => {
     console.log('[DEBUG] Route hit - search-by-id endpoint reached');
     try {
@@ -504,6 +488,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('[DEBUG] Search error:', error);
       res.status(400).json({ message: 'Failed to search delivery boy' });
+    }
+  });
+
+  app.get('/api/retailer/delivery-boys/:id', authenticateToken, requireRole('RETAILER'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const deliveryBoy = await storage.getDeliveryBoy(id);
+      
+      if (!deliveryBoy) {
+        return res.status(404).json({ message: 'Delivery boy not found' });
+      }
+      
+      res.json(deliveryBoy);
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to get delivery boy' });
     }
   });
 
