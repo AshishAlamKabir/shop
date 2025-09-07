@@ -1093,7 +1093,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Get available delivery boys (all delivery boys for now - could be enhanced with availability status)
-  async getAvailableDeliveryBoys(): Promise<User[]> {
+  async getAvailableDeliveryBoys(): Promise<any[]> {
     const deliveryBoys = await db
       .select({
         id: users.id,
