@@ -521,24 +521,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Search delivery boys by location route
-  app.get('/api/retailer/delivery-boys/search-by-location', authenticateToken, requireRole('RETAILER'), async (req: any, res) => {
+  // Search delivery boys by ID route
+  app.get('/api/retailer/delivery-boys/search-by-id', authenticateToken, requireRole('RETAILER'), async (req: any, res) => {
     try {
-      const { pickupLocation, deliveryLocation } = req.query;
+      const { deliveryBoyId } = req.query;
       
-      if (!pickupLocation && !deliveryLocation) {
-        return res.status(400).json({ message: 'At least one PIN CODE is required for search' });
+      if (!deliveryBoyId) {
+        return res.status(400).json({ message: 'Delivery boy ID is required for search' });
       }
       
-      const deliveryBoys = await storage.searchDeliveryBoysByLocation(req.user.id, {
-        pickupLocation: pickupLocation as string,
-        deliveryLocation: deliveryLocation as string
-      });
+      const deliveryBoy = await storage.searchDeliveryBoyById(req.user.id, deliveryBoyId as string);
       
-      res.json(deliveryBoys);
+      if (!deliveryBoy) {
+        return res.status(404).json({ message: 'Delivery boy not found' });
+      }
+      
+      res.json(deliveryBoy);
     } catch (error) {
-      console.error('Error searching delivery boys by location:', error);
-      res.status(500).json({ message: 'Failed to search delivery boys' });
+      res.status(400).json({ message: 'Failed to search delivery boy' });
     }
   });
 

@@ -47,9 +47,8 @@ export default function RetailerDashboard() {
     stockQty: '',
     available: true
   });
-  const [locationSearchForm, setLocationSearchForm] = useState({
-    pickupLocation: '',
-    deliveryLocation: ''
+  const [deliveryBoySearchForm, setDeliveryBoySearchForm] = useState({
+    deliveryBoyId: ''
   });
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -1117,35 +1116,21 @@ export default function RetailerDashboard() {
                 <p className="text-muted-foreground">Add and manage your delivery boys</p>
               </div>
 
-              {/* Search Delivery Boys by Location */}
+              {/* Search Delivery Boys by ID */}
               <Card className="mb-6">
                 <CardContent className="p-6">
-                  <h3 className="text-lg font-semibold text-foreground mb-4">Find Delivery Boys by Location</h3>
-                  <p className="text-sm text-muted-foreground mb-4">Search for delivery boys who can handle deliveries in specific PIN CODE areas</p>
+                  <h3 className="text-lg font-semibold text-foreground mb-4">Find Delivery Boys by Delivery Boy ID</h3>
+                  <p className="text-sm text-muted-foreground mb-4">Search for a specific delivery boy using their unique ID (e.g., Test Delivery Boy, ID: fcb121c3-cdca-4c22-8195-bf4ab10c0f17)</p>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div className="grid grid-cols-1 gap-4 mb-4">
                     <div>
-                      <Label htmlFor="pickup-location" className="text-sm font-medium text-foreground">Pickup Location (PIN CODE)</Label>
+                      <Label htmlFor="delivery-boy-id" className="text-sm font-medium text-foreground">Delivery Boy ID</Label>
                       <Input
-                        id="pickup-location"
-                        value={locationSearchForm.pickupLocation}
-                        onChange={(e) => setLocationSearchForm({ ...locationSearchForm, pickupLocation: e.target.value })}
-                        placeholder="Enter pickup PIN CODE"
+                        id="delivery-boy-id"
+                        value={deliveryBoySearchForm.deliveryBoyId}
+                        onChange={(e) => setDeliveryBoySearchForm({ deliveryBoyId: e.target.value })}
+                        placeholder="Enter delivery boy ID (e.g., fcb121c3-cdca-4c22-8195-bf4ab10c0f17)"
                         className="mt-2"
-                        maxLength={6}
-                        pattern="[0-9]*"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="delivery-location" className="text-sm font-medium text-foreground">Delivery Location (PIN CODE)</Label>
-                      <Input
-                        id="delivery-location"
-                        value={locationSearchForm.deliveryLocation}
-                        onChange={(e) => setLocationSearchForm({ ...locationSearchForm, deliveryLocation: e.target.value })}
-                        placeholder="Enter delivery PIN CODE"
-                        className="mt-2"
-                        maxLength={6}
-                        pattern="[0-9]*"
                       />
                     </div>
                   </div>
@@ -1153,9 +1138,9 @@ export default function RetailerDashboard() {
                   <div className="flex space-x-2">
                     <Button
                       onClick={async () => {
-                        if (!locationSearchForm.pickupLocation && !locationSearchForm.deliveryLocation) {
+                        if (!deliveryBoySearchForm.deliveryBoyId.trim()) {
                           toast({ 
-                            title: "Please enter at least one PIN CODE", 
+                            title: "Please enter a delivery boy ID", 
                             variant: "destructive" 
                           });
                           return;
@@ -1163,27 +1148,19 @@ export default function RetailerDashboard() {
                         
                         setIsSearching(true);
                         try {
-                          const params = new URLSearchParams();
-                          if (locationSearchForm.pickupLocation) {
-                            params.append('pickupLocation', locationSearchForm.pickupLocation);
-                          }
-                          if (locationSearchForm.deliveryLocation) {
-                            params.append('deliveryLocation', locationSearchForm.deliveryLocation);
-                          }
-                          
-                          const response = await fetch(`/api/retailer/delivery-boys/search-by-location?${params}`, {
+                          const response = await fetch(`/api/retailer/delivery-boys/search-by-id?deliveryBoyId=${encodeURIComponent(deliveryBoySearchForm.deliveryBoyId)}`, {
                             headers: {
                               'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
                             }
                           });
                           
                           if (!response.ok) throw new Error('Failed to search');
-                          const results = await response.json();
-                          setSearchResults(results);
+                          const result = await response.json();
+                          setSearchResults(result ? [result] : []);
                           
                           toast({ 
-                            title: `Found ${results.length} delivery boys`,
-                            description: results.length === 0 ? "Try searching with different PIN CODEs" : "Check the results below"
+                            title: result ? "Delivery boy found" : "No delivery boy found",
+                            description: result ? `Found: ${result.name}` : "Please check the ID and try again"
                           });
                         } catch (error) {
                           toast({ 
@@ -1207,7 +1184,7 @@ export default function RetailerDashboard() {
                     <Button
                       variant="outline"
                       onClick={() => {
-                        setLocationSearchForm({ pickupLocation: '', deliveryLocation: '' });
+                        setDeliveryBoySearchForm({ deliveryBoyId: '' });
                         setSearchResults([]);
                       }}
                     >

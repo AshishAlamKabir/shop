@@ -738,34 +738,17 @@ export class DatabaseStorage implements IStorage {
     await db.delete(deliveryBoys).where(eq(deliveryBoys.id, id));
   }
 
-  async searchDeliveryBoysByLocation(retailerId: string, locations: { pickupLocation?: string; deliveryLocation?: string }): Promise<DeliveryBoy[]> {
-    const { pickupLocation, deliveryLocation } = locations;
+  async searchDeliveryBoyById(retailerId: string, deliveryBoyId: string): Promise<DeliveryBoy | undefined> {
+    const [deliveryBoy] = await db.select().from(deliveryBoys)
+      .where(
+        and(
+          eq(deliveryBoys.id, deliveryBoyId),
+          eq(deliveryBoys.retailerId, retailerId),
+          eq(deliveryBoys.isActive, true)
+        )
+      );
     
-    // Build search conditions for active delivery boys belonging to this retailer
-    let whereConditions = [
-      eq(deliveryBoys.retailerId, retailerId),
-      eq(deliveryBoys.isActive, true)
-    ];
-    
-    // Add PIN CODE-based search conditions if provided
-    let pincodeConditions = [];
-    if (pickupLocation) {
-      // Search for PIN CODE in address field
-      pincodeConditions.push(like(deliveryBoys.address, `%${pickupLocation}%`));
-    }
-    if (deliveryLocation) {
-      // Search for PIN CODE in address field
-      pincodeConditions.push(like(deliveryBoys.address, `%${deliveryLocation}%`));
-    }
-    
-    // If PIN CODEs provided, add them as OR conditions
-    if (pincodeConditions.length > 0) {
-      whereConditions.push(or(...pincodeConditions));
-    }
-    
-    return await db.select().from(deliveryBoys)
-      .where(and(...whereConditions))
-      .orderBy(desc(deliveryBoys.createdAt));
+    return deliveryBoy || undefined;
   }
 
   // Delivery boy order management
