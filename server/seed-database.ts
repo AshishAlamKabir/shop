@@ -78,11 +78,11 @@ async function seedDatabase() {
     const retailerUsers = users.filter(u => u.role === 'RETAILER');
     const shopOwnerUsers = users.filter(u => u.role === 'SHOP_OWNER');
 
-    // 2. Create Stores (one per shop owner)
+    // 2. Create Stores (one per retailer - retailers manage stores)
     console.log('Creating stores...');
     const stores = [];
-    for (let i = 0; i < shopOwnerUsers.length; i++) {
-      const owner = shopOwnerUsers[i];
+    for (let i = 0; i < retailerUsers.length; i++) {
+      const owner = retailerUsers[i];
       const [store] = await db.insert(schema.stores).values({
         ownerId: owner.id,
         name: `${getRandomElement(storeNames)} ${i + 1}`,
