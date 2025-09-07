@@ -5,7 +5,7 @@ import { storage } from "./storage";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { z } from "zod";
-import { insertUserSchema, insertStoreSchema, insertProductCatalogSchema, insertListingSchema, insertOrderSchema, insertDeliveryBoySchema, insertDeliveryRequestSchema } from "@shared/schema";
+import { insertUserSchema, insertStoreSchema, insertProductCatalogSchema, insertListingSchema, insertOrderSchema, insertDeliveryRequestSchema } from "@shared/schema";
 
 const JWT_SECRET = process.env.JWT_SECRET || "supersecret";
 

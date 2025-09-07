@@ -1,11 +1,11 @@
 import { 
-  users, stores, productCatalog, listings, orders, orderItems, orderEvents, fcmTokens, khatabook, paymentAuditTrail, deliveryBoys, deliveryRequests, paymentChangeRequests,
+  users, stores, productCatalog, listings, orders, orderItems, orderEvents, fcmTokens, khatabook, paymentAuditTrail, deliveryRequests, paymentChangeRequests,
   type User, type InsertUser, type Store, type InsertStore,
   type ProductCatalog, type InsertProductCatalog, type Listing, type InsertListing,
   type Order, type InsertOrder, type OrderItem, type InsertOrderItem,
   type OrderEvent, type InsertOrderEvent, type FcmToken, type InsertFcmToken,
   type Khatabook, type InsertKhatabook, type PaymentAuditTrail, type InsertPaymentAuditTrail,
-  type DeliveryBoy, type InsertDeliveryBoy, type DeliveryRequest, type InsertDeliveryRequest,
+  type DeliveryRequest, type InsertDeliveryRequest,
   type PaymentChangeRequest, type InsertPaymentChangeRequest
 } from "@shared/schema";
 import { db } from "./db";
