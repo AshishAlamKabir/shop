@@ -40,6 +40,7 @@ async function seedDatabase() {
     for (const testUser of testUsers) {
       const hashedPassword = await bcrypt.hash(testUser.password, 10);
       const [user] = await db.insert(schema.users).values({
+        id: nanoid(),
         email: testUser.email,
         passwordHash: hashedPassword,
         role: testUser.role,
@@ -62,6 +63,7 @@ async function seedDatabase() {
 
       const hashedPassword = await bcrypt.hash('password123', 10);
       const [user] = await db.insert(schema.users).values({
+        id: nanoid(),
         email: `${firstName.toLowerCase()}.${lastName.toLowerCase()}${i}@example.com`,
         passwordHash: hashedPassword,
         role,
