@@ -828,10 +828,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: 'Order not found' });
       }
 
-      // Verify delivery boy belongs to retailer
+      // Verify delivery boy exists and belongs to retailer
       const deliveryBoy = await storage.getDeliveryBoy(deliveryBoyId);
-      if (!deliveryBoy || deliveryBoy.retailerId !== req.user.id) {
-        return res.status(400).json({ message: 'Invalid delivery boy' });
+      if (!deliveryBoy) {
+        return res.status(400).json({ message: 'Delivery boy not found' });
+      }
+      
+      // Check if delivery boy is linked to this retailer
+      const isLinked = await storage.isDeliveryBoyLinkedToRetailer(req.user.id, deliveryBoyId);
+      if (!isLinked) {
+        return res.status(400).json({ message: 'Delivery boy not in your team' });
       }
 
       // Update order with delivery boy assignment
@@ -840,12 +846,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.createOrderEvent({
         orderId: id,
         type: 'ASSIGNED_DELIVERY_BOY',
-        message: `Order assigned to delivery boy: ${deliveryBoy.name}`
+        message: `Order assigned to delivery boy: ${deliveryBoy.fullName}`
       });
 
       emitOrderEvent(id, order.ownerId, order.retailerId, 'deliveryBoyAssigned', {
         orderId: id,
-        deliveryBoy: deliveryBoy.name,
+        deliveryBoy: deliveryBoy.fullName,
         deliveryBoyPhone: deliveryBoy.phone
       });
 
@@ -1737,7 +1743,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       emitOrderEvent(id, order.ownerId, order.retailerId, 'deliveryBoyAssigned', {
         orderId: id,
-        deliveryBoy: deliveryBoy.name,
+        deliveryBoy: deliveryBoy.fullName,
         deliveryBoyPhone: deliveryBoy.phone
       });
 
