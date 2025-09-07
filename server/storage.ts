@@ -756,16 +756,6 @@ export class DatabaseStorage implements IStorage {
   }
 
   async findDeliveryBoyUserById(retailerId: string, deliveryBoyId: string): Promise<{ user: User; alreadyAdded: boolean } | undefined> {
-    // First, check if the delivery boy already exists in this retailer's list
-    const [existingDeliveryBoy] = await db.select().from(deliveryBoys)
-      .where(
-        and(
-          eq(deliveryBoys.id, deliveryBoyId),
-          eq(deliveryBoys.retailerId, retailerId),
-          eq(deliveryBoys.isActive, true)
-        )
-      );
-    
     // Search for a user with DELIVERY_BOY role using the provided ID
     const [deliveryBoyUser] = await db.select().from(users)
       .where(
@@ -775,14 +765,26 @@ export class DatabaseStorage implements IStorage {
         )
       );
     
-    if (deliveryBoyUser) {
-      return {
-        user: deliveryBoyUser,
-        alreadyAdded: !!existingDeliveryBoy
-      };
+    if (!deliveryBoyUser) {
+      return undefined;
     }
     
-    return undefined;
+    // Check if this user is already added to this retailer's delivery boys
+    // We need to find a delivery boy record that was created based on this user's info
+    const [existingDeliveryBoy] = await db.select().from(deliveryBoys)
+      .where(
+        and(
+          eq(deliveryBoys.retailerId, retailerId),
+          eq(deliveryBoys.name, deliveryBoyUser.fullName),
+          eq(deliveryBoys.phone, deliveryBoyUser.phone || ''),
+          eq(deliveryBoys.isActive, true)
+        )
+      );
+    
+    return {
+      user: deliveryBoyUser,
+      alreadyAdded: !!existingDeliveryBoy
+    };
   }
 
   async addDeliveryBoyUserToRetailer(retailerId: string, userId: string): Promise<DeliveryBoy> {
@@ -799,12 +801,13 @@ export class DatabaseStorage implements IStorage {
       throw new Error('Delivery boy user not found');
     }
 
-    // Check if already added
+    // Check if already added by matching name and phone
     const [existingDeliveryBoy] = await db.select().from(deliveryBoys)
       .where(
         and(
-          eq(deliveryBoys.id, userId),
           eq(deliveryBoys.retailerId, retailerId),
+          eq(deliveryBoys.name, deliveryBoyUser.fullName),
+          eq(deliveryBoys.phone, deliveryBoyUser.phone || ''),
           eq(deliveryBoys.isActive, true)
         )
       );
