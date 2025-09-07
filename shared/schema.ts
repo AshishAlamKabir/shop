@@ -283,6 +283,9 @@ export const insertListingSchema = createInsertSchema(listings).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+}).extend({
+  priceRetail: z.union([z.string(), z.number()]).transform(val => String(val)),
+  priceWholesale: z.union([z.string(), z.number(), z.null()]).transform(val => val === null ? null : String(val)),
 });
 
 export const insertOrderSchema = createInsertSchema(orders).omit({
