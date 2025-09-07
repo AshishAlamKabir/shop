@@ -1517,38 +1517,66 @@ export default function RetailerDashboard() {
                           </div>
                         )}
                         
-                        <div className="flex space-x-2">
+                        <div className="space-y-2">
+                          {/* Delivery Assignment Button */}
                           <Button
-                            variant="outline"
+                            variant="default"
                             size="sm"
-                            className="flex-1"
+                            className="w-full bg-blue-600 hover:bg-blue-700 text-white"
                             onClick={() => {
-                              const newStatus = !deliveryBoy.isActive;
-                              updateDeliveryBoyMutation.mutate({
-                                id: deliveryBoy.id,
-                                data: { isActive: newStatus }
-                              });
-                            }}
-                            disabled={updateDeliveryBoyMutation.isPending}
-                            data-testid={`button-toggle-${deliveryBoy.id}`}
-                          >
-                            <i className={`fas ${deliveryBoy.isActive ? 'fa-pause' : 'fa-play'} mr-1`}></i>
-                            {deliveryBoy.isActive ? 'Deactivate' : 'Activate'}
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="text-destructive border-destructive hover:bg-destructive/10"
-                            onClick={() => {
-                              if (confirm(`Are you sure you want to remove ${deliveryBoy.name}?`)) {
-                                deleteDeliveryBoyMutation.mutate(deliveryBoy.id);
+                              if (ordersNeedingDelivery.length === 0) {
+                                toast({ 
+                                  title: "No orders available", 
+                                  description: "There are no orders that need delivery assignment",
+                                  variant: "destructive" 
+                                });
+                                return;
                               }
+                              // Show assignment modal or navigate to assignment section
+                              setSelectedOrderForDelivery({ type: 'direct', deliveryBoyId: deliveryBoy.id });
+                              setIsSelectingDeliveryBoy(true);
+                              setActiveSection('orders');
                             }}
-                            disabled={deleteDeliveryBoyMutation.isPending}
-                            data-testid={`button-delete-${deliveryBoy.id}`}
+                            disabled={!deliveryBoy.isActive || ordersNeedingDelivery.length === 0}
+                            data-testid={`button-assign-${deliveryBoy.id}`}
                           >
-                            <i className="fas fa-trash"></i>
+                            <i className="fas fa-shipping-fast mr-2"></i>
+                            Assign Delivery ({ordersNeedingDelivery.length})
                           </Button>
+                          
+                          <div className="flex space-x-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="flex-1"
+                              onClick={() => {
+                                const newStatus = !deliveryBoy.isActive;
+                                updateDeliveryBoyMutation.mutate({
+                                  id: deliveryBoy.id,
+                                  data: { isActive: newStatus }
+                                });
+                              }}
+                              disabled={updateDeliveryBoyMutation.isPending}
+                              data-testid={`button-toggle-${deliveryBoy.id}`}
+                            >
+                              <i className={`fas ${deliveryBoy.isActive ? 'fa-pause' : 'fa-play'} mr-1`}></i>
+                              {deliveryBoy.isActive ? 'Deactivate' : 'Activate'}
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-destructive border-destructive hover:bg-destructive/10"
+                              onClick={() => {
+                                if (confirm(`Are you sure you want to remove ${deliveryBoy.name}?`)) {
+                                  deleteDeliveryBoyMutation.mutate(deliveryBoy.id);
+                                }
+                              }}
+                              disabled={deleteDeliveryBoyMutation.isPending}
+                              data-testid={`button-delete-${deliveryBoy.id}`}
+                            >
+                              <i className="fas fa-trash"></i>
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     </CardContent>
