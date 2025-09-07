@@ -760,6 +760,26 @@ export class DatabaseStorage implements IStorage {
       return existingDeliveryBoy;
     }
     
+    // Search in the delivery_boys table (global search)
+    const [globalDeliveryBoy] = await db.select().from(deliveryBoys)
+      .where(
+        and(
+          eq(deliveryBoys.id, deliveryBoyId),
+          eq(deliveryBoys.isActive, true)
+        )
+      );
+    
+    if (globalDeliveryBoy) {
+      // Found delivery boy in database, add them to current retailer's account
+      const newDeliveryBoy = await this.createDeliveryBoy({
+        retailerId: retailerId,
+        name: globalDeliveryBoy.name,
+        phone: globalDeliveryBoy.phone,
+        address: globalDeliveryBoy.address || ''
+      });
+      return newDeliveryBoy;
+    }
+    
     // Search for a user with DELIVERY_BOY role using the provided ID
     const [deliveryBoyUser] = await db.select().from(users)
       .where(
@@ -1034,24 +1054,24 @@ export class DatabaseStorage implements IStorage {
         retailerName: stores.name,
         currentBalance: sql<number>`
           COALESCE(SUM(CASE 
-            WHEN ${ledgerEntries.entryType} = 'CREDIT' THEN ${ledgerEntries.amount}
-            WHEN ${ledgerEntries.entryType} = 'DEBIT' THEN -${ledgerEntries.amount}
+            WHEN ${khatabook.entryType} = 'CREDIT' THEN ${khatabook.amount}
+            WHEN ${khatabook.entryType} = 'DEBIT' THEN -${khatabook.amount}
             ELSE 0
           END), 0)`.as('currentBalance'),
         totalCredits: sql<number>`
           COALESCE(SUM(CASE 
-            WHEN ${ledgerEntries.entryType} = 'CREDIT' THEN ${ledgerEntries.amount}
+            WHEN ${khatabook.entryType} = 'CREDIT' THEN ${khatabook.amount}
             ELSE 0
           END), 0)`.as('totalCredits'),
         totalDebits: sql<number>`
           COALESCE(SUM(CASE 
-            WHEN ${ledgerEntries.entryType} = 'DEBIT' THEN ${ledgerEntries.amount}
+            WHEN ${khatabook.entryType} = 'DEBIT' THEN ${khatabook.amount}
             ELSE 0
           END), 0)`.as('totalDebits')
       })
       .from(stores)
       .leftJoin(orders, eq(stores.id, orders.retailerId))
-      .leftJoin(ledgerEntries, eq(orders.id, ledgerEntries.orderId))
+      .leftJoin(khatabook, eq(orders.id, khatabook.orderId))
       .where(eq(orders.ownerId, shopOwnerId))
       .groupBy(stores.id, stores.name)
       .having(sql`COUNT(${orders.id}) > 0`);
