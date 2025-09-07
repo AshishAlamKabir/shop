@@ -172,6 +172,17 @@ export const paymentChangeRequests = pgTable("payment_change_requests", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Many-to-many relationship between retailers and delivery boys
+export const retailerDeliveryBoys = pgTable("retailer_delivery_boys", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  retailerId: varchar("retailer_id").notNull(),
+  deliveryBoyId: varchar("delivery_boy_id").notNull(),
+  addedAt: timestamp("added_at").defaultNow(),
+  addedBy: varchar("added_by"), // user id who added this relationship
+  status: text("status").notNull().default('ACTIVE'), // ACTIVE, INACTIVE
+  notes: text("notes"), // optional notes about this delivery boy
+});
+
 // Relations
 export const usersRelations = relations(users, ({ one, many }) => ({
   store: one(stores, { fields: [users.id], references: [stores.ownerId] }),
@@ -182,6 +193,10 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   ledgerEntries: many(khatabook),
   deliveryRequests: many(deliveryRequests),
   acceptedDeliveryRequests: many(deliveryRequests, { relationName: "acceptedDeliveryRequests" }),
+  // Retailer relationships
+  linkedDeliveryBoys: many(retailerDeliveryBoys, { relationName: "retailerLinkedDeliveryBoys" }),
+  // Delivery boy relationships  
+  linkedToRetailers: many(retailerDeliveryBoys, { relationName: "deliveryBoyLinkedToRetailers" }),
 }));
 
 export const storesRelations = relations(stores, ({ one, many }) => ({
@@ -244,6 +259,12 @@ export const paymentChangeRequestsRelations = relations(paymentChangeRequests, (
   order: one(orders, { fields: [paymentChangeRequests.orderId], references: [orders.id] }),
   deliveryBoy: one(users, { fields: [paymentChangeRequests.deliveryBoyId], references: [users.id] }),
   approver: one(users, { fields: [paymentChangeRequests.approvedBy], references: [users.id] }),
+}));
+
+export const retailerDeliveryBoysRelations = relations(retailerDeliveryBoys, ({ one }) => ({
+  retailer: one(users, { fields: [retailerDeliveryBoys.retailerId], references: [users.id] }),
+  deliveryBoy: one(users, { fields: [retailerDeliveryBoys.deliveryBoyId], references: [users.id] }),
+  addedByUser: one(users, { fields: [retailerDeliveryBoys.addedBy], references: [users.id] }),
 }));
 
 // Insert schemas
@@ -319,6 +340,11 @@ export const insertPaymentChangeRequestSchema = createInsertSchema(paymentChange
   createdAt: true,
 });
 
+export const insertRetailerDeliveryBoySchema = createInsertSchema(retailerDeliveryBoys).omit({
+  id: true,
+  addedAt: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -344,3 +370,5 @@ export type DeliveryRequest = typeof deliveryRequests.$inferSelect;
 export type InsertDeliveryRequest = z.infer<typeof insertDeliveryRequestSchema>;
 export type PaymentChangeRequest = typeof paymentChangeRequests.$inferSelect;
 export type InsertPaymentChangeRequest = z.infer<typeof insertPaymentChangeRequestSchema>;
+export type RetailerDeliveryBoy = typeof retailerDeliveryBoys.$inferSelect;
+export type InsertRetailerDeliveryBoy = z.infer<typeof insertRetailerDeliveryBoySchema>;
