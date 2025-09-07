@@ -1154,13 +1154,23 @@ export default function RetailerDashboard() {
                             }
                           });
                           
+                          if (response.status === 404) {
+                            // Handle "not found" as a valid response
+                            setSearchResults([]);
+                            toast({ 
+                              title: "No delivery boy found",
+                              description: "Please check the ID and try again"
+                            });
+                            return;
+                          }
+                          
                           if (!response.ok) throw new Error('Failed to search');
                           const result = await response.json();
                           setSearchResults(result ? [result] : []);
                           
                           toast({ 
-                            title: result ? "Delivery boy found" : "No delivery boy found",
-                            description: result ? `Found: ${result.name}` : "Please check the ID and try again"
+                            title: "Delivery boy found",
+                            description: `Found: ${result.name}`
                           });
                         } catch (error) {
                           toast({ 
