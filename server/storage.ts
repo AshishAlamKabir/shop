@@ -231,8 +231,7 @@ export class DatabaseStorage implements IStorage {
       ));
     }
     
-    const results = await query.orderBy(desc(productCatalog.createdAt));
-    return results;
+    return await query.orderBy(desc(productCatalog.createdAt));
   }
 
   async getProduct(id: string): Promise<ProductCatalog | undefined> {
@@ -496,7 +495,7 @@ export class DatabaseStorage implements IStorage {
     let whereConditions = [eq(khatabook.userId, userId)];
     
     if (type) {
-      whereConditions.push(eq(khatabook.entryType, type));
+      whereConditions.push(eq(khatabook.entryType, type as any));
     }
     
     if (counterpartyId) {
@@ -1044,7 +1043,7 @@ export class DatabaseStorage implements IStorage {
   // Khatabook operations
   async createKhatabookEntry(entry: InsertKhatabook): Promise<Khatabook> {
     // Calculate the new balance
-    const currentBalance = await this.getCurrentBalance(entry.userId, entry.counterpartyId);
+    const currentBalance = await this.getCurrentBalance(entry.userId, entry.counterpartyId || undefined);
     const newBalance = entry.entryType === 'CREDIT' 
       ? (currentBalance + parseFloat(entry.amount.toString()))
       : (currentBalance - parseFloat(entry.amount.toString()));
@@ -1073,7 +1072,7 @@ export class DatabaseStorage implements IStorage {
     return result ? parseFloat(result.balance.toString()) : 0;
   }
   // Get popular retailers based on order volume and ratings
-  async getPopularRetailers(limit: number = 10): Promise<Store[]> {
+  async getPopularRetailers(limit: number = 10): Promise<any[]> {
     const popularRetailers = await db
       .select({
         id: stores.id,
@@ -1081,13 +1080,13 @@ export class DatabaseStorage implements IStorage {
         city: stores.city,
         pincode: stores.pincode,
         isOpen: stores.isOpen,
-        rating: sql<number>`AVG(CAST(${orders.rating} AS DECIMAL))`.as('rating'),
+        rating: sql<number>`AVG(CAST(${stores.rating} AS DECIMAL))`.as('rating'),
         orderCount: sql<number>`COUNT(${orders.id})`.as('orderCount')
       })
       .from(stores)
       .leftJoin(orders, eq(stores.id, orders.retailerId))
       .groupBy(stores.id, stores.name, stores.city, stores.pincode, stores.isOpen)
-      .orderBy(sql`COUNT(${orders.id}) DESC`, sql`AVG(CAST(${orders.rating} AS DECIMAL)) DESC`)
+      .orderBy(sql`COUNT(${orders.id}) DESC`, sql`AVG(CAST(${stores.rating} AS DECIMAL)) DESC`)
       .limit(limit);
     
     return popularRetailers;
