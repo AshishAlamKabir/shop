@@ -45,12 +45,13 @@ export default function AddManualProductModal({ isOpen, onClose, storeId }: AddM
         isWholesale: data.isWholesale
       };
       
-      const product = await apiRequest('POST', '/api/retailer/catalog', productData);
+      const productResponse = await apiRequest('POST', '/api/retailer/catalog', productData);
+      const product = await productResponse.json();
       
       // Then create the listing
       const listingData = {
         storeId,
-        productId: (product as any).id,
+        productId: product.id,
         priceRetail: parseFloat(data.priceRetail),
         priceWholesale: data.priceWholesale ? parseFloat(data.priceWholesale) : null,
         stockQty: parseInt(data.stockQty),
