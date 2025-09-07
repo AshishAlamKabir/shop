@@ -734,6 +734,7 @@ export default function RetailerDashboard() {
                             </>
                           )}
                         </Button>
+                      </div>
                     </div>
                   )}
                 </DialogContent>
