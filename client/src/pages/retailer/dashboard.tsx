@@ -279,6 +279,44 @@ export default function RetailerDashboard() {
     }
   });
 
+  const addDeliveryBoyToRetailerMutation = useMutation({
+    mutationFn: async ({ deliveryBoyId, notes }: { deliveryBoyId: string; notes?: string }) => {
+      await apiRequest('POST', '/api/retailer/delivery-boys', { deliveryBoyId, notes });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/retailer/delivery-boys'] });
+      setSearchResults(null); // Clear search results after adding
+      setDeliveryBoySearchForm({ deliveryBoyId: '' }); // Clear search form
+      toast({ title: "Delivery boy added to your team successfully" });
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Failed to add delivery boy", 
+        description: error.response?.data?.message || "An error occurred",
+        variant: "destructive" 
+      });
+    }
+  });
+
+  const removeDeliveryBoyFromRetailerMutation = useMutation({
+    mutationFn: async (deliveryBoyId: string) => {
+      await apiRequest('DELETE', `/api/retailer/delivery-boys/${deliveryBoyId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/retailer/delivery-boys'] });
+      setSearchResults(null); // Clear search results after removing
+      setDeliveryBoySearchForm({ deliveryBoyId: '' }); // Clear search form
+      toast({ title: "Delivery boy removed from your team successfully" });
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Failed to remove delivery boy", 
+        description: error.response?.data?.message || "An error occurred",
+        variant: "destructive" 
+      });
+    }
+  });
+
   const createDeliveryRequestMutation = useMutation({
     mutationFn: async (data: { description: string; pickupAddress: string; dropoffAddress: string; estimatedReward?: string }) => {
       await apiRequest('POST', '/api/retailer/delivery-requests', data);
@@ -1273,13 +1311,60 @@ export default function RetailerDashboard() {
                       </div>
                       
                       <div className="mt-6 p-4 bg-blue-100 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-                        <div className="flex items-center text-blue-800 dark:text-blue-200">
-                          <i className="fas fa-info-circle mr-2"></i>
-                          <span className="font-medium">Delivery Boy Available</span>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="flex items-center text-blue-800 dark:text-blue-200">
+                              <i className="fas fa-info-circle mr-2"></i>
+                              <span className="font-medium">
+                                {searchResults.alreadyAdded ? 'Already in Your Team' : 'Delivery Boy Available'}
+                              </span>
+                            </div>
+                            <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
+                              {searchResults.alreadyAdded 
+                                ? 'This delivery boy is already part of your team.'
+                                : 'This delivery boy is available in the system and can be assigned to orders.'
+                              }
+                            </p>
+                          </div>
+                          <div className="ml-4">
+                            {searchResults.alreadyAdded ? (
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => {
+                                  removeDeliveryBoyFromRetailerMutation.mutate(searchResults.user.id);
+                                }}
+                                disabled={removeDeliveryBoyFromRetailerMutation.isPending}
+                              >
+                                {removeDeliveryBoyFromRetailerMutation.isPending ? (
+                                  <i className="fas fa-spinner fa-spin mr-2"></i>
+                                ) : (
+                                  <i className="fas fa-user-minus mr-2"></i>
+                                )}
+                                Remove from Team
+                              </Button>
+                            ) : (
+                              <Button
+                                variant="default"
+                                size="sm"
+                                onClick={() => {
+                                  addDeliveryBoyToRetailerMutation.mutate({ 
+                                    deliveryBoyId: searchResults.user.id,
+                                    notes: 'Added via search'
+                                  });
+                                }}
+                                disabled={addDeliveryBoyToRetailerMutation.isPending}
+                              >
+                                {addDeliveryBoyToRetailerMutation.isPending ? (
+                                  <i className="fas fa-spinner fa-spin mr-2"></i>
+                                ) : (
+                                  <i className="fas fa-user-plus mr-2"></i>
+                                )}
+                                Add to Team
+                              </Button>
+                            )}
+                          </div>
                         </div>
-                        <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
-                          This delivery boy is available in the system and can be assigned to orders.
-                        </p>
                       </div>
                     </div>
                   </CardContent>

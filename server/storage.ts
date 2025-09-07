@@ -746,8 +746,6 @@ export class DatabaseStorage implements IStorage {
   }
 
   async findDeliveryBoyById(retailerId: string, deliveryBoyId: string): Promise<{ user: User; alreadyAdded: boolean } | undefined> {
-    console.log('[DEBUG] Storage: searching for deliveryBoyId:', deliveryBoyId, 'retailerId:', retailerId);
-    
     // Search for delivery boy user directly by ID
     const [deliveryBoyUser] = await db.select().from(users)
       .where(
@@ -757,16 +755,12 @@ export class DatabaseStorage implements IStorage {
         )
       );
     
-    console.log('[DEBUG] Storage: found deliveryBoyUser:', deliveryBoyUser);
-    
     if (!deliveryBoyUser) {
       return undefined;
     }
     
     // Check if this delivery boy is already linked to the retailer
     const alreadyAdded = await this.isDeliveryBoyLinkedToRetailer(retailerId, deliveryBoyId);
-    
-    console.log('[DEBUG] Storage: alreadyAdded:', alreadyAdded);
     
     return {
       user: deliveryBoyUser,

@@ -457,19 +457,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Search delivery boys by ID route - Updated to use users table (MUST come before :id route)
   app.get('/api/retailer/delivery-boys/search-by-id', authenticateToken, requireRole('RETAILER'), async (req: any, res) => {
-    console.log('[DEBUG] Route hit - search-by-id endpoint reached');
     try {
       const { deliveryBoyId } = req.query;
-      
-      console.log('[DEBUG] Search request for deliveryBoyId:', deliveryBoyId);
       
       if (!deliveryBoyId) {
         return res.status(400).json({ message: 'Delivery boy ID is required for search' });
       }
       
       const result = await storage.findDeliveryBoyById(req.user.id, deliveryBoyId as string);
-      
-      console.log('[DEBUG] Search result:', result);
       
       if (!result) {
         return res.status(404).json({ message: 'Delivery boy not found' });
@@ -486,7 +481,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         alreadyAdded: result.alreadyAdded
       });
     } catch (error) {
-      console.error('[DEBUG] Search error:', error);
       res.status(400).json({ message: 'Failed to search delivery boy' });
     }
   });
