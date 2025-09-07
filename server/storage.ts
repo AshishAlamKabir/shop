@@ -133,7 +133,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const [user] = await db.insert(users).values(insertUser).returning();
+    // Generate custom ID based on role
+    const idResult = await db.execute(sql`SELECT generate_user_id(${insertUser.role}) as id`);
+    const customId = (idResult.rows[0] as any).id;
+    
+    const [user] = await db.insert(users).values({
+      ...insertUser,
+      id: customId
+    }).returning();
     return user;
   }
 
