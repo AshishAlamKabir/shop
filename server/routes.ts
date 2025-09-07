@@ -473,6 +473,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Search delivery boys by ID route - Updated to use users table
   app.get('/api/retailer/delivery-boys/search-by-id', authenticateToken, requireRole('RETAILER'), async (req: any, res) => {
+    console.log('[DEBUG] Route hit - search-by-id endpoint reached');
     try {
       const { deliveryBoyId } = req.query;
       
