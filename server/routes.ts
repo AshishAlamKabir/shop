@@ -448,7 +448,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Delivery Boy routes for retailers - Updated to use users table
   app.get('/api/retailer/delivery-boys', authenticateToken, requireRole('RETAILER'), async (req: any, res) => {
     try {
-      const deliveryBoys = await storage.getDeliveryBoysByRetailer(req.user.id);
+      const deliveryBoys = await storage.getLinkedDeliveryBoys(req.user.id);
       res.json(deliveryBoys);
     } catch (error) {
       res.status(500).json({ message: 'Failed to get delivery boys' });
@@ -498,6 +498,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       res.status(400).json({ message: 'Failed to search delivery boy' });
+    }
+  });
+
+  // Add delivery boy to retailer
+  app.post('/api/retailer/delivery-boys', authenticateToken, requireRole('RETAILER'), async (req: any, res) => {
+    try {
+      const { deliveryBoyId, notes } = req.body;
+      
+      if (!deliveryBoyId) {
+        return res.status(400).json({ message: 'Delivery boy ID is required' });
+      }
+      
+      // Check if delivery boy exists and has the right role
+      const deliveryBoyUser = await storage.getUserById(deliveryBoyId);
+      if (!deliveryBoyUser || deliveryBoyUser.role !== 'DELIVERY_BOY') {
+        return res.status(404).json({ message: 'Delivery boy not found' });
+      }
+      
+      // Check if already linked
+      const alreadyLinked = await storage.isDeliveryBoyLinkedToRetailer(req.user.id, deliveryBoyId);
+      if (alreadyLinked) {
+        return res.status(400).json({ message: 'Delivery boy already added to your account' });
+      }
+      
+      // Add the relationship
+      const relationship = await storage.addDeliveryBoyToRetailer(req.user.id, deliveryBoyId, req.user.id, notes);
+      
+      res.status(201).json({ 
+        message: 'Delivery boy added successfully',
+        deliveryBoy: {
+          id: deliveryBoyUser.id,
+          fullName: deliveryBoyUser.fullName,
+          email: deliveryBoyUser.email,
+          phone: deliveryBoyUser.phone,
+          linkedAt: relationship.addedAt,
+          notes: relationship.notes
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to add delivery boy' });
+    }
+  });
+
+  // Remove delivery boy from retailer
+  app.delete('/api/retailer/delivery-boys/:deliveryBoyId', authenticateToken, requireRole('RETAILER'), async (req: any, res) => {
+    try {
+      const { deliveryBoyId } = req.params;
+      
+      // Check if the relationship exists
+      const relationship = await storage.getRetailerDeliveryBoyRelationship(req.user.id, deliveryBoyId);
+      if (!relationship) {
+        return res.status(404).json({ message: 'Delivery boy not found in your account' });
+      }
+      
+      // Remove the relationship
+      await storage.removeDeliveryBoyFromRetailer(req.user.id, deliveryBoyId);
+      
+      res.json({ message: 'Delivery boy removed successfully' });
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to remove delivery boy' });
     }
   });
 
