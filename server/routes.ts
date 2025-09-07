@@ -140,6 +140,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Refresh access token using refresh token
+  app.post('/api/auth/refresh', async (req, res) => {
+    try {
+      const { refreshToken } = req.body;
+      
+      if (!refreshToken) {
+        return res.status(401).json({ message: 'Refresh token required' });
+      }
+      
+      const decoded = jwt.verify(refreshToken, JWT_SECRET) as any;
+      const user = await storage.getUserById(decoded.userId);
+      
+      if (!user) {
+        return res.status(401).json({ message: 'Invalid refresh token' });
+      }
+      
+      // Generate new access token
+      const accessToken = jwt.sign({ userId: user.id, role: user.role }, JWT_SECRET, { expiresIn: '15m' });
+      
+      res.json({ accessToken });
+    } catch (error) {
+      res.status(403).json({ message: 'Invalid refresh token' });
+    }
+  });
+
   app.get('/api/auth/me', authenticateToken, async (req: any, res) => {
     res.json({
       user: {

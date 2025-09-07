@@ -1,4 +1,5 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
+import { refreshToken, clearStoredTokens } from "./auth";
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
@@ -11,6 +12,7 @@ export async function apiRequest(
   method: string,
   url: string,
   data?: unknown | undefined,
+  retryOnAuth: boolean = true,
 ): Promise<Response> {
   const headers: Record<string, string> = {};
   
@@ -31,6 +33,36 @@ export async function apiRequest(
     body: data ? JSON.stringify(data) : undefined,
     credentials: "include",
   });
+
+  // Handle token expiration
+  if (res.status === 403 && retryOnAuth && url !== '/api/auth/refresh') {
+    try {
+      // Try to refresh the token
+      await refreshToken();
+      
+      // Retry the original request with the new token
+      const newToken = localStorage.getItem('accessToken');
+      const newHeaders = { ...headers };
+      if (newToken) {
+        newHeaders['Authorization'] = `Bearer ${newToken}`;
+      }
+      
+      const retryRes = await fetch(url, {
+        method,
+        headers: newHeaders,
+        body: data ? JSON.stringify(data) : undefined,
+        credentials: "include",
+      });
+      
+      await throwIfResNotOk(retryRes);
+      return retryRes;
+    } catch (refreshError) {
+      // Refresh failed, clear tokens and redirect to login
+      clearStoredTokens();
+      window.location.href = '/';
+      throw refreshError;
+    }
+  }
 
   await throwIfResNotOk(res);
   return res;
@@ -57,6 +89,34 @@ export const getQueryFn: <T>(options: {
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {
       return null;
+    }
+
+    // Handle token expiration for queries
+    if (res.status === 403) {
+      try {
+        // Try to refresh the token
+        await refreshToken();
+        
+        // Retry the query with the new token
+        const newToken = localStorage.getItem('accessToken');
+        const newHeaders = { ...headers };
+        if (newToken) {
+          newHeaders['Authorization'] = `Bearer ${newToken}`;
+        }
+        
+        const retryRes = await fetch(queryKey.join("/") as string, {
+          headers: newHeaders,
+          credentials: "include",
+        });
+        
+        await throwIfResNotOk(retryRes);
+        return await retryRes.json();
+      } catch (refreshError) {
+        // Refresh failed, clear tokens and redirect to login
+        clearStoredTokens();
+        window.location.href = '/';
+        throw refreshError;
+      }
     }
 
     await throwIfResNotOk(res);
