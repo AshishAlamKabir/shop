@@ -946,6 +946,147 @@ export default function ShopOwnerDashboard() {
             </div>
           )}
 
+          {/* Retailer Accounts Section */}
+          {activeSection === 'retailers' && (
+            <div>
+              <div className="mb-6">
+                <h2 className="text-2xl font-bold text-foreground mb-2">Retailer Accounts</h2>
+                <p className="text-muted-foreground">Manage your relationships with all retailers</p>
+              </div>
+
+              {/* Combined Retailer Cards */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                {stores.map((retailer: any) => {
+                  const balance = retailerBalances.find((b: any) => b.retailerId === retailer.ownerId);
+                  return (
+                    <Card 
+                      key={retailer.id}
+                      className="hover:shadow-lg transition-all duration-200 border-l-4 border-l-blue-500"
+                      data-testid={`card-retailer-${retailer.id}`}
+                    >
+                      <CardContent className="p-6">
+                        {/* Header */}
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center">
+                              <i className="fas fa-store text-primary-foreground"></i>
+                            </div>
+                            <div>
+                              <h3 className="font-bold text-foreground text-lg">{retailer.name}</h3>
+                              <p className="text-sm text-muted-foreground">Store ID: {retailer.id.slice(-8)}</p>
+                            </div>
+                          </div>
+                          <div className="flex flex-col items-end">
+                            <span className={`w-3 h-3 rounded-full mb-1 ${retailer.isOpen ? 'bg-green-500' : 'bg-red-500'}`}></span>
+                            <span className="text-xs text-muted-foreground">
+                              {retailer.isOpen ? 'Open' : 'Closed'}
+                            </span>
+                          </div>
+                        </div>
+                        
+                        {/* Store Details */}
+                        <div className="space-y-3 mb-4">
+                          <div className="flex items-center text-sm text-muted-foreground">
+                            <i className="fas fa-map-marker-alt mr-3 w-4"></i>
+                            <span>{retailer.address || `${retailer.city}, ${retailer.pincode}`}</span>
+                          </div>
+                          <div className="flex items-center text-sm text-muted-foreground">
+                            <i className="fas fa-phone mr-3 w-4"></i>
+                            <span>{retailer.phone || 'Not provided'}</span>
+                          </div>
+                          <div className="flex items-center justify-between text-sm">
+                            <div className="flex items-center text-muted-foreground">
+                              <i className="fas fa-star text-yellow-500 mr-2"></i>
+                              <span>{retailer.rating ? parseFloat(retailer.rating).toFixed(1) : '4.5'} Rating</span>
+                            </div>
+                            <div className="text-foreground font-medium">
+                              {retailer.listings?.length || 0} Products
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {/* Financial Information */}
+                        {balance ? (
+                          <div className="bg-muted/50 rounded-lg p-4 mb-4">
+                            <h4 className="font-semibold text-foreground mb-3 flex items-center gap-2">
+                              <i className="fas fa-wallet"></i>
+                              Account Balance
+                            </h4>
+                            <div className="grid grid-cols-2 gap-3">
+                              <div className="text-center">
+                                <p className={`font-bold text-lg ${balance.currentBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                  ₹{Math.abs(balance.currentBalance).toFixed(2)}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {balance.currentBalance >= 0 ? 'Credit Balance' : 'Outstanding'}
+                                </p>
+                              </div>
+                              <div className="text-center">
+                                <p className="font-medium text-foreground">
+                                  ₹{balance.totalCredits.toFixed(2)}
+                                </p>
+                                <p className="text-xs text-muted-foreground">Total Credits</p>
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="bg-muted/50 rounded-lg p-4 mb-4 text-center">
+                            <i className="fas fa-chart-line text-muted-foreground mb-2"></i>
+                            <p className="text-sm text-muted-foreground">No transactions yet</p>
+                          </div>
+                        )}
+                        
+                        {/* Action Buttons */}
+                        <div className="flex gap-2">
+                          <Button 
+                            className="flex-1" 
+                            onClick={() => setSelectedStore(retailer)}
+                            data-testid={`button-browse-catalog-${retailer.id}`}
+                          >
+                            <i className="fas fa-eye mr-2"></i>
+                            Browse Catalog
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => {
+                              setSearchFilters({ search: '', city: '', pincode: '', name: retailer.name, id: '' });
+                              setActiveSection('explore');
+                            }}
+                            data-testid={`button-view-store-${retailer.id}`}
+                          >
+                            <i className="fas fa-external-link-alt"></i>
+                          </Button>
+                        </div>
+                        
+                        {/* Quick Stats */}
+                        <div className="mt-4 pt-4 border-t border-border">
+                          <div className="flex justify-between text-xs text-muted-foreground">
+                            <span>Owner ID: {retailer.ownerId?.slice(-8)}</span>
+                            <span>Since: {new Date(retailer.createdAt || Date.now()).toLocaleDateString()}</span>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+
+              {/* Empty State */}
+              {stores.length === 0 && (
+                <div className="text-center py-12">
+                  <i className="fas fa-store-alt text-6xl text-muted-foreground mb-4"></i>
+                  <h3 className="text-lg font-semibold text-foreground mb-2">No Retailers Found</h3>
+                  <p className="text-muted-foreground mb-6">There are no retailers available at the moment.</p>
+                  <Button onClick={() => setActiveSection('explore')}>
+                    <i className="fas fa-search mr-2"></i>
+                    Explore Stores
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Khatabook Section */}
           {activeSection === 'khatabook' && (
             <div>
@@ -1217,6 +1358,16 @@ export default function ShopOwnerDashboard() {
           icon="fas fa-receipt"
           label="My Orders"
           testId="button-nav-orders-navigation"
+        />
+        <NavigationItem
+          onClick={() => {
+            setActiveSection('retailers');
+            setIsNavigationOpen(false);
+          }}
+          active={activeSection === 'retailers'}
+          icon="fas fa-store-alt"
+          label="Retailer Accounts"
+          testId="button-nav-retailers-navigation"
         />
         <NavigationItem
           onClick={() => {
