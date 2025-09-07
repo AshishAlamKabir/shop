@@ -47,6 +47,8 @@ export default function AddManualProductModal({ isOpen, onClose, storeId }: AddM
       
       const productResponse = await apiRequest('POST', '/api/retailer/catalog', productData);
       const product = await productResponse.json();
+      console.log('Created product:', product);
+      console.log('Product ID:', product.id);
       
       // Then create the listing
       const listingData = {
