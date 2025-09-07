@@ -86,7 +86,23 @@ export async function getCurrentUser() {
   });
 
   if (!response.ok) {
-    if (response.status === 401) {
+    if (response.status === 401 || response.status === 403) {
+      // Try to refresh token first
+      try {
+        const newToken = await refreshToken();
+        // Retry with new token
+        const retryResponse = await fetch('/api/auth/me', {
+          headers: {
+            'Authorization': `Bearer ${newToken}`,
+          },
+        });
+        if (retryResponse.ok) {
+          return retryResponse.json();
+        }
+      } catch (refreshError) {
+        // Refresh failed, clear tokens
+        clearStoredTokens();
+      }
       clearStoredTokens();
     }
     throw new Error('Failed to get current user');
