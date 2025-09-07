@@ -1458,9 +1458,9 @@ export default function RetailerDashboard() {
                               {deliveryBoy.name}
                             </h4>
                             <div className="flex items-center space-x-2">
-                              <span className={`w-2 h-2 rounded-full ${deliveryBoy.isActive ? 'bg-green-500' : 'bg-gray-400'}`}></span>
+                              <span className="w-2 h-2 rounded-full bg-green-500"></span>
                               <span className="text-xs text-muted-foreground">
-                                {deliveryBoy.isActive ? 'Active' : 'Inactive'}
+                                Active
                               </span>
                             </div>
                           </div>
@@ -1486,7 +1486,7 @@ export default function RetailerDashboard() {
                       
                       <div className="space-y-2">
                         {/* Select for Delivery Button - Only show when there are orders needing delivery */}
-                        {ordersNeedingDelivery.length > 0 && deliveryBoy.isActive && (
+                        {ordersNeedingDelivery.length > 0 && (
                           <div className="border-t pt-2">
                             <p className="text-xs text-muted-foreground mb-2">
                               {ordersNeedingDelivery.length} order{ordersNeedingDelivery.length > 1 ? 's' : ''} need delivery
@@ -1532,36 +1532,20 @@ export default function RetailerDashboard() {
                                 });
                                 return;
                               }
-                              // Show assignment modal or navigate to assignment section
-                              setSelectedOrderForDelivery({ type: 'direct', deliveryBoyId: deliveryBoy.id });
-                              setIsSelectingDeliveryBoy(true);
+                              // Navigate to orders section and pre-select this delivery boy
                               setActiveSection('orders');
+                              setSelectedOrderForDelivery(ordersNeedingDelivery[0]);
+                              setIsSelectingDeliveryBoy(true);
+                              setDeliveryAssignmentStep('own');
                             }}
-                            disabled={!deliveryBoy.isActive || ordersNeedingDelivery.length === 0}
+                            disabled={ordersNeedingDelivery.length === 0}
                             data-testid={`button-assign-${deliveryBoy.id}`}
                           >
                             <i className="fas fa-shipping-fast mr-2"></i>
                             Assign Delivery ({ordersNeedingDelivery.length})
                           </Button>
                           
-                          <div className="flex space-x-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="flex-1"
-                              onClick={() => {
-                                const newStatus = !deliveryBoy.isActive;
-                                updateDeliveryBoyMutation.mutate({
-                                  id: deliveryBoy.id,
-                                  data: { isActive: newStatus }
-                                });
-                              }}
-                              disabled={updateDeliveryBoyMutation.isPending}
-                              data-testid={`button-toggle-${deliveryBoy.id}`}
-                            >
-                              <i className={`fas ${deliveryBoy.isActive ? 'fa-pause' : 'fa-play'} mr-1`}></i>
-                              {deliveryBoy.isActive ? 'Deactivate' : 'Activate'}
-                            </Button>
+                          <div className="flex justify-center">
                             <Button
                               variant="outline"
                               size="sm"
@@ -1574,7 +1558,8 @@ export default function RetailerDashboard() {
                               disabled={deleteDeliveryBoyMutation.isPending}
                               data-testid={`button-delete-${deliveryBoy.id}`}
                             >
-                              <i className="fas fa-trash"></i>
+                              <i className="fas fa-trash mr-2"></i>
+                              Remove
                             </Button>
                           </div>
                         </div>
