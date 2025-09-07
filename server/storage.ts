@@ -756,8 +756,6 @@ export class DatabaseStorage implements IStorage {
   }
 
   async searchDeliveryBoyById(retailerId: string, deliveryBoyId: string): Promise<DeliveryBoy | undefined> {
-    console.log('searchDeliveryBoyById called with:', { retailerId, deliveryBoyId });
-    
     // First, check if the delivery boy already exists in this retailer's list
     const [existingDeliveryBoy] = await db.select().from(deliveryBoys)
       .where(
@@ -767,8 +765,6 @@ export class DatabaseStorage implements IStorage {
           eq(deliveryBoys.isActive, true)
         )
       );
-    
-    console.log('Existing delivery boy in retailer list:', existingDeliveryBoy);
     
     if (existingDeliveryBoy) {
       return existingDeliveryBoy;
@@ -783,10 +779,7 @@ export class DatabaseStorage implements IStorage {
         )
       );
     
-    console.log('Delivery boy user found:', deliveryBoyUser);
-    
     if (deliveryBoyUser) {
-      console.log('Creating delivery boy for retailer:', { retailerId, deliveryBoyUser });
       // Found delivery boy user, add them to current retailer's account
       const newDeliveryBoy = await this.createDeliveryBoy({
         retailerId: retailerId,
@@ -794,11 +787,9 @@ export class DatabaseStorage implements IStorage {
         phone: deliveryBoyUser.phone || '',
         address: ''
       });
-      console.log('Created delivery boy:', newDeliveryBoy);
       return newDeliveryBoy;
     }
     
-    console.log('No delivery boy found with ID:', deliveryBoyId);
     return undefined;
   }
 
