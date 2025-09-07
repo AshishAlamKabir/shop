@@ -65,10 +65,7 @@ export default function DeliveryBoyDashboard() {
 
   const requestPaymentChangeMutation = useMutation({
     mutationFn: async ({ orderId, newAmount, reason }: { orderId: string; newAmount: string; reason: string }) => {
-      return apiRequest(`/api/delivery/orders/${orderId}/request-payment-change`, {
-        method: 'POST',
-        body: JSON.stringify({ newAmount, reason })
-      });
+      return apiRequest('POST', `/api/delivery/orders/${orderId}/request-payment-change`, { newAmount, reason });
     },
     onSuccess: () => {
       toast({ title: "Payment change request sent", description: "Waiting for shop owner approval" });
@@ -88,10 +85,7 @@ export default function DeliveryBoyDashboard() {
 
   const confirmPaymentMutation = useMutation({
     mutationFn: async ({ orderId, amountReceived }: { orderId: string; amountReceived: string }) => {
-      return apiRequest(`/api/delivery/orders/${orderId}/confirm-payment`, {
-        method: 'POST',
-        body: JSON.stringify({ amountReceived, paymentMethod: 'CASH' })
-      });
+      return apiRequest('POST', `/api/delivery/orders/${orderId}/confirm-payment`, { amountReceived, paymentMethod: 'CASH' });
     },
     onSuccess: () => {
       toast({ title: "Payment confirmed", description: "Order completed successfully" });
