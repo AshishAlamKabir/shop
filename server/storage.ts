@@ -755,6 +755,75 @@ export class DatabaseStorage implements IStorage {
       );
   }
 
+  async findDeliveryBoyUserById(retailerId: string, deliveryBoyId: string): Promise<{ user: User; alreadyAdded: boolean } | undefined> {
+    // First, check if the delivery boy already exists in this retailer's list
+    const [existingDeliveryBoy] = await db.select().from(deliveryBoys)
+      .where(
+        and(
+          eq(deliveryBoys.id, deliveryBoyId),
+          eq(deliveryBoys.retailerId, retailerId),
+          eq(deliveryBoys.isActive, true)
+        )
+      );
+    
+    // Search for a user with DELIVERY_BOY role using the provided ID
+    const [deliveryBoyUser] = await db.select().from(users)
+      .where(
+        and(
+          eq(users.id, deliveryBoyId),
+          eq(users.role, 'DELIVERY_BOY')
+        )
+      );
+    
+    if (deliveryBoyUser) {
+      return {
+        user: deliveryBoyUser,
+        alreadyAdded: !!existingDeliveryBoy
+      };
+    }
+    
+    return undefined;
+  }
+
+  async addDeliveryBoyUserToRetailer(retailerId: string, userId: string): Promise<DeliveryBoy> {
+    // Get the user first
+    const [deliveryBoyUser] = await db.select().from(users)
+      .where(
+        and(
+          eq(users.id, userId),
+          eq(users.role, 'DELIVERY_BOY')
+        )
+      );
+    
+    if (!deliveryBoyUser) {
+      throw new Error('Delivery boy user not found');
+    }
+
+    // Check if already added
+    const [existingDeliveryBoy] = await db.select().from(deliveryBoys)
+      .where(
+        and(
+          eq(deliveryBoys.id, userId),
+          eq(deliveryBoys.retailerId, retailerId),
+          eq(deliveryBoys.isActive, true)
+        )
+      );
+    
+    if (existingDeliveryBoy) {
+      throw new Error('Delivery boy already added to your account');
+    }
+
+    // Create new delivery boy entry
+    const newDeliveryBoy = await this.createDeliveryBoy({
+      retailerId: retailerId,
+      name: deliveryBoyUser.fullName,
+      phone: deliveryBoyUser.phone || '',
+      address: ''
+    });
+    
+    return newDeliveryBoy;
+  }
+
   async searchDeliveryBoyById(retailerId: string, deliveryBoyId: string): Promise<DeliveryBoy | undefined> {
     // First, check if the delivery boy already exists in this retailer's list
     const [existingDeliveryBoy] = await db.select().from(deliveryBoys)
