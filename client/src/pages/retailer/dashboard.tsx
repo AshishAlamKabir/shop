@@ -25,6 +25,7 @@ export default function RetailerDashboard() {
   const [paymentAmount, setPaymentAmount] = useState('');
   const [paymentNote, setPaymentNote] = useState('');
   const [selectedOrderForDelivery, setSelectedOrderForDelivery] = useState<any>(null);
+  const [isSelectingDeliveryBoy, setIsSelectingDeliveryBoy] = useState(false);
   const [deliveryAssignmentStep, setDeliveryAssignmentStep] = useState<'own' | 'find'>('own');
   const [recentlyCreatedDeliveryBoy, setRecentlyCreatedDeliveryBoy] = useState<any>(null);
   const [showManualModal, setShowManualModal] = useState(false);
@@ -325,6 +326,9 @@ export default function RetailerDashboard() {
   };
 
   const pendingOrders = orders.filter((order: any) => order.status === 'PENDING');
+  const ordersNeedingDelivery = orders.filter((order: any) => 
+    (order.status === 'ACCEPTED' || order.status === 'READY') && !order.assignedDeliveryBoyId
+  );
 
   const handleEditListing = (listing: any) => {
     setEditingListing(listing);
@@ -1428,38 +1432,72 @@ export default function RetailerDashboard() {
                         </div>
                       </div>
                       
-                      <div className="flex space-x-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="flex-1"
-                          onClick={() => {
-                            const newStatus = !deliveryBoy.isActive;
-                            updateDeliveryBoyMutation.mutate({
-                              id: deliveryBoy.id,
-                              data: { isActive: newStatus }
-                            });
-                          }}
-                          disabled={updateDeliveryBoyMutation.isPending}
-                          data-testid={`button-toggle-${deliveryBoy.id}`}
-                        >
-                          <i className={`fas ${deliveryBoy.isActive ? 'fa-pause' : 'fa-play'} mr-1`}></i>
-                          {deliveryBoy.isActive ? 'Deactivate' : 'Activate'}
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="text-destructive border-destructive hover:bg-destructive/10"
-                          onClick={() => {
-                            if (confirm(`Are you sure you want to remove ${deliveryBoy.name}?`)) {
-                              deleteDeliveryBoyMutation.mutate(deliveryBoy.id);
-                            }
-                          }}
-                          disabled={deleteDeliveryBoyMutation.isPending}
-                          data-testid={`button-delete-${deliveryBoy.id}`}
-                        >
-                          <i className="fas fa-trash"></i>
-                        </Button>
+                      <div className="space-y-2">
+                        {/* Select for Delivery Button - Only show when there are orders needing delivery */}
+                        {ordersNeedingDelivery.length > 0 && deliveryBoy.isActive && (
+                          <div className="border-t pt-2">
+                            <p className="text-xs text-muted-foreground mb-2">
+                              {ordersNeedingDelivery.length} order{ordersNeedingDelivery.length > 1 ? 's' : ''} need delivery
+                            </p>
+                            <select 
+                              className="w-full text-xs border rounded p-1 mb-2"
+                              onChange={(e) => {
+                                const orderId = e.target.value;
+                                if (orderId) {
+                                  if (confirm(`Assign ${deliveryBoy.name} to this order?`)) {
+                                    assignDeliveryBoyMutation.mutate({
+                                      orderId,
+                                      deliveryBoyId: deliveryBoy.id
+                                    });
+                                  }
+                                  e.target.value = ''; // Reset selection
+                                }
+                              }}
+                              disabled={assignDeliveryBoyMutation.isPending}
+                            >
+                              <option value="">Select order to assign...</option>
+                              {ordersNeedingDelivery.map((order: any) => (
+                                <option key={order.id} value={order.id}>
+                                  Order #{order.id.slice(-8)} - ₹{order.totalAmount}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+                        
+                        <div className="flex space-x-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex-1"
+                            onClick={() => {
+                              const newStatus = !deliveryBoy.isActive;
+                              updateDeliveryBoyMutation.mutate({
+                                id: deliveryBoy.id,
+                                data: { isActive: newStatus }
+                              });
+                            }}
+                            disabled={updateDeliveryBoyMutation.isPending}
+                            data-testid={`button-toggle-${deliveryBoy.id}`}
+                          >
+                            <i className={`fas ${deliveryBoy.isActive ? 'fa-pause' : 'fa-play'} mr-1`}></i>
+                            {deliveryBoy.isActive ? 'Deactivate' : 'Activate'}
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-destructive border-destructive hover:bg-destructive/10"
+                            onClick={() => {
+                              if (confirm(`Are you sure you want to remove ${deliveryBoy.name}?`)) {
+                                deleteDeliveryBoyMutation.mutate(deliveryBoy.id);
+                              }
+                            }}
+                            disabled={deleteDeliveryBoyMutation.isPending}
+                            data-testid={`button-delete-${deliveryBoy.id}`}
+                          >
+                            <i className="fas fa-trash"></i>
+                          </Button>
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
