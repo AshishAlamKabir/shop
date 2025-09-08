@@ -849,6 +849,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: `Order assigned to delivery boy: ${deliveryBoy.fullName}`
       });
 
+      // Create initial khatabook entries for delivery assignment
+      const totalAmount = parseFloat(order.totalAmount);
+      
+      // Create ledger entry for shop owner (debit - they owe money)
+      await storage.addLedgerEntry({
+        userId: order.ownerId,
+        counterpartyId: order.retailerId,
+        orderId: id,
+        entryType: 'DEBIT',
+        transactionType: 'ORDER_DEBIT',
+        amount: totalAmount.toString(),
+        description: `Order #${id.slice(-8)} - Delivery assigned - Amount due: ₹${totalAmount}`,
+        referenceId: id,
+        metadata: JSON.stringify({ 
+          orderValue: totalAmount,
+          deliveryBoy: deliveryBoy.fullName,
+          status: 'DELIVERY_ASSIGNED'
+        })
+      });
+
+      // Create corresponding credit entry for retailer
+      await storage.addLedgerEntry({
+        userId: order.retailerId,
+        counterpartyId: order.ownerId,
+        orderId: id,
+        entryType: 'CREDIT',
+        transactionType: 'ORDER_CREDIT',
+        amount: totalAmount.toString(),
+        description: `Order #${id.slice(-8)} - Delivery assigned - Amount receivable: ₹${totalAmount}`,
+        referenceId: id,
+        metadata: JSON.stringify({ 
+          orderValue: totalAmount,
+          deliveryBoy: deliveryBoy.fullName,
+          status: 'DELIVERY_ASSIGNED'
+        })
+      });
+
       emitOrderEvent(id, order.ownerId, order.retailerId, 'deliveryBoyAssigned', {
         orderId: id,
         deliveryBoy: deliveryBoy.fullName,
