@@ -27,8 +27,6 @@ export default function ShopOwnerDashboard() {
   const [adjustmentDialogOpen, setAdjustmentDialogOpen] = useState(false);
   const [selectedOrderForAdjustment, setSelectedOrderForAdjustment] = useState<any>(null);
   const [productQuantities, setProductQuantities] = useState<{[key: string]: number}>({});
-  const [deliveryBoyAssignmentModal, setDeliveryBoyAssignmentModal] = useState<{ isOpen: boolean; order: any }>({ isOpen: false, order: null });
-  const [selectedDeliveryBoyId, setSelectedDeliveryBoyId] = useState('');
   
   const { cart, addToCart, removeFromCart, updateQuantity, clearCart, getTotalAmount, getItemCount } = useCartStore();
   const { toast } = useToast();
@@ -58,18 +56,6 @@ export default function ShopOwnerDashboard() {
     }
   });
 
-  const { data: availableDeliveryBoys = [] } = useQuery({
-    queryKey: ['/api/delivery-boys/available'],
-    queryFn: async () => {
-      const response = await fetch('/api/delivery-boys/available', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
-        }
-      });
-      if (!response.ok) throw new Error('Failed to fetch delivery boys');
-      return response.json();
-    }
-  });
 
   const { data: retailerBalances = [] } = useQuery({
     queryKey: ['/api/khatabook/retailer-balances'],
@@ -180,20 +166,6 @@ export default function ShopOwnerDashboard() {
     }
   });
 
-  const assignDeliveryBoyMutation = useMutation({
-    mutationFn: async ({ orderId, deliveryBoyId }: { orderId: string; deliveryBoyId: string }) => {
-      return await apiRequest('POST', `/api/shop-owner/orders/${orderId}/assign-delivery-boy`, { deliveryBoyId });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/orders/mine'] });
-      setDeliveryBoyAssignmentModal({ isOpen: false, order: null });
-      setSelectedDeliveryBoyId('');
-      toast({ title: "Delivery boy assigned successfully!" });
-    },
-    onError: () => {
-      toast({ title: "Failed to assign delivery boy", variant: "destructive" });
-    }
-  });
 
   const handlePlaceOrder = () => {
     if (cart.length === 0) {
@@ -794,33 +766,6 @@ export default function ShopOwnerDashboard() {
                         </div>
                       )}
                       
-                      {/* Delivery Boy Assignment Section */}
-                      {(order.status === 'ACCEPTED' || order.status === 'READY') && (
-                        <div className="border-t border-border pt-4 mt-4">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <h5 className="font-medium text-foreground mb-2">Delivery Assignment</h5>
-                              {order.assignedDeliveryBoy ? (
-                                <div className="flex items-center gap-2 text-sm text-green-600">
-                                  <i className="fas fa-user-check"></i>
-                                  <span>Assigned to: {order.assignedDeliveryBoy.name}</span>
-                                </div>
-                              ) : (
-                                <p className="text-sm text-muted-foreground">No delivery boy assigned</p>
-                              )}
-                            </div>
-                            <Button 
-                              size="sm"
-                              variant="outline"
-                              onClick={() => setDeliveryBoyAssignmentModal({ isOpen: true, order })}
-                              className="flex items-center gap-2"
-                            >
-                              <i className="fas fa-truck"></i>
-                              {order.assignedDeliveryBoy ? 'Change Delivery Boy' : 'Assign Delivery Boy'}
-                            </Button>
-                          </div>
-                        </div>
-                      )}
 
                       <div className="flex items-center justify-between pt-4 mt-4 border-t border-border">
                         <div>
@@ -1237,80 +1182,6 @@ export default function ShopOwnerDashboard() {
         </main>
       </div>
 
-      {/* Delivery Boy Assignment Modal */}
-      <Dialog open={deliveryBoyAssignmentModal.isOpen} onOpenChange={(open) => !open && setDeliveryBoyAssignmentModal({ isOpen: false, order: null })}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Assign Delivery Boy</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label className="text-sm font-medium">Order Details</Label>
-              <p className="text-sm text-muted-foreground">
-                Order #{deliveryBoyAssignmentModal.order?.id?.slice(-8)} - ₹{deliveryBoyAssignmentModal.order?.totalAmount}
-              </p>
-            </div>
-            <div>
-              <Label className="text-sm font-medium">Select Delivery Boy</Label>
-              <Select value={selectedDeliveryBoyId} onValueChange={setSelectedDeliveryBoyId}>
-                <SelectTrigger className="mt-2">
-                  <SelectValue placeholder="Choose a delivery boy" />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableDeliveryBoys.map((deliveryBoy: any) => (
-                    <SelectItem key={deliveryBoy.id} value={deliveryBoy.id}>
-                      <div className="flex items-center gap-2">
-                        <i className="fas fa-user text-muted-foreground"></i>
-                        <span>{deliveryBoy.name}</span>
-                        <span className="text-xs text-muted-foreground">({deliveryBoy.phone})</span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                  <SelectItem value="enter-id">
-                    <div className="flex items-center gap-2">
-                      <i className="fas fa-keyboard text-muted-foreground"></i>
-                      <span>Enter Delivery Boy ID</span>
-                    </div>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-              {selectedDeliveryBoyId === 'enter-id' && (
-                <Input
-                  placeholder="Enter delivery boy ID"
-                  className="mt-2"
-                  onChange={(e) => setSelectedDeliveryBoyId(e.target.value)}
-                />
-              )}
-            </div>
-            <div className="flex gap-2">
-              <Button 
-                onClick={() => {
-                  if (selectedDeliveryBoyId && selectedDeliveryBoyId !== 'enter-id') {
-                    assignDeliveryBoyMutation.mutate({
-                      orderId: deliveryBoyAssignmentModal.order?.id,
-                      deliveryBoyId: selectedDeliveryBoyId
-                    });
-                  }
-                }}
-                disabled={!selectedDeliveryBoyId || selectedDeliveryBoyId === 'enter-id' || assignDeliveryBoyMutation.isPending}
-                className="flex-1"
-              >
-                {assignDeliveryBoyMutation.isPending ? 'Assigning...' : 'Assign Delivery Boy'}
-              </Button>
-              <Button 
-                variant="outline" 
-                onClick={() => {
-                  setDeliveryBoyAssignmentModal({ isOpen: false, order: null });
-                  setSelectedDeliveryBoyId('');
-                }}
-                className="flex-1"
-              >
-                Cancel
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
 
       <StoreCatalogModal 
         store={selectedStore}
