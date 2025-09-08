@@ -1080,6 +1080,26 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
 
+  async getPaymentChangeRequestsForOrder(orderId: string): Promise<any[]> {
+    const result = await db
+      .select({
+        id: paymentChangeRequests.id,
+        orderId: paymentChangeRequests.orderId,
+        deliveryBoyId: paymentChangeRequests.deliveryBoyId,
+        originalAmount: paymentChangeRequests.originalAmount,
+        requestedAmount: paymentChangeRequests.requestedAmount,
+        reason: paymentChangeRequests.reason,
+        status: paymentChangeRequests.status,
+        createdAt: paymentChangeRequests.createdAt,
+        approvedAt: paymentChangeRequests.approvedAt
+      })
+      .from(paymentChangeRequests)
+      .where(eq(paymentChangeRequests.orderId, orderId))
+      .orderBy(desc(paymentChangeRequests.createdAt));
+    
+    return result;
+  }
+
   // Order amount updates
   async updateOrderAmount(orderId: string, newAmount: string): Promise<Order> {
     const [result] = await db

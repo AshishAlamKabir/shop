@@ -1715,6 +1715,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Mark payment as received (different from confirm-payment)
+  app.post('/api/delivery/orders/:id/payment-received', authenticateToken, requireRole('DELIVERY_BOY'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      
+      const order = await storage.getOrderForDeliveryBoy(id, req.user.id);
+      if (!order) {
+        return res.status(404).json({ message: 'Order not found or not assigned to you' });
+      }
+      
+      // Check if payment change was approved (order amount changed) - button should be green
+      const paymentChangeRequests = await storage.getPaymentChangeRequestsForOrder(id);
+      const approvedRequest = paymentChangeRequests.find(req => req.status === 'APPROVED');
+      
+      if (!approvedRequest) {
+        return res.status(400).json({ message: 'Payment can only be marked as received after payment change is approved' });
+      }
+      
+      // Create order event for payment received notification
+      await storage.createOrderEvent({
+        orderId: id,
+        type: 'PAYMENT_RECEIVED_NOTIFICATION',
+        message: `Payment of ₹${order.totalAmount} marked as received by ${req.user.fullName}`
+      });
+      
+      // Notify retailer about payment received
+      const retailerClient = clients.get(order.retailerId);
+      if (retailerClient && retailerClient.readyState === WebSocket.OPEN) {
+        retailerClient.send(JSON.stringify({
+          type: 'PAYMENT_RECEIVED_NOTIFICATION',
+          orderId: id,
+          orderNumber: `#${id.slice(-8)}`,
+          amount: order.totalAmount,
+          customerName: order.owner?.fullName || 'Customer',
+          deliveryBoyName: req.user.fullName,
+          storeName: order.store?.name || 'Store'
+        }));
+      }
+      
+      res.json({ 
+        message: 'Payment received notification sent',
+        amount: order.totalAmount
+      });
+    } catch (error) {
+      console.error('Payment received notification error:', error);
+      res.status(500).json({ message: 'Failed to send payment received notification' });
+    }
+  });
+
   // Delivery boy order status update
   app.post('/api/delivery/orders/:id/status', authenticateToken, requireRole('DELIVERY_BOY'), async (req: any, res) => {
     try {
