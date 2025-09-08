@@ -95,6 +95,16 @@ export default function ToastNotifications() {
         return;
       }
       
+      // Handle payment received notifications for retailers
+      if (type === 'PAYMENT_RECEIVED_NOTIFICATION' && user.role === 'RETAILER') {
+        toast({
+          title: "💰 Payment Received!",
+          description: `${data.deliveryBoyName} collected ₹${data.amount} from ${data.customerName} for order ${data.orderNumber}`,
+          duration: 10000,
+        });
+        return;
+      }
+      
       switch (event) {
         case 'orderPlaced':
           if (user.role === 'RETAILER') {

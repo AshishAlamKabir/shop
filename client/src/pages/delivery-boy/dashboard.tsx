@@ -119,6 +119,23 @@ export default function DeliveryBoyDashboard() {
     }
   });
 
+  const markPaymentReceivedMutation = useMutation({
+    mutationFn: async (orderId: string) => {
+      return apiRequest('POST', `/api/delivery/orders/${orderId}/payment-received`);
+    },
+    onSuccess: () => {
+      toast({ title: "✅ Payment Received", description: "Retailer has been notified about payment receipt" });
+      queryClient.invalidateQueries({ queryKey: ['/api/delivery/orders'] });
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Notification failed", 
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  });
+
   const acceptDeliveryRequestMutation = useMutation({
     mutationFn: async (requestId: string) => {
       return apiRequest('POST', `/api/delivery-requests/${requestId}/accept`);
@@ -327,17 +344,29 @@ export default function DeliveryBoyDashboard() {
                           {/* Payment Received Button - Red by default, Green when approved */}
                           {(order.status === 'ACCEPTED' || order.status === 'READY' || order.status === 'OUT_FOR_DELIVERY') && (
                             <Button 
-                              onClick={() => openPaymentModal(order)}
+                              onClick={() => {
+                                // Only allow if payment change is approved (green button)
+                                if (order.paymentChangeApproved) {
+                                  markPaymentReceivedMutation.mutate(order.id);
+                                } else {
+                                  toast({ 
+                                    title: "Payment change required", 
+                                    description: "Please request payment change first and get approval",
+                                    variant: "destructive" 
+                                  });
+                                }
+                              }}
+                              disabled={!order.paymentChangeApproved || markPaymentReceivedMutation.isPending}
                               size="sm"
                               className={`flex items-center gap-2 ${
                                 order.paymentChangeApproved 
                                   ? 'bg-green-600 hover:bg-green-700' 
-                                  : 'bg-red-600 hover:bg-red-700'
+                                  : 'bg-red-600 hover:bg-red-700 cursor-not-allowed opacity-60'
                               }`}
                               data-testid="button-payment-received"
                             >
                               <i className="fas fa-money-bill"></i>
-                              Payment received
+                              {markPaymentReceivedMutation.isPending ? 'Notifying...' : 'Payment received'}
                             </Button>
                           )}
                           
