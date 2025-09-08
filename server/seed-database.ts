@@ -58,12 +58,12 @@ async function clearExistingData() {
   await db.delete(schema.orderEvents);
   await db.delete(schema.orderItems);
   await db.delete(schema.orders);
-  await db.delete(schema.khatabookEntries);
-  await db.delete(schema.paymentAudits);
+  await db.delete(schema.khatabook);
+  await db.delete(schema.paymentAuditTrail);
   await db.delete(schema.fcmTokens);
-  await db.delete(schema.deliveryBoys);
+  await db.delete(schema.retailerDeliveryBoys);
   await db.delete(schema.listings);
-  await db.delete(schema.products);
+  await db.delete(schema.productCatalog);
   await db.delete(schema.stores);
   await db.delete(schema.users);
   console.log('✅ Existing data cleared');
@@ -93,31 +93,31 @@ async function createUser(userData: {
 async function createStore(ownerId: string, storeName?: string) {
   const name = storeName || getRandomElement(storeNames);
   const [store] = await db.insert(schema.stores).values({
-    id: nanoid(),
     ownerId,
     name,
     description: `${name} - Your neighborhood store for daily essentials`,
     address: `${getRandomInt(1, 999)} ${getRandomElement(['Main Street', 'Park Avenue', 'Market Road', 'Commercial Complex'])}, ${getRandomElement(cities)}`,
-    phone: `+91${getRandomInt(7000000000, 9999999999)}`,
-    isActive: true,
+    city: getRandomElement(cities),
+    pincode: `${getRandomInt(100000, 999999)}`,
+    logoUrl: `https://via.placeholder.com/200x200?text=Store`,
+    isOpen: Math.random() > 0.1,
+    rating: getRandomDecimal(3.5, 5.0),
   }).returning();
   return store;
 }
 
 // Create product in global catalog
-async function createProduct(productData?: Partial<typeof schema.products.$inferInsert>) {
+async function createProduct(productData?: Partial<typeof schema.productCatalog.$inferInsert>) {
   const defaultProduct = {
-    id: nanoid(),
     name: getRandomElement(productNames),
-    description: `Premium quality ${getRandomElement(productNames).toLowerCase()} from trusted brands`,
     brand: getRandomElement(brands),
-    category: getRandomElement(['Groceries', 'Electronics', 'Clothing', 'Home & Kitchen', 'Health & Beauty']),
     unit: getRandomElement(units),
     size: getRandomElement(sizes),
-    image: null,
+    imageUrl: `https://via.placeholder.com/300x300?text=Product`,
+    isWholesale: Math.random() > 0.7,
   };
   
-  const [product] = await db.insert(schema.products).values({
+  const [product] = await db.insert(schema.productCatalog).values({
     ...defaultProduct,
     ...productData,
   }).returning();
@@ -356,23 +356,23 @@ async function seedDatabase(config = SEED_CONFIG) {
     }
     console.log(`✅ Created ${auditEntries.length} payment audit entries`);
 
-    // 11. Create Delivery Boys
-    console.log('Creating delivery boys...');
-    const deliveryBoys = [];
-    for (let i = 0; i < 50; i++) {
+    // 11. Create Retailer-Delivery Boy relationships
+    console.log('Creating retailer-delivery boy relationships...');
+    const deliveryBoyRelationships = [];
+    const deliveryBoyUsers = users.filter(u => u.role === 'DELIVERY_BOY');
+    for (let i = 0; i < Math.min(50, retailerUsers.length * 2); i++) {
       const retailer = getRandomElement(retailerUsers);
-      const firstName = getRandomElement(firstNames);
-      const lastName = getRandomElement(lastNames);
-      const [deliveryBoy] = await db.insert(schema.deliveryBoys).values({
+      const deliveryBoy = getRandomElement(deliveryBoyUsers);
+      const [relationship] = await db.insert(schema.retailerDeliveryBoys).values({
         retailerId: retailer.id,
-        name: `${firstName} ${lastName}`,
-        phone: `+91${getRandomInt(7000000000, 9999999999)}`,
-        address: `${getRandomInt(1, 999)}, ${getRandomElement(['Delivery Lane', 'Service Road', 'Express Street'])}`,
-        isActive: Math.random() > 0.1,
+        deliveryBoyId: deliveryBoy.id,
+        addedBy: retailer.id,
+        status: 'ACTIVE',
+        notes: `Delivery boy ${i + 1} assigned to retailer`,
       }).returning();
-      deliveryBoys.push(deliveryBoy);
+      deliveryBoyRelationships.push(relationship);
     }
-    console.log(`✅ Created ${deliveryBoys.length} delivery boys`);
+    console.log(`✅ Created ${deliveryBoyRelationships.length} retailer-delivery boy relationships`);
 
     console.log(`
 🎉 Database seeded successfully!
@@ -388,7 +388,7 @@ async function seedDatabase(config = SEED_CONFIG) {
 • FCM Tokens: ${fcmTokens.length}
 • Khatabook Entries: ${khatabookEntries.length}
 • Payment Audits: ${auditEntries.length}
-• Delivery Boys: ${deliveryBoys.length}
+• Delivery Boy Relationships: ${deliveryBoyRelationships.length}
 
 🔐 Test Login Credentials:
 • Admin: admin@test.com / admin123
