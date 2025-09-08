@@ -1842,43 +1842,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Shop Owner - Assign delivery boy to order
-  app.post('/api/shop-owner/orders/:id/assign-delivery-boy', authenticateToken, requireRole('SHOP_OWNER'), async (req: any, res) => {
-    try {
-      const { id } = req.params;
-      const { deliveryBoyId } = req.body;
-      
-      const order = await storage.getOrder(id);
-      if (!order || order.ownerId !== req.user.id) {
-        return res.status(404).json({ message: 'Order not found' });
-      }
-
-      // Verify delivery boy exists
-      const deliveryBoy = await storage.getDeliveryBoy(deliveryBoyId);
-      if (!deliveryBoy) {
-        return res.status(400).json({ message: 'Invalid delivery boy' });
-      }
-
-      // Update order with delivery boy assignment
-      await storage.assignOrderToDeliveryBoy(id, deliveryBoyId);
-      
-      await storage.createOrderEvent({
-        orderId: id,
-        type: 'ASSIGNED_DELIVERY_BOY',
-        message: `Order assigned to delivery boy: ${deliveryBoy.fullName} by shop owner`
-      });
-
-      emitOrderEvent(id, order.ownerId, order.retailerId, 'deliveryBoyAssigned', {
-        orderId: id,
-        deliveryBoy: deliveryBoy.fullName,
-        deliveryBoyPhone: deliveryBoy.phone
-      });
-
-      res.json({ message: 'Order assigned to delivery boy successfully' });
-    } catch (error) {
-      res.status(400).json({ message: 'Failed to assign order to delivery boy' });
-    }
-  });
 
   // Shop Owner - Get retailer-specific balances for khatabook
   app.get('/api/khatabook/retailer-balances', authenticateToken, requireRole('SHOP_OWNER'), async (req: any, res) => {
