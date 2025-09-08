@@ -309,6 +309,37 @@ export default function DeliveryBoyDashboard() {
                             <i className="fas fa-phone"></i>
                             Call Customer
                           </Button>
+
+                          {/* Edit Payment Amount Button - Available for ACCEPTED, READY, and OUT_FOR_DELIVERY */}
+                          {(order.status === 'ACCEPTED' || order.status === 'READY' || order.status === 'OUT_FOR_DELIVERY') && (
+                            <Button 
+                              onClick={() => openPaymentChangeModal(order)}
+                              variant="outline"
+                              size="sm"
+                              className="flex items-center gap-2"
+                              data-testid="button-edit-payment-amount"
+                            >
+                              <i className="fas fa-edit"></i>
+                              Edit payment amount
+                            </Button>
+                          )}
+
+                          {/* Payment Received Button - Red by default, Green when approved */}
+                          {(order.status === 'ACCEPTED' || order.status === 'READY' || order.status === 'OUT_FOR_DELIVERY') && (
+                            <Button 
+                              onClick={() => openPaymentModal(order)}
+                              size="sm"
+                              className={`flex items-center gap-2 ${
+                                order.paymentChangeApproved 
+                                  ? 'bg-green-600 hover:bg-green-700' 
+                                  : 'bg-red-600 hover:bg-red-700'
+                              }`}
+                              data-testid="button-payment-received"
+                            >
+                              <i className="fas fa-money-bill"></i>
+                              Payment received
+                            </Button>
+                          )}
                           
                           {/* Start Delivery Button */}
                           {order.status === 'READY' && (
@@ -322,30 +353,6 @@ export default function DeliveryBoyDashboard() {
                               <i className="fas fa-truck"></i>
                               Start Delivery
                             </Button>
-                          )}
-                          
-                          {order.status === 'OUT_FOR_DELIVERY' && (
-                            <>
-                              <Button 
-                                onClick={() => openPaymentChangeModal(order)}
-                                variant="outline"
-                                size="sm"
-                                className="flex items-center gap-2"
-                                data-testid="button-edit-payment-amount"
-                              >
-                                <i className="fas fa-edit"></i>
-                                Edit Payment Amount
-                              </Button>
-                              <Button 
-                                onClick={() => openPaymentModal(order)}
-                                size="sm"
-                                className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
-                                data-testid="button-payment-received"
-                              >
-                                <i className="fas fa-money-bill"></i>
-                                Payment Received
-                              </Button>
-                            </>
                           )}
                         </div>
                       </div>
