@@ -918,7 +918,8 @@ export default function ShopOwnerDashboard() {
                             </div>
                             <div>
                               <h3 className="font-bold text-foreground text-lg">{retailer.name}</h3>
-                              <p className="text-sm text-muted-foreground">Store ID: {retailer.id.slice(-8)}</p>
+                              <p className="text-sm text-blue-600 font-medium">Retailer: {retailer.retailerName || 'Unknown'}</p>
+                              <p className="text-xs text-muted-foreground">Store ID: {retailer.id.slice(-8)}</p>
                             </div>
                           </div>
                           <div className="flex flex-col items-end">
@@ -937,8 +938,14 @@ export default function ShopOwnerDashboard() {
                           </div>
                           <div className="flex items-center text-sm text-muted-foreground">
                             <i className="fas fa-phone mr-3 w-4"></i>
-                            <span>{retailer.phone || 'Not provided'}</span>
+                            <span>{retailer.retailerPhone || retailer.phone || 'Not provided'}</span>
                           </div>
+                          {retailer.retailerEmail && (
+                            <div className="flex items-center text-sm text-muted-foreground">
+                              <i className="fas fa-envelope mr-3 w-4"></i>
+                              <span>{retailer.retailerEmail}</span>
+                            </div>
+                          )}
                           <div className="flex items-center justify-between text-sm">
                             <div className="flex items-center text-muted-foreground">
                               <i className="fas fa-star text-yellow-500 mr-2"></i>
