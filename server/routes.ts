@@ -1725,6 +1725,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
         type: 'PAYMENT_CHANGE_APPROVED',
         message: `Payment change approved by shop owner. New amount: ₹${request.requestedAmount}`
       });
+
+      // Update khatabook entries with the new amount after shop owner approval
+      const oldAmount = parseFloat(request.order.totalAmount);
+      const newAmount = parseFloat(request.requestedAmount);
+      const amountDifference = newAmount - oldAmount;
+
+      if (amountDifference !== 0) {
+        const adjustmentType = amountDifference > 0 ? 'increase' : 'decrease';
+        const absAmount = Math.abs(amountDifference);
+
+        // Update shop owner's ledger (adjustment to their debt/credit)
+        await storage.addLedgerEntry({
+          userId: request.order.ownerId,
+          counterpartyId: request.order.retailerId,
+          orderId: request.orderId,
+          entryType: amountDifference > 0 ? 'DEBIT' : 'CREDIT',
+          transactionType: 'PAYMENT_ADJUSTMENT',
+          amount: absAmount.toString(),
+          description: `Payment ${adjustmentType} approved - Order #${request.orderId.slice(-8)} - Adjustment: ₹${absAmount}`,
+          referenceId: request.orderId,
+          metadata: JSON.stringify({
+            oldAmount,
+            newAmount,
+            adjustment: amountDifference,
+            approvedBy: req.user.fullName,
+            requestId: id
+          })
+        });
+
+        // Update retailer's ledger (opposite adjustment)
+        await storage.addLedgerEntry({
+          userId: request.order.retailerId,
+          counterpartyId: request.order.ownerId,
+          orderId: request.orderId,
+          entryType: amountDifference > 0 ? 'CREDIT' : 'DEBIT',
+          transactionType: 'PAYMENT_ADJUSTMENT',
+          amount: absAmount.toString(),
+          description: `Payment ${adjustmentType} approved - Order #${request.orderId.slice(-8)} - Adjustment: ₹${absAmount}`,
+          referenceId: request.orderId,
+          metadata: JSON.stringify({
+            oldAmount,
+            newAmount,
+            adjustment: amountDifference,
+            approvedBy: req.user.fullName,
+            requestId: id
+          })
+        });
+      }
       
       // Notify delivery boy
       const deliveryBoyClient = clients.get(request.deliveryBoyId);
