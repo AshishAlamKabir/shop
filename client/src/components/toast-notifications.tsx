@@ -80,6 +80,21 @@ export default function ToastNotifications() {
         return;
       }
       
+      // Handle payment change responses for delivery boys
+      if (type === 'PAYMENT_CHANGE_RESPONSE' && user.role === 'DELIVERY_BOY') {
+        const statusMessage = data.response === 'APPROVED' 
+          ? `✅ Payment change approved! New amount: ₹${data.finalAmount}`
+          : `❌ Payment change rejected. Amount remains: ₹${data.finalAmount}`;
+          
+        toast({
+          title: "Payment Change Response",
+          description: statusMessage,
+          variant: data.response === 'APPROVED' ? 'default' : 'destructive',
+          duration: 8000,
+        });
+        return;
+      }
+      
       switch (event) {
         case 'orderPlaced':
           if (user.role === 'RETAILER') {
