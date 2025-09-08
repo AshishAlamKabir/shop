@@ -351,6 +351,9 @@ export default function ShopOwnerDashboard() {
                               <i className="fas fa-store text-primary-foreground text-sm"></i>
                             </div>
                             <h4 className="font-medium text-sm text-foreground truncate">{retailer.name}</h4>
+                            <p className="text-xs text-blue-600 font-medium">
+                              {retailer.retailerName || 'Unknown'}
+                            </p>
                             <div className="flex items-center justify-center gap-1 mt-1">
                               <i className="fas fa-star text-yellow-500 text-xs"></i>
                               <span className="text-xs text-muted-foreground">
@@ -383,7 +386,8 @@ export default function ShopOwnerDashboard() {
                           </div>
                           <div>
                             <h3 className="font-semibold text-foreground">{store.name}</h3>
-                            <p className="text-sm text-muted-foreground">Electronics & Gadgets</p>
+                            <p className="text-sm text-blue-600 font-medium">Retailer: {store.retailerName || 'Unknown'}</p>
+                            <p className="text-xs text-muted-foreground">Electronics & Gadgets</p>
                           </div>
                         </div>
                         <span className={`w-3 h-3 rounded-full ${store.isOpen ? 'bg-green-500' : 'bg-red-500'}`}></span>
