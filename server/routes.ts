@@ -1548,6 +1548,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Shop owner responds to payment change request
+  app.post('/api/payment-change-requests/:requestId/respond', authenticateToken, requireRole('SHOP_OWNER'), async (req: any, res) => {
+    try {
+      const { requestId } = req.params;
+      const { response } = req.body; // 'APPROVED' or 'REJECTED'
+      
+      if (!['APPROVED', 'REJECTED'].includes(response)) {
+        return res.status(400).json({ message: 'Invalid response. Must be APPROVED or REJECTED' });
+      }
+      
+      // Get the payment change request
+      const changeRequest = await storage.getPaymentChangeRequest(requestId);
+      if (!changeRequest) {
+        return res.status(404).json({ message: 'Payment change request not found' });
+      }
+      
+      if (changeRequest.status !== 'PENDING') {
+        return res.status(400).json({ message: 'Payment change request has already been processed' });
+      }
+      
+      // Get the order to verify ownership
+      const order = await storage.getOrder(changeRequest.orderId);
+      if (!order || order.ownerId !== req.user.id) {
+        return res.status(403).json({ message: 'Not authorized to respond to this request' });
+      }
+      
+      // Update the payment change request status
+      await storage.updatePaymentChangeRequestStatus(requestId, response);
+      
+      // If approved, update the order amount
+      if (response === 'APPROVED') {
+        await storage.updateOrderAmount(changeRequest.orderId, changeRequest.requestedAmount);
+      }
+      
+      // Notify delivery boy via WebSocket
+      const deliveryBoyClient = clients.get(changeRequest.deliveryBoyId);
+      if (deliveryBoyClient && deliveryBoyClient.readyState === WebSocket.OPEN) {
+        deliveryBoyClient.send(JSON.stringify({
+          type: 'PAYMENT_CHANGE_RESPONSE',
+          orderId: changeRequest.orderId,
+          response,
+          originalAmount: changeRequest.originalAmount,
+          finalAmount: response === 'APPROVED' ? changeRequest.requestedAmount : changeRequest.originalAmount,
+          requestId
+        }));
+      }
+      
+      // Create order event
+      const eventMessage = response === 'APPROVED' 
+        ? `Payment change approved: Amount updated from ₹${changeRequest.originalAmount} to ₹${changeRequest.requestedAmount}`
+        : `Payment change rejected: Amount remains ₹${changeRequest.originalAmount}`;
+        
+      await storage.createOrderEvent({
+        orderId: changeRequest.orderId,
+        type: response === 'APPROVED' ? 'PAYMENT_CHANGE_APPROVED' : 'PAYMENT_CHANGE_REJECTED',
+        message: eventMessage
+      });
+      
+      res.json({ 
+        message: `Payment change request ${response.toLowerCase()}`,
+        finalAmount: response === 'APPROVED' ? changeRequest.requestedAmount : changeRequest.originalAmount
+      });
+    } catch (error) {
+      console.error('Payment change response error:', error);
+      res.status(500).json({ message: 'Failed to respond to payment change request' });
+    }
+  });
+
   app.post('/api/delivery/orders/:id/confirm-payment', authenticateToken, requireRole('DELIVERY_BOY'), async (req: any, res) => {
     try {
       const { id } = req.params;
