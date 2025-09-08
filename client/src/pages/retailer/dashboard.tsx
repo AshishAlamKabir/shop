@@ -52,6 +52,8 @@ export default function RetailerDashboard() {
   });
   const [searchResults, setSearchResults] = useState<any>(null);
   const [isSearching, setIsSearching] = useState(false);
+  const [deliveryBoyAssignmentModal, setDeliveryBoyAssignmentModal] = useState<{ isOpen: boolean; order: any }>({ isOpen: false, order: null });
+  const [selectedDeliveryBoyId, setSelectedDeliveryBoyId] = useState('');
   const { toast } = useToast();
 
   const { data: store } = useQuery({
@@ -187,6 +189,25 @@ export default function RetailerDashboard() {
       toast({ 
         title: "✅ Payment Confirmed", 
         description: "Shop owner has been notified of payment receipt" 
+      });
+    }
+  });
+
+  const assignDeliveryBoyMutation = useMutation({
+    mutationFn: async ({ orderId, deliveryBoyId }: { orderId: string; deliveryBoyId: string }) => {
+      return apiRequest('POST', `/api/orders/${orderId}/assign-delivery-boy`, { deliveryBoyId });
+    },
+    onSuccess: () => {
+      toast({ title: "Delivery boy assigned successfully" });
+      queryClient.invalidateQueries({ queryKey: ['/api/retailer/orders'] });
+      setDeliveryBoyAssignmentModal({ isOpen: false, order: null });
+      setSelectedDeliveryBoyId('');
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Assignment failed", 
+        description: error.message,
+        variant: "destructive"
       });
     }
   });
@@ -870,14 +891,12 @@ export default function RetailerDashboard() {
                               {order.deliveryType === 'DELIVERY' && (
                                 <Button 
                                   variant="outline"
-                                  onClick={() => {
-                                    setActiveSection('delivery-boys');
-                                  }}
+                                  onClick={() => setDeliveryBoyAssignmentModal({ isOpen: true, order })}
                                   data-testid={`button-assign-delivery-${order.id}`}
                                   className="bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
                                 >
                                   <i className="fas fa-motorcycle mr-2"></i>
-                                  Assign Delivery
+                                  {order.assignedDeliveryBoy ? 'Change Delivery Boy' : 'Assign Delivery Boy'}
                                 </Button>
                               )}
                             </>
@@ -893,14 +912,12 @@ export default function RetailerDashboard() {
                               {order.deliveryType === 'DELIVERY' && (
                                 <Button 
                                   variant="outline"
-                                  onClick={() => {
-                                    setActiveSection('delivery-boys');
-                                  }}
+                                  onClick={() => setDeliveryBoyAssignmentModal({ isOpen: true, order })}
                                   data-testid={`button-assign-delivery-${order.id}`}
                                   className="bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
                                 >
                                   <i className="fas fa-motorcycle mr-2"></i>
-                                  Assign Delivery
+                                  {order.assignedDeliveryBoy ? 'Change Delivery Boy' : 'Assign Delivery Boy'}
                                 </Button>
                               )}
                             </>
@@ -1886,6 +1903,68 @@ export default function RetailerDashboard() {
           testId="button-nav-store-navigation"
         />
       </NavigationSidebar>
+
+      {/* Delivery Boy Assignment Modal */}
+      <Dialog open={deliveryBoyAssignmentModal.isOpen} onOpenChange={(open) => !open && setDeliveryBoyAssignmentModal({ isOpen: false, order: null })}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Assign Delivery Boy</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label className="text-sm font-medium">Order Details</Label>
+              <p className="text-sm text-muted-foreground">
+                Order #{deliveryBoyAssignmentModal.order?.id?.slice(-8)} - ₹{deliveryBoyAssignmentModal.order?.totalAmount}
+              </p>
+            </div>
+            <div>
+              <Label className="text-sm font-medium">Select Delivery Boy</Label>
+              <Select value={selectedDeliveryBoyId} onValueChange={setSelectedDeliveryBoyId}>
+                <SelectTrigger className="mt-2">
+                  <SelectValue placeholder="Choose a delivery boy" />
+                </SelectTrigger>
+                <SelectContent>
+                  {deliveryBoys.map((deliveryBoy: any) => (
+                    <SelectItem key={deliveryBoy.id} value={deliveryBoy.id}>
+                      <div className="flex items-center gap-2">
+                        <i className="fas fa-user text-muted-foreground"></i>
+                        <span>{deliveryBoy.name}</span>
+                        <span className="text-xs text-muted-foreground">({deliveryBoy.phone})</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex gap-2">
+              <Button 
+                onClick={() => {
+                  if (selectedDeliveryBoyId) {
+                    assignDeliveryBoyMutation.mutate({
+                      orderId: deliveryBoyAssignmentModal.order?.id,
+                      deliveryBoyId: selectedDeliveryBoyId
+                    });
+                  }
+                }}
+                disabled={!selectedDeliveryBoyId || assignDeliveryBoyMutation.isPending}
+                className="flex-1"
+              >
+                {assignDeliveryBoyMutation.isPending ? 'Assigning...' : 'Assign Delivery Boy'}
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setDeliveryBoyAssignmentModal({ isOpen: false, order: null });
+                  setSelectedDeliveryBoyId('');
+                }}
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
