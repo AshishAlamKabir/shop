@@ -280,27 +280,43 @@ export default function DeliveryBoyDashboard() {
                           </div>
                         )}
 
-                        {order.status === 'OUT_FOR_DELIVERY' && (
-                          <div className="flex gap-2">
-                            <Button 
-                              onClick={() => openPaymentChangeModal(order)}
-                              variant="outline"
-                              size="sm"
-                              className="flex items-center gap-2"
-                            >
-                              <i className="fas fa-edit"></i>
-                              Request Payment Change
-                            </Button>
-                            <Button 
-                              onClick={() => openPaymentModal(order)}
-                              size="sm"
-                              className="flex items-center gap-2"
-                            >
-                              <i className="fas fa-check"></i>
-                              Confirm Payment
-                            </Button>
-                          </div>
-                        )}
+                        <div className="flex gap-2 flex-wrap">
+                          {/* Call Button - Always available */}
+                          <Button 
+                            onClick={() => window.open(`tel:${order.owner.phone}`, '_self')}
+                            variant="outline"
+                            size="sm"
+                            className="flex items-center gap-2"
+                            data-testid="button-call-customer"
+                          >
+                            <i className="fas fa-phone"></i>
+                            Call Customer
+                          </Button>
+                          
+                          {(order.status === 'READY' || order.status === 'OUT_FOR_DELIVERY') && (
+                            <>
+                              <Button 
+                                onClick={() => openPaymentChangeModal(order)}
+                                variant="outline"
+                                size="sm"
+                                className="flex items-center gap-2"
+                                data-testid="button-edit-payment-amount"
+                              >
+                                <i className="fas fa-edit"></i>
+                                Edit Payment Amount
+                              </Button>
+                              <Button 
+                                onClick={() => openPaymentModal(order)}
+                                size="sm"
+                                className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
+                                data-testid="button-payment-received"
+                              >
+                                <i className="fas fa-money-bill"></i>
+                                Payment Received
+                              </Button>
+                            </>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>
