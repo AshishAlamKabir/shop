@@ -25,7 +25,7 @@ export interface IStorage {
   getStoreByOwnerId(ownerId: string): Promise<Store | undefined>;
   createStore(store: InsertStore): Promise<Store>;
   updateStore(id: string, store: Partial<InsertStore>): Promise<Store>;
-  getStores(filters?: { city?: string; pincode?: string; search?: string }): Promise<Store[]>;
+  getStores(filters?: { city?: string; pincode?: string; search?: string; name?: string; id?: string }): Promise<any[]>;
   getStoreWithListings(storeId: string): Promise<any>;
   
   // Product catalog operations
@@ -183,8 +183,27 @@ export class DatabaseStorage implements IStorage {
     return store;
   }
 
-  async getStores(filters?: { city?: string; pincode?: string; search?: string; name?: string; id?: string }): Promise<Store[]> {
-    let query = db.select().from(stores);
+  async getStores(filters?: { city?: string; pincode?: string; search?: string; name?: string; id?: string }): Promise<any[]> {
+    const query = db.select({
+      id: stores.id,
+      ownerId: stores.ownerId,
+      name: stores.name,
+      description: stores.description,
+      address: stores.address,
+      city: stores.city,
+      pincode: stores.pincode,
+      logoUrl: stores.logoUrl,
+      isOpen: stores.isOpen,
+      rating: stores.rating,
+      createdAt: stores.createdAt,
+      updatedAt: stores.updatedAt,
+      // Include retailer information
+      retailerName: users.fullName,
+      retailerEmail: users.email,
+      retailerPhone: users.phone
+    })
+    .from(stores)
+    .leftJoin(users, eq(stores.ownerId, users.id));
     
     const conditions = [];
     if (filters?.city) {
@@ -204,7 +223,7 @@ export class DatabaseStorage implements IStorage {
     }
     
     if (conditions.length > 0) {
-      query = query.where(and(...conditions));
+      return await query.where(and(...conditions));
     }
     
     return await query;
@@ -214,6 +233,14 @@ export class DatabaseStorage implements IStorage {
     const store = await db.query.stores.findFirst({
       where: eq(stores.id, storeId),
       with: {
+        owner: {
+          columns: {
+            id: true,
+            fullName: true,
+            email: true,
+            phone: true
+          }
+        },
         listings: {
           with: {
             product: true
