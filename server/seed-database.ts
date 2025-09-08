@@ -3,6 +3,35 @@ import * as schema from '../shared/schema.js';
 import bcrypt from 'bcrypt';
 import { nanoid } from 'nanoid';
 
+// CONFIGURATION OPTIONS FOR FUTURE AGENT ENHANCEMENTS
+const SEED_CONFIG = {
+  // User counts by role
+  ADMIN_COUNT: 10,
+  RETAILER_COUNT: 20,
+  SHOP_OWNER_COUNT: 20,
+  DELIVERY_BOY_COUNT: 15,
+  
+  // Business data counts
+  STORE_COUNT: 21,
+  PRODUCT_COUNT: 50,
+  LISTINGS_PER_STORE: 10,
+  ORDERS_COUNT: 50,
+  ITEMS_PER_ORDER: 3,
+  
+  // Settings
+  CLEAR_EXISTING_DATA: true,
+  CREATE_TEST_USERS: true,
+  SEED_REALISTIC_DATA: true,
+  
+  // Test credentials (easily modifiable for future requirements)
+  TEST_USERS: [
+    { email: 'admin@test.com', password: 'admin123', role: 'ADMIN' as const, fullName: 'Test Admin' },
+    { email: 'retailer@test.com', password: 'retailer123', role: 'RETAILER' as const, fullName: 'Test Retailer' },
+    { email: 'shop@test.com', password: 'shop123', role: 'SHOP_OWNER' as const, fullName: 'Test Shop Owner' },
+    { email: 'delivery@test.com', password: 'delivery123', role: 'DELIVERY_BOY' as const, fullName: 'Test Delivery Boy' },
+  ]
+};
+
 // Helper function to generate random data
 const getRandomElement = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 const getRandomInt = (min: number, max: number): number => Math.floor(Math.random() * (max - min + 1)) + min;
@@ -18,59 +47,133 @@ const brands = ['Tata', 'Amul', 'Patanjali', 'Fortune', 'Aashirvaad', 'Saffola',
 const units = ['kg', 'piece', 'box', 'liter', 'packet', 'bag', 'bottle', 'can', 'jar', 'pouch'];
 const sizes = ['500g', '1kg', '2kg', '5kg', '250ml', '500ml', '1L', '2L', '12pcs', '24pcs', '6pcs'];
 
-async function seedDatabase() {
+/**
+ * UTILITY FUNCTIONS FOR FUTURE AGENT ENHANCEMENTS
+ * These functions can be reused and extended for new requirements
+ */
+
+// Clear all existing data (useful for fresh starts)
+async function clearExistingData() {
+  console.log('🧹 Clearing existing data...');
+  await db.delete(schema.orderEvents);
+  await db.delete(schema.orderItems);
+  await db.delete(schema.orders);
+  await db.delete(schema.khatabookEntries);
+  await db.delete(schema.paymentAudits);
+  await db.delete(schema.fcmTokens);
+  await db.delete(schema.deliveryBoys);
+  await db.delete(schema.listings);
+  await db.delete(schema.products);
+  await db.delete(schema.stores);
+  await db.delete(schema.users);
+  console.log('✅ Existing data cleared');
+}
+
+// Create user with role-specific defaults
+async function createUser(userData: {
+  email: string;
+  password: string;
+  role: 'ADMIN' | 'RETAILER' | 'SHOP_OWNER' | 'DELIVERY_BOY';
+  fullName: string;
+  phone?: string;
+}) {
+  const hashedPassword = await bcrypt.hash(userData.password, 10);
+  const [user] = await db.insert(schema.users).values({
+    id: nanoid(),
+    email: userData.email,
+    passwordHash: hashedPassword,
+    role: userData.role,
+    fullName: userData.fullName,
+    phone: userData.phone || `+91${getRandomInt(7000000000, 9999999999)}`,
+  }).returning();
+  return user;
+}
+
+// Create store for a retailer
+async function createStore(ownerId: string, storeName?: string) {
+  const name = storeName || getRandomElement(storeNames);
+  const [store] = await db.insert(schema.stores).values({
+    id: nanoid(),
+    ownerId,
+    name,
+    description: `${name} - Your neighborhood store for daily essentials`,
+    address: `${getRandomInt(1, 999)} ${getRandomElement(['Main Street', 'Park Avenue', 'Market Road', 'Commercial Complex'])}, ${getRandomElement(cities)}`,
+    phone: `+91${getRandomInt(7000000000, 9999999999)}`,
+    isActive: true,
+  }).returning();
+  return store;
+}
+
+// Create product in global catalog
+async function createProduct(productData?: Partial<typeof schema.products.$inferInsert>) {
+  const defaultProduct = {
+    id: nanoid(),
+    name: getRandomElement(productNames),
+    description: `Premium quality ${getRandomElement(productNames).toLowerCase()} from trusted brands`,
+    brand: getRandomElement(brands),
+    category: getRandomElement(['Groceries', 'Electronics', 'Clothing', 'Home & Kitchen', 'Health & Beauty']),
+    unit: getRandomElement(units),
+    size: getRandomElement(sizes),
+    image: null,
+  };
+  
+  const [product] = await db.insert(schema.products).values({
+    ...defaultProduct,
+    ...productData,
+  }).returning();
+  return product;
+}
+
+async function seedDatabase(config = SEED_CONFIG) {
   console.log('🌱 Starting database seeding...');
+  console.log('📋 Configuration:', JSON.stringify(config, null, 2));
   
   try {
-    // 1. Create 50 Users (including test credentials)
+    // Clear existing data if configured
+    if (config.CLEAR_EXISTING_DATA) {
+      await clearExistingData();
+    }
+    // 1. Create Users (including test credentials)
     console.log('Creating users...');
     const users = [];
-    const adminCount = 10;
-    const retailerCount = 20;
-    const shopOwnerCount = 20;
     
     // Create test users with known passwords
-    const testUsers = [
-      { email: 'admin@test.com', password: 'admin123', role: 'ADMIN' as const, fullName: 'Test Admin' },
-      { email: 'retailer@test.com', password: 'retailer123', role: 'RETAILER' as const, fullName: 'Test Retailer' },
-      { email: 'shop@test.com', password: 'shop123', role: 'SHOP_OWNER' as const, fullName: 'Test Shop Owner' },
-      { email: 'delivery@test.com', password: 'delivery123', role: 'DELIVERY_BOY' as const, fullName: 'Test Delivery Boy' },
-    ];
-
-    for (const testUser of testUsers) {
-      const hashedPassword = await bcrypt.hash(testUser.password, 10);
-      const [user] = await db.insert(schema.users).values({
-        id: nanoid(),
-        email: testUser.email,
-        passwordHash: hashedPassword,
-        role: testUser.role,
-        fullName: testUser.fullName,
-        phone: `+91${getRandomInt(7000000000, 9999999999)}`,
-      }).returning();
-      users.push(user);
-      console.log(`✅ Created test user: ${testUser.email} (password: ${testUser.password})`);
+    if (config.CREATE_TEST_USERS) {
+      for (const testUser of config.TEST_USERS) {
+        const user = await createUser(testUser);
+        users.push(user);
+        console.log(`✅ Created test user: ${testUser.email} (password: ${testUser.password})`);
+      }
     }
 
-    // Create remaining users
-    for (let i = 0; i < 46; i++) {
-      const firstName = getRandomElement(firstNames);
-      const lastName = getRandomElement(lastNames);
-      let role: 'ADMIN' | 'RETAILER' | 'SHOP_OWNER';
+    // Create additional users based on configuration
+    if (config.SEED_REALISTIC_DATA) {
+      const totalUsers = config.ADMIN_COUNT + config.RETAILER_COUNT + config.SHOP_OWNER_COUNT + config.DELIVERY_BOY_COUNT;
+      const testUserCount = config.CREATE_TEST_USERS ? config.TEST_USERS.length : 0;
       
-      if (i < adminCount - 1) role = 'ADMIN';
-      else if (i < adminCount + retailerCount - 1) role = 'RETAILER';
-      else role = 'SHOP_OWNER';
+      for (let i = 0; i < totalUsers - testUserCount; i++) {
+        const firstName = getRandomElement(firstNames);
+        const lastName = getRandomElement(lastNames);
+        let role: 'ADMIN' | 'RETAILER' | 'SHOP_OWNER' | 'DELIVERY_BOY';
+        
+        if (i < config.ADMIN_COUNT - (config.TEST_USERS.filter(u => u.role === 'ADMIN').length)) {
+          role = 'ADMIN';
+        } else if (i < config.ADMIN_COUNT + config.RETAILER_COUNT - (config.TEST_USERS.filter(u => u.role === 'RETAILER').length)) {
+          role = 'RETAILER';
+        } else if (i < config.ADMIN_COUNT + config.RETAILER_COUNT + config.SHOP_OWNER_COUNT - (config.TEST_USERS.filter(u => u.role === 'SHOP_OWNER').length)) {
+          role = 'SHOP_OWNER';
+        } else {
+          role = 'DELIVERY_BOY';
+        }
 
-      const hashedPassword = await bcrypt.hash('password123', 10);
-      const [user] = await db.insert(schema.users).values({
-        id: nanoid(),
-        email: `${firstName.toLowerCase()}.${lastName.toLowerCase()}${i}@example.com`,
-        passwordHash: hashedPassword,
-        role,
-        fullName: `${firstName} ${lastName}`,
-        phone: `+91${getRandomInt(7000000000, 9999999999)}`,
-      }).returning();
-      users.push(user);
+        const user = await createUser({
+          email: `${firstName.toLowerCase()}.${lastName.toLowerCase()}${i}@example.com`,
+          password: 'password123',
+          role,
+          fullName: `${firstName} ${lastName}`,
+        });
+        users.push(user);
+      }
     }
     console.log(`✅ Created ${users.length} users`);
 
