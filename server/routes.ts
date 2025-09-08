@@ -1780,7 +1780,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.createOrderEvent({
         orderId: id,
         type: 'ASSIGNED_DELIVERY_BOY',
-        message: `Order assigned to delivery boy: ${deliveryBoy.name} by shop owner`
+        message: `Order assigned to delivery boy: ${deliveryBoy.fullName} by shop owner`
       });
 
       emitOrderEvent(id, order.ownerId, order.retailerId, 'deliveryBoyAssigned', {
