@@ -277,18 +277,6 @@ export default function RetailerDashboard() {
     }
   });
 
-  const assignDeliveryBoyMutation = useMutation({
-    mutationFn: async ({ orderId, deliveryBoyId }: { orderId: string; deliveryBoyId: string }) => {
-      await apiRequest('POST', `/api/orders/${orderId}/assign-delivery-boy`, { deliveryBoyId });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/retailer/orders'] });
-      toast({ title: "Delivery boy assigned successfully" });
-    },
-    onError: () => {
-      toast({ title: "Failed to assign delivery boy", variant: "destructive" });
-    }
-  });
 
   const deleteDeliveryBoyMutation = useMutation({
     mutationFn: async (id: string) => {
