@@ -1505,8 +1505,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: 'Order not found or not assigned to you' });
       }
       
-      if (order.status !== 'OUT_FOR_DELIVERY') {
-        return res.status(400).json({ message: 'Payment changes only allowed during delivery' });
+      if (!['OUT_FOR_DELIVERY', 'READY', 'ACCEPTED'].includes(order.status)) {
+        return res.status(400).json({ message: 'Payment changes only allowed for orders that are ready for delivery or being delivered' });
       }
       
       // Create payment change request
