@@ -1610,6 +1610,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Delivery boy order status update
+  app.post('/api/delivery/orders/:id/status', authenticateToken, requireRole('DELIVERY_BOY'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { status } = req.body;
+      
+      const order = await storage.getOrderForDeliveryBoy(id, req.user.id);
+      if (!order) {
+        return res.status(404).json({ message: 'Order not found or not assigned to you' });
+      }
+      
+      const validTransitions: { [key: string]: string[] } = {
+        'READY': ['OUT_FOR_DELIVERY'],
+        'OUT_FOR_DELIVERY': ['COMPLETED']
+      };
+      
+      if (!validTransitions[order.status]?.includes(status)) {
+        return res.status(400).json({ message: 'Invalid status transition' });
+      }
+      
+      await storage.updateOrderStatus(id, status);
+      await storage.createOrderEvent({
+        orderId: id,
+        type: status,
+        message: `Order status updated to ${status.toLowerCase().replace('_', ' ')} by ${req.user.fullName}`
+      });
+      
+      // Emit real-time notification
+      emitOrderEvent(id, order.ownerId, order.retailerId, 'orderStatusChanged', {
+        orderId: id,
+        status,
+        previousStatus: order.status,
+        updatedBy: req.user.fullName
+      });
+      
+      res.json({ message: 'Order status updated successfully' });
+    } catch (error) {
+      console.error('Delivery boy status update error:', error);
+      res.status(500).json({ message: 'Failed to update order status' });
+    }
+  });
+
   // Shop Owner payment change approval routes
   app.get('/api/shop-owner/payment-change-requests', authenticateToken, requireRole('SHOP_OWNER'), async (req: any, res) => {
     try {

@@ -63,6 +63,23 @@ export default function DeliveryBoyDashboard() {
     }
   });
 
+  const updateOrderStatusMutation = useMutation({
+    mutationFn: async ({ orderId, status }: { orderId: string; status: string }) => {
+      return apiRequest('POST', `/api/delivery/orders/${orderId}/status`, { status });
+    },
+    onSuccess: () => {
+      toast({ title: "Order status updated successfully" });
+      queryClient.invalidateQueries({ queryKey: ['/api/delivery/orders'] });
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Status update failed", 
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  });
+
   const requestPaymentChangeMutation = useMutation({
     mutationFn: async ({ orderId, newAmount, reason }: { orderId: string; newAmount: string; reason: string }) => {
       return apiRequest('POST', `/api/delivery/orders/${orderId}/request-payment-change`, { newAmount, reason });
@@ -293,7 +310,21 @@ export default function DeliveryBoyDashboard() {
                             Call Customer
                           </Button>
                           
-                          {(order.status === 'READY' || order.status === 'OUT_FOR_DELIVERY') && (
+                          {/* Start Delivery Button */}
+                          {order.status === 'READY' && (
+                            <Button 
+                              onClick={() => updateOrderStatusMutation.mutate({ orderId: order.id, status: 'OUT_FOR_DELIVERY' })}
+                              disabled={updateOrderStatusMutation.isPending}
+                              size="sm"
+                              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
+                              data-testid="button-start-delivery"
+                            >
+                              <i className="fas fa-truck"></i>
+                              Start Delivery
+                            </Button>
+                          )}
+                          
+                          {order.status === 'OUT_FOR_DELIVERY' && (
                             <>
                               <Button 
                                 onClick={() => openPaymentChangeModal(order)}
