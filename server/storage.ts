@@ -923,6 +923,7 @@ export class DatabaseStorage implements IStorage {
         and(
           eq(orders.assignedDeliveryBoyId, deliveryBoyUserId),
           or(
+            eq(orders.status, 'ACCEPTED'),
             eq(orders.status, 'READY'),
             eq(orders.status, 'OUT_FOR_DELIVERY')
           )
