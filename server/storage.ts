@@ -931,7 +931,32 @@ export class DatabaseStorage implements IStorage {
       )
       .orderBy(desc(orders.createdAt));
     
-    return result;
+    // For each order, check if there are any approved payment change requests
+    const ordersWithApprovalStatus = await Promise.all(
+      result.map(async (order) => {
+        const [approvedRequest] = await db
+          .select({
+            id: paymentChangeRequests.id,
+            status: paymentChangeRequests.status
+          })
+          .from(paymentChangeRequests)
+          .where(
+            and(
+              eq(paymentChangeRequests.orderId, order.id),
+              eq(paymentChangeRequests.deliveryBoyId, deliveryBoyUserId),
+              eq(paymentChangeRequests.status, 'APPROVED')
+            )
+          )
+          .limit(1);
+        
+        return {
+          ...order,
+          paymentChangeApproved: !!approvedRequest
+        };
+      })
+    );
+    
+    return ordersWithApprovalStatus;
   }
 
   async getOrderForDeliveryBoy(orderId: string, deliveryBoyUserId: string): Promise<any> {
