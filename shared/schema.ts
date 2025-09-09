@@ -69,7 +69,7 @@ export const orders = pgTable("orders", {
   storeId: varchar("store_id").notNull(),
   status: orderStatusEnum("status").default('PENDING'),
   totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).default("0"),
-  deliveryType: deliveryTypeEnum("delivery_type").default('PICKUP'),
+  deliveryType: deliveryTypeEnum("delivery_type").default('DELIVERY'),
   deliveryAt: timestamp("delivery_at"),
   note: text("note"),
   // Payment confirmation fields

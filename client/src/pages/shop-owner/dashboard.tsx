@@ -21,7 +21,7 @@ export default function ShopOwnerDashboard() {
   const [isNavigationOpen, setIsNavigationOpen] = useState(false);
   const [selectedStore, setSelectedStore] = useState<any>(null);
   const [searchFilters, setSearchFilters] = useState({ search: '', city: '', pincode: '', name: '', id: '' });
-  const [deliveryType, setDeliveryType] = useState('PICKUP');
+  const [deliveryType, setDeliveryType] = useState('DELIVERY');
   const [orderNote, setOrderNote] = useState('');
   const [adjustmentAmount, setAdjustmentAmount] = useState('');
   const [adjustmentNote, setAdjustmentNote] = useState('');
@@ -705,18 +705,6 @@ export default function ShopOwnerDashboard() {
                         </div>
                       </div>
                       
-                      <div className="mb-4">
-                        <Label className="text-sm font-medium text-foreground">Delivery Type</Label>
-                        <Select value={deliveryType} onValueChange={setDeliveryType}>
-                          <SelectTrigger className="mt-2" data-testid="select-delivery-type">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="DELIVERY">Delivery</SelectItem>
-                            <SelectItem value="PICKUP">Pickup</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
                       
                       <div className="mb-6">
                         <Label className="text-sm font-medium text-foreground">Special Instructions</Label>
