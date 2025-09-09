@@ -889,26 +889,16 @@ export default function RetailerDashboard() {
                               )}
                             </>
                           )}
-                          {order.status === 'READY' && (
-                            <>
-                              <Button 
-                                onClick={() => updateStatusMutation.mutate({ orderId: order.id, status: 'OUT_FOR_DELIVERY' })}
-                                data-testid={`button-out-for-delivery-${order.id}`}
-                              >
-                                Out for Delivery
-                              </Button>
-                              {order.deliveryType === 'DELIVERY' && (
-                                <Button 
-                                  variant="outline"
-                                  onClick={() => setDeliveryBoyAssignmentModal({ isOpen: true, order })}
-                                  data-testid={`button-assign-delivery-${order.id}`}
-                                  className="bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
-                                >
-                                  <i className="fas fa-motorcycle mr-2"></i>
-                                  {order.assignedDeliveryBoy ? 'Change Delivery Boy' : 'Assign Delivery Boy'}
-                                </Button>
-                              )}
-                            </>
+                          {order.status === 'READY' && order.deliveryType === 'DELIVERY' && (
+                            <Button 
+                              variant="outline"
+                              onClick={() => setDeliveryBoyAssignmentModal({ isOpen: true, order })}
+                              data-testid={`button-assign-delivery-${order.id}`}
+                              className="bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
+                            >
+                              <i className="fas fa-motorcycle mr-2"></i>
+                              {order.assignedDeliveryBoy ? 'Change Delivery Boy' : 'Assign Delivery Boy'}
+                            </Button>
                           )}
                           {order.status === 'OUT_FOR_DELIVERY' && (
                             <>
