@@ -8,7 +8,7 @@ export const orderStatusEnum = pgEnum('order_status', ['PENDING', 'ACCEPTED', 'R
 export const deliveryTypeEnum = pgEnum('delivery_type', ['PICKUP', 'DELIVERY']);
 export const deliveryRequestStatusEnum = pgEnum('delivery_request_status', ['OPEN', 'ACCEPTED', 'REJECTED', 'COMPLETED']);
 export const ledgerEntryTypeEnum = pgEnum('ledger_entry_type', ['CREDIT', 'DEBIT']);
-export const ledgerTransactionTypeEnum = pgEnum('ledger_transaction_type', ['ORDER_PLACED', 'ORDER_DEBIT', 'PAYMENT_RECEIVED', 'PAYMENT_CREDIT', 'BALANCE_CLEAR_CREDIT', 'PAYMENT_ADJUSTED', 'ADJUSTMENT', 'REFUND', 'COMMISSION']);
+export const ledgerTransactionTypeEnum = pgEnum('ledger_transaction_type', ['ORDER_PLACED', 'ORDER_DEBIT', 'ORDER_CREDIT', 'PAYMENT_RECEIVED', 'PAYMENT_CREDIT', 'BALANCE_CLEAR_CREDIT', 'PAYMENT_ADJUSTED', 'ADJUSTMENT', 'REFUND', 'COMMISSION']);
 
 export const users = pgTable("users", {
   id: varchar("id").primaryKey(),

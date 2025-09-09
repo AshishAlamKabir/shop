@@ -659,6 +659,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: 'Order placed successfully'
       });
       
+      // Add khatabook entries for the order
+      // Shop owner owes money for goods ordered (DEBIT)
+      await storage.addLedgerEntry({
+        userId: req.user.id,
+        counterpartyId: store.ownerId,
+        orderId: order.id,
+        entryType: 'DEBIT',
+        transactionType: 'ORDER_DEBIT',
+        amount: totalAmount.toString(),
+        description: `Order #${order.id.slice(-8)} - ₹${totalAmount} for ${items.length} items`,
+        referenceId: order.id,
+        metadata: JSON.stringify({ 
+          orderType: 'product_purchase',
+          itemCount: items.length,
+          storeId: storeId
+        })
+      });
+      
+      // Retailer is owed money for goods ordered (CREDIT)
+      await storage.addLedgerEntry({
+        userId: store.ownerId,
+        counterpartyId: req.user.id,
+        orderId: order.id,
+        entryType: 'CREDIT',
+        transactionType: 'ORDER_CREDIT',
+        amount: totalAmount.toString(),
+        description: `Order #${order.id.slice(-8)} - ₹${totalAmount} for ${items.length} items`,
+        referenceId: order.id,
+        metadata: JSON.stringify({ 
+          orderType: 'product_sale',
+          itemCount: items.length,
+          storeId: storeId
+        })
+      });
+      
       // Emit real-time notification
       emitOrderEvent(order.id, req.user.id, store.ownerId, 'orderPlaced', {
         orderId: order.id,
@@ -1227,6 +1262,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Outstanding balance error:', error);
       res.status(500).json({ message: 'Failed to fetch outstanding balance' });
+    }
+  });
+
+  // Advance payment endpoint - allows shop owners to pay retailers in advance
+  app.post('/api/advance-payment', authenticateToken, requireRole('SHOP_OWNER'), async (req: any, res) => {
+    try {
+      const { retailerId, amount, note } = req.body;
+
+      if (!retailerId) {
+        return res.status(400).json({ message: 'Retailer ID is required' });
+      }
+
+      const paymentAmount = parseFloat(amount);
+      if (paymentAmount <= 0) {
+        return res.status(400).json({ message: 'Payment amount must be greater than 0' });
+      }
+
+      // Verify retailer exists
+      const retailer = await storage.getUser(retailerId);
+      if (!retailer || retailer.role !== 'RETAILER') {
+        return res.status(404).json({ message: 'Retailer not found' });
+      }
+
+      // Shop owner makes advance payment (CREDIT to their account with retailer)
+      await storage.addLedgerEntry({
+        userId: req.user.id,
+        counterpartyId: retailerId,
+        entryType: 'CREDIT',
+        transactionType: 'BALANCE_CLEAR_CREDIT',
+        amount: paymentAmount.toString(),
+        description: `Advance payment to ${retailer.fullName}. ${note || ''}`,
+        referenceId: `ADVANCE-${Date.now()}`,
+        metadata: JSON.stringify({ 
+          paymentType: 'advance',
+          note: note || ''
+        })
+      });
+
+      // Retailer receives advance payment (DEBIT to their account with shop owner)
+      await storage.addLedgerEntry({
+        userId: retailerId,
+        counterpartyId: req.user.id,
+        entryType: 'DEBIT',
+        transactionType: 'BALANCE_CLEAR_CREDIT',
+        amount: paymentAmount.toString(),
+        description: `Advance payment received from ${req.user.fullName}. ${note || ''}`,
+        referenceId: `ADVANCE-${Date.now()}`,
+        metadata: JSON.stringify({ 
+          paymentType: 'advance',
+          note: note || ''
+        })
+      });
+
+      res.json({ 
+        message: `Advance payment of ₹${paymentAmount} made successfully to ${retailer.fullName}`,
+        amount: paymentAmount,
+        retailer: retailer.fullName
+      });
+    } catch (error) {
+      console.error('Advance payment error:', error);
+      res.status(500).json({ message: 'Failed to process advance payment' });
     }
   });
 
