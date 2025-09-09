@@ -1734,19 +1734,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
           paymentReceivedAt: new Date()
         });
         
-        // Create khatabook entries for payment completion
+        // Create correct khatabook entries: CREDIT for original amount, DEBIT for requested amount
+        // Shop owner entries
         await storage.createKhatabookEntry({
           userId: order.ownerId, // shop owner
           counterpartyId: order.retailerId,
           orderId: changeRequest.orderId,
           entryType: 'CREDIT',
-          transactionType: 'PAYMENT_RECEIVED',
-          amount: changeRequest.requestedAmount,
-          description: `Payment confirmed for order #${changeRequest.orderId.slice(-8)} - ₹${changeRequest.requestedAmount}`,
+          transactionType: 'ORDER_PLACED',
+          amount: changeRequest.originalAmount,
+          description: `Order amount for #${changeRequest.orderId.slice(-8)} - ₹${changeRequest.originalAmount}`,
           referenceId: changeRequest.orderId,
           metadata: JSON.stringify({ 
             deliveryBoyId: changeRequest.deliveryBoyId,
-            paymentRequestId: requestId
+            paymentRequestId: requestId,
+            originalAmount: changeRequest.originalAmount,
+            paidAmount: changeRequest.requestedAmount
+          })
+        });
+
+        await storage.createKhatabookEntry({
+          userId: order.ownerId, // shop owner
+          counterpartyId: order.retailerId,
+          orderId: changeRequest.orderId,
+          entryType: 'DEBIT',
+          transactionType: 'PAYMENT_RECEIVED',
+          amount: changeRequest.requestedAmount,
+          description: `Payment made for order #${changeRequest.orderId.slice(-8)} - ₹${changeRequest.requestedAmount}`,
+          referenceId: changeRequest.orderId,
+          metadata: JSON.stringify({ 
+            deliveryBoyId: changeRequest.deliveryBoyId,
+            paymentRequestId: requestId,
+            originalAmount: changeRequest.originalAmount,
+            paidAmount: changeRequest.requestedAmount
+          })
+        });
+
+        // Retailer entries (mirror entries)
+        await storage.createKhatabookEntry({
+          userId: order.retailerId,
+          counterpartyId: order.ownerId,
+          orderId: changeRequest.orderId,
+          entryType: 'DEBIT',
+          transactionType: 'ORDER_DEBIT',
+          amount: changeRequest.originalAmount,
+          description: `Order from ${req.user.fullName} #${changeRequest.orderId.slice(-8)} - ₹${changeRequest.originalAmount}`,
+          referenceId: changeRequest.orderId,
+          metadata: JSON.stringify({ 
+            deliveryBoyId: changeRequest.deliveryBoyId,
+            paymentRequestId: requestId,
+            originalAmount: changeRequest.originalAmount,
+            paidAmount: changeRequest.requestedAmount
           })
         });
 
@@ -1757,11 +1795,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           entryType: 'CREDIT',
           transactionType: 'PAYMENT_CREDIT',
           amount: changeRequest.requestedAmount,
-          description: `Payment confirmed from ${order.ownerId} for order #${changeRequest.orderId.slice(-8)}`,
+          description: `Payment received from ${req.user.fullName} for order #${changeRequest.orderId.slice(-8)} - ₹${changeRequest.requestedAmount}`,
           referenceId: changeRequest.orderId,
           metadata: JSON.stringify({ 
             deliveryBoyId: changeRequest.deliveryBoyId,
-            paymentRequestId: requestId
+            paymentRequestId: requestId,
+            originalAmount: changeRequest.originalAmount,
+            paidAmount: changeRequest.requestedAmount
           })
         });
         
