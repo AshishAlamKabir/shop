@@ -817,7 +817,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Assign order to delivery boy
+  // Request delivery boy assignment (creates delivery request for acceptance)
   app.post('/api/orders/:id/assign-delivery-boy', authenticateToken, requireRole('RETAILER'), async (req: any, res) => {
     try {
       const { id } = req.params;
@@ -840,61 +840,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Delivery boy not in your team' });
       }
 
-      // Update order with delivery boy assignment
-      await storage.assignOrderToDeliveryBoy(id, deliveryBoyId);
-      
+      // Create delivery request instead of direct assignment
+      const deliveryRequest = await storage.createDeliveryRequest({
+        retailerId: req.user.id,
+        title: `Delivery Assignment - Order #${id.slice(-8)}`,
+        description: `Delivery request for order from ${order.owner?.fullName}`,
+        pickupAddress: order.store?.address || 'Store location',
+        deliveryAddress: 'Customer delivery address', 
+        estimatedPayment: '50', // Default delivery fee
+        orderId: id
+      });
+
       await storage.createOrderEvent({
         orderId: id,
-        type: 'ASSIGNED_DELIVERY_BOY',
-        message: `Order assigned to delivery boy: ${deliveryBoy.fullName}`
+        type: 'DELIVERY_REQUEST_SENT',
+        message: `Delivery request sent to ${deliveryBoy.fullName} - Awaiting acceptance`
       });
 
-      // Create initial khatabook entries for delivery assignment
-      const totalAmount = parseFloat(order.totalAmount);
-      
-      // Create ledger entry for shop owner (debit - they owe money)
-      await storage.addLedgerEntry({
-        userId: order.ownerId,
-        counterpartyId: order.retailerId,
-        orderId: id,
-        entryType: 'DEBIT',
-        transactionType: 'ORDER_DEBIT',
-        amount: totalAmount.toString(),
-        description: `Order #${id.slice(-8)} - Delivery assigned - Amount due: ₹${totalAmount}`,
-        referenceId: id,
-        metadata: JSON.stringify({ 
-          orderValue: totalAmount,
-          deliveryBoy: deliveryBoy.fullName,
-          status: 'DELIVERY_ASSIGNED'
-        })
-      });
+      // Send notification to specific delivery boy
+      const deliveryBoyClient = clients.get(deliveryBoyId);
+      if (deliveryBoyClient && deliveryBoyClient.readyState === WebSocket.OPEN) {
+        deliveryBoyClient.send(JSON.stringify({
+          type: 'assignmentRequest',
+          payload: {
+            requestId: deliveryRequest.id,
+            orderId: id,
+            title: `New Assignment Request`,
+            description: `You have been requested to deliver order #${id.slice(-8)}`,
+            pickupAddress: deliveryRequest.pickupAddress,
+            deliveryAddress: deliveryRequest.deliveryAddress,
+            estimatedPayment: deliveryRequest.estimatedPayment,
+            retailer: req.user.fullName,
+            customer: order.owner?.fullName
+          }
+        }));
+      }
 
-      // Create corresponding credit entry for retailer
-      await storage.addLedgerEntry({
-        userId: order.retailerId,
-        counterpartyId: order.ownerId,
-        orderId: id,
-        entryType: 'CREDIT',
-        transactionType: 'ORDER_PLACED',
-        amount: totalAmount.toString(),
-        description: `Order #${id.slice(-8)} - Delivery assigned - Amount receivable: ₹${totalAmount}`,
-        referenceId: id,
-        metadata: JSON.stringify({ 
-          orderValue: totalAmount,
-          deliveryBoy: deliveryBoy.fullName,
-          status: 'DELIVERY_ASSIGNED'
-        })
+      res.json({ 
+        message: 'Delivery request sent to delivery boy. Awaiting acceptance.',
+        requestId: deliveryRequest.id
       });
-
-      emitOrderEvent(id, order.ownerId, order.retailerId, 'deliveryBoyAssigned', {
-        orderId: id,
-        deliveryBoy: deliveryBoy.fullName,
-        deliveryBoyPhone: deliveryBoy.phone
-      });
-
-      res.json({ message: 'Order assigned to delivery boy successfully' });
     } catch (error) {
-      res.status(400).json({ message: 'Failed to assign order to delivery boy' });
+      console.error('Assignment request error:', error);
+      res.status(400).json({ message: 'Failed to send delivery request' });
     }
   });
 
@@ -2065,16 +2053,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
           await storage.createOrderEvent({
             orderId: request.orderId,
             type: 'ASSIGNED_DELIVERY_BOY',
-            message: `Order automatically assigned to delivery boy: ${req.user.fullName} via shared delivery request`
+            message: `Order assigned to delivery boy: ${req.user.fullName} - Delivery accepted`
           });
 
-          // Get order details for notification
+          // Get order details for ledger entries
           const order = await storage.getOrder(request.orderId);
           if (order) {
-            emitOrderEvent(request.orderId, order.ownerId, order.retailerId, 'deliveryBoyAssigned', {
+            // Create initial khatabook entries for delivery assignment
+            const totalAmount = parseFloat(order.totalAmount);
+            
+            // Create ledger entry for shop owner (debit - they owe money)
+            await storage.addLedgerEntry({
+              userId: order.ownerId,
+              counterpartyId: order.retailerId,
+              orderId: request.orderId,
+              entryType: 'DEBIT',
+              transactionType: 'ORDER_DEBIT',
+              amount: totalAmount.toString(),
+              description: `Order #${request.orderId.slice(-8)} - Delivery accepted - Amount due: ₹${totalAmount}`,
+              referenceId: request.orderId,
+              metadata: JSON.stringify({ 
+                orderValue: totalAmount,
+                deliveryBoy: req.user.fullName,
+                status: 'DELIVERY_ACCEPTED'
+              })
+            });
+
+            // Create corresponding credit entry for retailer
+            await storage.addLedgerEntry({
+              userId: order.retailerId,
+              counterpartyId: order.ownerId,
+              orderId: request.orderId,
+              entryType: 'CREDIT',
+              transactionType: 'ORDER_PLACED',
+              amount: totalAmount.toString(),
+              description: `Order #${request.orderId.slice(-8)} - Delivery accepted - Amount receivable: ₹${totalAmount}`,
+              referenceId: request.orderId,
+              metadata: JSON.stringify({ 
+                orderValue: totalAmount,
+                deliveryBoy: req.user.fullName,
+                status: 'DELIVERY_ACCEPTED'
+              })
+            });
+
+            // Emit notification to retailer and shop owner about acceptance
+            emitOrderEvent(request.orderId, order.ownerId, order.retailerId, 'deliveryBoyAccepted', {
               orderId: request.orderId,
               deliveryBoy: req.user.fullName,
-              deliveryBoyPhone: req.user.phone || 'Not provided'
+              deliveryBoyPhone: req.user.phone || 'Not provided',
+              message: `${req.user.fullName} accepted the delivery assignment`
             });
           }
         } catch (error) {
