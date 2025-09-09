@@ -870,12 +870,15 @@ export default function RetailerDashboard() {
                           )}
                           {order.status === 'ACCEPTED' && (
                             <>
-                              <Button 
-                                onClick={() => updateStatusMutation.mutate({ orderId: order.id, status: 'READY' })}
-                                data-testid={`button-ready-${order.id}`}
-                              >
-                                Mark Ready
-                              </Button>
+                              {/* Show Mark Ready button only after delivery boy is assigned and accepted */}
+                              {order.assignedDeliveryBoyId && (
+                                <Button 
+                                  onClick={() => updateStatusMutation.mutate({ orderId: order.id, status: 'READY' })}
+                                  data-testid={`button-ready-${order.id}`}
+                                >
+                                  Mark Ready
+                                </Button>
+                              )}
                               {order.deliveryType === 'DELIVERY' && (
                                 <Button 
                                   variant="outline"
@@ -886,6 +889,13 @@ export default function RetailerDashboard() {
                                   <i className="fas fa-motorcycle mr-2"></i>
                                   {order.assignedDeliveryBoy ? 'Change Delivery Boy' : 'Assign Delivery Boy'}
                                 </Button>
+                              )}
+                              {/* Show message when delivery boy needs to be assigned */}
+                              {!order.assignedDeliveryBoyId && order.deliveryType === 'DELIVERY' && (
+                                <div className="text-sm text-muted-foreground bg-yellow-50 p-3 rounded border border-yellow-200">
+                                  <i className="fas fa-info-circle mr-2 text-yellow-600"></i>
+                                  Assign a delivery boy to enable "Mark Ready"
+                                </div>
                               )}
                             </>
                           )}
