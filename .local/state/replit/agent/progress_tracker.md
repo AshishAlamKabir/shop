@@ -1,4 +1,4 @@
-[x] 1. Examine current khatabook accounting logic and identify the issue - COMPLETED
-[x] 2. Fix the credit/debit calculation logic for retailer-shop owner transactions - COMPLETED
-[ ] 3. Test the corrected accounting with the user's example scenario
-[ ] 4. Verify all khatabook balances are calculating correctly
+[x] 1. Add functionality to withdraw/reassign delivery assignments - COMPLETED
+[x] 2. Update UI to show reassign button instead of assign when delivery is accepted - COMPLETED
+[x] 3. Remove order details from delivery boy account when reassigned - COMPLETED
+[ ] 4. Test the new reassignment workflow

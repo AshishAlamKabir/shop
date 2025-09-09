@@ -212,6 +212,23 @@ export default function RetailerDashboard() {
     }
   });
 
+  const withdrawDeliveryAssignmentMutation = useMutation({
+    mutationFn: async (orderId: string) => {
+      return apiRequest('POST', `/api/orders/${orderId}/withdraw-delivery-assignment`);
+    },
+    onSuccess: () => {
+      toast({ title: "Delivery assignment withdrawn successfully" });
+      queryClient.invalidateQueries({ queryKey: ['/api/retailer/orders'] });
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Failed to withdraw assignment", 
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  });
+
   const handlePaymentSubmit = (order: any) => {
     const totalAmount = parseFloat(order.totalAmount);
     const amountReceived = paymentAmount ? parseFloat(paymentAmount) : totalAmount;
@@ -879,7 +896,7 @@ export default function RetailerDashboard() {
                                   Mark Ready
                                 </Button>
                               )}
-                              {order.deliveryType === 'DELIVERY' && (
+                              {order.deliveryType === 'DELIVERY' && !order.assignedDeliveryBoyId && (
                                 <Button 
                                   variant="outline"
                                   onClick={() => setDeliveryBoyAssignmentModal({ isOpen: true, order })}
@@ -887,8 +904,30 @@ export default function RetailerDashboard() {
                                   className="bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
                                 >
                                   <i className="fas fa-motorcycle mr-2"></i>
-                                  {order.assignedDeliveryBoy ? 'Change Delivery Boy' : 'Assign Delivery Boy'}
+                                  Assign Delivery Boy
                                 </Button>
+                              )}
+                              {order.deliveryType === 'DELIVERY' && order.assignedDeliveryBoyId && (
+                                <div className="flex space-x-2">
+                                  <Button 
+                                    variant="outline"
+                                    onClick={() => withdrawDeliveryAssignmentMutation.mutate(order.id)}
+                                    data-testid={`button-withdraw-delivery-${order.id}`}
+                                    className="bg-red-50 border-red-200 text-red-700 hover:bg-red-100"
+                                  >
+                                    <i className="fas fa-times mr-2"></i>
+                                    Remove Assignment
+                                  </Button>
+                                  <Button 
+                                    variant="outline"
+                                    onClick={() => setDeliveryBoyAssignmentModal({ isOpen: true, order })}
+                                    data-testid={`button-reassign-delivery-${order.id}`}
+                                    className="bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
+                                  >
+                                    <i className="fas fa-exchange-alt mr-2"></i>
+                                    Change Delivery Boy
+                                  </Button>
+                                </div>
                               )}
                               {/* Show message when delivery boy needs to be assigned */}
                               {!order.assignedDeliveryBoyId && order.deliveryType === 'DELIVERY' && (
@@ -899,7 +938,7 @@ export default function RetailerDashboard() {
                               )}
                             </>
                           )}
-                          {order.status === 'READY' && order.deliveryType === 'DELIVERY' && (
+                          {order.status === 'READY' && order.deliveryType === 'DELIVERY' && !order.assignedDeliveryBoyId && (
                             <Button 
                               variant="outline"
                               onClick={() => setDeliveryBoyAssignmentModal({ isOpen: true, order })}
@@ -907,8 +946,30 @@ export default function RetailerDashboard() {
                               className="bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
                             >
                               <i className="fas fa-motorcycle mr-2"></i>
-                              {order.assignedDeliveryBoy ? 'Change Delivery Boy' : 'Assign Delivery Boy'}
+                              Assign Delivery Boy
                             </Button>
+                          )}
+                          {order.status === 'READY' && order.deliveryType === 'DELIVERY' && order.assignedDeliveryBoyId && (
+                            <div className="flex space-x-2">
+                              <Button 
+                                variant="outline"
+                                onClick={() => withdrawDeliveryAssignmentMutation.mutate(order.id)}
+                                data-testid={`button-withdraw-delivery-ready-${order.id}`}
+                                className="bg-red-50 border-red-200 text-red-700 hover:bg-red-100"
+                              >
+                                <i className="fas fa-times mr-2"></i>
+                                Remove Assignment
+                              </Button>
+                              <Button 
+                                variant="outline"
+                                onClick={() => setDeliveryBoyAssignmentModal({ isOpen: true, order })}
+                                data-testid={`button-reassign-delivery-ready-${order.id}`}
+                                className="bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
+                              >
+                                <i className="fas fa-exchange-alt mr-2"></i>
+                                Change Delivery Boy
+                              </Button>
+                            </div>
                           )}
                           {order.status === 'OUT_FOR_DELIVERY' && (
                             <>

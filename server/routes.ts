@@ -852,6 +852,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Withdraw/remove delivery boy assignment
+  app.post('/api/orders/:id/withdraw-delivery-assignment', authenticateToken, requireRole('RETAILER'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      
+      const order = await storage.getOrder(id);
+      if (!order || order.retailerId !== req.user.id) {
+        return res.status(404).json({ message: 'Order not found' });
+      }
+
+      if (!order.assignedDeliveryBoyId) {
+        return res.status(400).json({ message: 'No delivery boy is currently assigned to this order' });
+      }
+
+      // Remove delivery assignment
+      await storage.updateOrder(id, {
+        assignedDeliveryBoyId: null
+      });
+
+      // Create order event
+      await storage.createOrderEvent({
+        orderId: id,
+        type: 'DELIVERY_ASSIGNMENT_WITHDRAWN',
+        message: `Delivery assignment withdrawn by retailer`
+      });
+
+      // Send notification to the previously assigned delivery boy
+      const deliveryBoyClient = clients.get(order.assignedDeliveryBoyId);
+      if (deliveryBoyClient && deliveryBoyClient.readyState === WebSocket.OPEN) {
+        deliveryBoyClient.send(JSON.stringify({
+          type: 'assignmentWithdrawn',
+          payload: {
+            orderId: id,
+            title: 'Assignment Withdrawn',
+            description: `Your delivery assignment for order #${id.slice(-8)} has been withdrawn by the retailer`,
+            retailer: req.user.fullName
+          }
+        }));
+      }
+
+      // Emit real-time notification to shop owner
+      emitOrderEvent(id, order.ownerId, order.retailerId, 'deliveryAssignmentWithdrawn', {
+        orderId: id,
+        message: 'Delivery assignment has been withdrawn'
+      });
+
+      res.json({ 
+        message: 'Delivery assignment withdrawn successfully. You can now assign a different delivery boy.',
+        orderId: id
+      });
+    } catch (error) {
+      console.error('Withdraw assignment error:', error);
+      res.status(500).json({ message: 'Failed to withdraw delivery assignment' });
+    }
+  });
+
   // Request delivery boy assignment (creates delivery request for acceptance)
   app.post('/api/orders/:id/assign-delivery-boy', authenticateToken, requireRole('RETAILER'), async (req: any, res) => {
     try {
