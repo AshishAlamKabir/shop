@@ -1163,7 +1163,7 @@ export default function RetailerDashboard() {
                         <Input 
                           placeholder="Enter delivery fee (optional)" 
                           className="mt-1"
-                          defaultValue="50"
+                          defaultValue="0"
                         />
                       </div>
                     </div>
@@ -1173,7 +1173,7 @@ export default function RetailerDashboard() {
                         onClick={async () => {
                           try {
                             await apiRequest('POST', `/api/orders/${selectedOrderForDelivery.id}/share-delivery`, {
-                              estimatedReward: '50',
+                              estimatedReward: '0',
                               pickupAddress: store?.address || 'Store pickup location',
                               deliveryAddress: selectedOrderForDelivery.store?.address || 'Customer delivery location'
                             });

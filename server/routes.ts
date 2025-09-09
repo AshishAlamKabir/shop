@@ -938,7 +938,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         description: `Delivery request for order from ${order.owner?.fullName}`,
         pickupAddress: order.store?.address || 'Store location',
         deliveryAddress: 'Customer delivery address', 
-        estimatedPayment: '50', // Default delivery fee
+        estimatedPayment: '0', // No delivery charges
         orderId: id
       });
 
@@ -2303,7 +2303,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         title: `Order Delivery - ${order.owner?.fullName}`,
         pickupAddress: pickupAddress || 'Store pickup location',
         deliveryAddress: deliveryAddress || 'Customer delivery location',
-        estimatedPayment: estimatedReward || '50',
+        estimatedPayment: estimatedReward || '0',
         orderId: orderId
       });
 
