@@ -1010,22 +1010,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: eventMessage
       });
       
-      // Add enhanced ledger entries with counterparty tracking
+      // Add ledger entries for actual payment received (only PAYMENT_CREDIT entries)
+      // Note: ORDER_DEBIT was already created when delivery was assigned
+      
+      // Shop owner pays the actual amount received
       await storage.addLedgerEntry({
         userId: order.ownerId,
         counterpartyId: order.retailerId,
         orderId: id,
         entryType: 'DEBIT',
-        transactionType: 'ORDER_DEBIT',
-        amount: totalAmount.toString(),
-        description: `Order placed #${id.slice(-8)} - Total: ₹${totalAmount}`,
+        transactionType: 'PAYMENT_DEBIT',
+        amount: amount.toString(),
+        description: `Payment made for Order #${id.slice(-8)} - Amount: ₹${amount}${isPartialPayment ? ` (Partial)` : ''}`,
         referenceId: id,
-        metadata: JSON.stringify({ orderValue: totalAmount })
+        metadata: JSON.stringify({ 
+          paymentType: isPartialPayment ? 'partial' : 'full',
+          amountReceived: amount,
+          remainingBalance,
+          originalOrderAmount: totalAmount
+        })
       });
       
+      // Retailer receives the actual amount paid
       await storage.addLedgerEntry({
-        userId: order.ownerId,
-        counterpartyId: order.retailerId,
+        userId: order.retailerId,
+        counterpartyId: order.ownerId,
         orderId: id,
         entryType: 'CREDIT',
         transactionType: 'PAYMENT_CREDIT',
@@ -1035,23 +1044,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         metadata: JSON.stringify({ 
           paymentType: isPartialPayment ? 'partial' : 'full',
           amountReceived: amount,
-          remainingBalance 
-        })
-      });
-      
-      await storage.addLedgerEntry({
-        userId: order.retailerId,
-        counterpartyId: order.ownerId,
-        orderId: id,
-        entryType: 'CREDIT',
-        transactionType: 'PAYMENT_CREDIT',
-        amount: amount.toString(),
-        description: `Payment collected for Order #${id.slice(-8)} - Amount: ₹${amount}${isPartialPayment ? ` (Partial)` : ''}`,
-        referenceId: id,
-        metadata: JSON.stringify({ 
-          paymentType: isPartialPayment ? 'partial' : 'full',
-          amountReceived: amount,
-          remainingBalance 
+          remainingBalance,
+          originalOrderAmount: totalAmount
         })
       });
       
