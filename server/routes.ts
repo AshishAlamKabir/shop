@@ -1461,6 +1461,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get open delivery requests that need acceptance
+  app.get('/api/delivery-requests/open', authenticateToken, requireRole('DELIVERY_BOY'), async (req: any, res) => {
+    try {
+      const openRequests = await storage.getOpenDeliveryRequests();
+      res.json(openRequests);
+    } catch (error) {
+      console.error('Open delivery requests error:', error);
+      res.status(500).json({ message: 'Failed to fetch open delivery requests' });
+    }
+  });
+
   app.get('/api/delivery/orders/:id', authenticateToken, requireRole('DELIVERY_BOY'), async (req: any, res) => {
     try {
       const { id } = req.params;

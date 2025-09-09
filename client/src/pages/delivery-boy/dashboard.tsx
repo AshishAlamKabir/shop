@@ -16,7 +16,7 @@ import { useEffect } from "react";
 import { useSocket } from "@/hooks/use-socket";
 
 export default function DeliveryBoyDashboard() {
-  const [activeSection, setActiveSection] = useState('orders');
+  const [activeSection, setActiveSection] = useState('pending');
   const [isNavigationOpen, setIsNavigationOpen] = useState(false);
   const [paymentModal, setPaymentModal] = useState<{ isOpen: boolean; order: any }>({ isOpen: false, order: null });
   const [paymentChangeModal, setPaymentChangeModal] = useState<{ isOpen: boolean; order: any }>({ isOpen: false, order: null });
@@ -59,6 +59,20 @@ export default function DeliveryBoyDashboard() {
         }
       });
       if (!response.ok) throw new Error('Failed to fetch orders');
+      return response.json();
+    }
+  });
+
+  // Fetch pending delivery requests
+  const { data: pendingRequests = [] } = useQuery({
+    queryKey: ['/api/delivery-requests/open'],
+    queryFn: async () => {
+      const response = await fetch('/api/delivery-requests/open', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+        }
+      });
+      if (!response.ok) throw new Error('Failed to fetch delivery requests');
       return response.json();
     }
   });
@@ -144,6 +158,7 @@ export default function DeliveryBoyDashboard() {
       toast({ title: "✅ Delivery Accepted!", description: "You have accepted this delivery request." });
       setDeliveryRequestModal({ isOpen: false, request: null });
       queryClient.invalidateQueries({ queryKey: ['/api/delivery/orders'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/delivery-requests/open'] });
     },
     onError: (error: any) => {
       toast({ 
@@ -161,6 +176,7 @@ export default function DeliveryBoyDashboard() {
     onSuccess: () => {
       toast({ title: "❌ Delivery Rejected", description: "You have rejected this delivery request." });
       setDeliveryRequestModal({ isOpen: false, request: null });
+      queryClient.invalidateQueries({ queryKey: ['/api/delivery-requests/open'] });
     },
     onError: (error: any) => {
       toast({ 
@@ -241,6 +257,14 @@ export default function DeliveryBoyDashboard() {
 
         <div className="flex gap-4 mb-8">
           <Button
+            variant={activeSection === 'pending' ? 'default' : 'outline'}
+            onClick={() => setActiveSection('pending')}
+            className="flex items-center gap-2"
+          >
+            <i className="fas fa-clock"></i>
+            Pending Requests ({pendingRequests.length})
+          </Button>
+          <Button
             variant={activeSection === 'orders' ? 'default' : 'outline'}
             onClick={() => setActiveSection('orders')}
             className="flex items-center gap-2"
@@ -249,6 +273,109 @@ export default function DeliveryBoyDashboard() {
             My Deliveries ({orders.length})
           </Button>
         </div>
+
+        {activeSection === 'pending' && (
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <i className="fas fa-clock text-orange-500"></i>
+                  Pending Delivery Requests
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {pendingRequests.length === 0 ? (
+                  <div className="text-center py-12">
+                    <i className="fas fa-inbox text-4xl text-muted-foreground mb-4"></i>
+                    <p className="text-muted-foreground text-lg">No pending delivery requests</p>
+                    <p className="text-muted-foreground text-sm">New delivery requests will appear here</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {pendingRequests.map((request: any) => (
+                      <Card key={request.id} className="border-l-4 border-l-orange-500">
+                        <CardContent className="pt-6">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            <div>
+                              <div className="flex items-center gap-2 mb-2">
+                                <i className="fas fa-shopping-bag text-primary"></i>
+                                <span className="font-medium text-foreground">{request.title}</span>
+                              </div>
+                              <p className="text-muted-foreground text-sm mb-3">{request.description}</p>
+                              
+                              <div className="space-y-2">
+                                <div className="flex items-center gap-2 text-sm">
+                                  <i className="fas fa-store text-green-600"></i>
+                                  <span className="font-medium">Pickup:</span>
+                                  <span className="text-muted-foreground">{request.pickupAddress}</span>
+                                </div>
+                                <div className="flex items-center gap-2 text-sm">
+                                  <i className="fas fa-map-marker-alt text-red-600"></i>
+                                  <span className="font-medium">Delivery:</span>
+                                  <span className="text-muted-foreground">{request.deliveryAddress}</span>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            <div className="space-y-3">
+                              <div className="flex items-center gap-2">
+                                <i className="fas fa-rupee-sign text-green-600"></i>
+                                <span className="font-medium">Payment:</span>
+                                <span className="text-xl font-bold text-green-600">₹{request.estimatedPayment}</span>
+                              </div>
+                              
+                              <div className="flex items-center gap-2 text-sm">
+                                <i className="fas fa-clock text-muted-foreground"></i>
+                                <span className="text-muted-foreground">
+                                  {new Date(request.createdAt).toLocaleDateString('en-IN', {
+                                    day: 'numeric',
+                                    month: 'short',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  })}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <div className="flex gap-3 pt-4 border-t">
+                            <Button 
+                              onClick={() => acceptDeliveryRequestMutation.mutate(request.id)}
+                              disabled={acceptDeliveryRequestMutation.isPending}
+                              className="flex-1 bg-green-600 hover:bg-green-700"
+                              data-testid={`button-accept-${request.id}`}
+                            >
+                              {acceptDeliveryRequestMutation.isPending ? (
+                                <i className="fas fa-spinner fa-spin mr-2"></i>
+                              ) : (
+                                <i className="fas fa-check mr-2"></i>
+                              )}
+                              Accept Delivery
+                            </Button>
+                            <Button 
+                              variant="outline"
+                              onClick={() => rejectDeliveryRequestMutation.mutate(request.id)}
+                              disabled={rejectDeliveryRequestMutation.isPending}
+                              className="flex-1 border-red-200 text-red-700 hover:bg-red-50"
+                              data-testid={`button-reject-${request.id}`}
+                            >
+                              {rejectDeliveryRequestMutation.isPending ? (
+                                <i className="fas fa-spinner fa-spin mr-2"></i>
+                              ) : (
+                                <i className="fas fa-times mr-2"></i>
+                              )}
+                              Reject
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {activeSection === 'orders' && (
           <div className="space-y-6">
