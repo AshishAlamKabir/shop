@@ -83,13 +83,23 @@ export default function ToastNotifications() {
       // Handle payment change responses for delivery boys
       if (type === 'PAYMENT_CHANGE_RESPONSE' && user.role === 'DELIVERY_BOY') {
         const statusMessage = data.response === 'APPROVED' 
-          ? `✅ Payment change approved! New amount: ₹${data.finalAmount}`
-          : `❌ Payment change rejected. Amount remains: ₹${data.finalAmount}`;
+          ? `✅ Payment confirmed! Amount: ₹${data.finalAmount} - Delivery completed! 🎉`
+          : `❌ Payment change rejected. Amount remains: ₹${data.finalAmount} - You can send another request`;
           
         toast({
-          title: "Payment Change Response",
+          title: data.response === 'APPROVED' ? "🚚 Delivery Finished!" : "Payment Change Rejected",
           description: statusMessage,
           variant: data.response === 'APPROVED' ? 'default' : 'destructive',
+          duration: data.response === 'APPROVED' ? 10000 : 8000,
+        });
+        return;
+      }
+      
+      // Handle delivery completion notifications for retailers
+      if (type === 'DELIVERY_COMPLETED' && user.role === 'RETAILER') {
+        toast({
+          title: "🚚 Delivery Completed!",
+          description: `Delivery finished for order #${data.orderId.slice(-8)} - Final amount: ₹${data.finalAmount}`,
           duration: 8000,
         });
         return;
@@ -227,12 +237,12 @@ export default function ToastNotifications() {
                   disabled={respondToPaymentChangeMutation.isPending}
                   data-testid="accept-payment-change"
                 >
-                  ✅ Accept
+                  ✅ Confirm & Finish Delivery
                 </Button>
               </div>
               
               <div className="text-xs text-center text-muted-foreground">
-                This request was sent by the delivery boy for order transparency
+                <strong>Note:</strong> Confirming this amount will complete the delivery. Rejecting allows the delivery boy to send another request.
               </div>
             </div>
           )}
