@@ -107,7 +107,7 @@ async function createStore(ownerId: string, storeName?: string) {
 }
 
 // Create product in global catalog
-async function createProduct(productData?: Partial<typeof schema.productCatalog.$inferInsert>) {
+async function createProduct(adminUserId: string, productData?: Partial<typeof schema.productCatalog.$inferInsert>) {
   const defaultProduct = {
     name: getRandomElement(productNames),
     brand: getRandomElement(brands),
@@ -115,6 +115,7 @@ async function createProduct(productData?: Partial<typeof schema.productCatalog.
     size: getRandomElement(sizes),
     imageUrl: `https://via.placeholder.com/300x300?text=Product`,
     isWholesale: Math.random() > 0.7,
+    createdById: adminUserId,
   };
   
   const [product] = await db.insert(schema.productCatalog).values({
