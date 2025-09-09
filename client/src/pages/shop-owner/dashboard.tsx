@@ -1257,34 +1257,78 @@ export default function ShopOwnerDashboard() {
               <Card>
                 <CardContent className="p-6">
                   <h3 className="text-lg font-semibold text-foreground mb-4">Transaction History</h3>
-                  <div className="space-y-3">
-                    {ledgerEntries?.entries?.map((entry: any) => (
-                      <div key={entry.id} className="flex items-center justify-between p-3 border border-border rounded-lg">
-                        <div className="flex items-center space-x-3">
-                          <div className={`w-3 h-3 rounded-full ${entry.entryType === 'CREDIT' ? 'bg-green-600' : 'bg-red-600'}`}></div>
-                          <div>
-                            <div className="font-medium text-foreground">{entry.description}</div>
-                            <div className="text-sm text-muted-foreground">
-                              {new Date(entry.createdAt).toLocaleDateString()} • {entry.transactionType.replace('_', ' ')}
+                  {(() => {
+                    // Group transactions by retailer
+                    const groupedTransactions = (ledgerEntries?.entries || []).reduce((groups: any, entry: any) => {
+                      const retailerKey = entry.counterpartyId || 'unknown';
+                      if (!groups[retailerKey]) {
+                        groups[retailerKey] = [];
+                      }
+                      groups[retailerKey].push(entry);
+                      return groups;
+                    }, {});
+
+                    return Object.keys(groupedTransactions).length > 0 ? (
+                      <div className="space-y-6">
+                        {Object.entries(groupedTransactions).map(([retailerId, transactions]: [string, any]) => {
+                          const retailerInfo = retailerBalances.find((r: any) => r.retailerId === retailerId);
+                          const retailerName = retailerInfo?.retailerName || `Retailer ${retailerId.slice(-8)}`;
+                          
+                          return (
+                            <div key={retailerId} className="border border-border rounded-lg p-4">
+                              <div className="flex items-center justify-between mb-4">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
+                                    <i className="fas fa-store text-primary-foreground text-xs"></i>
+                                  </div>
+                                  <div>
+                                    <h4 className="font-medium text-foreground">{retailerName}</h4>
+                                    <p className="text-xs text-muted-foreground">Retailer ID: {retailerId.slice(-8)}</p>
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  <p className={`font-semibold ${retailerInfo?.currentBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                    Balance: ₹{retailerInfo ? Math.abs(retailerInfo.currentBalance).toFixed(2) : '0.00'}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {retailerInfo?.currentBalance >= 0 ? 'You owe' : 'They owe you'}
+                                  </p>
+                                </div>
+                              </div>
+                              
+                              <div className="space-y-2">
+                                {transactions.map((entry: any) => (
+                                  <div key={entry.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                                    <div className="flex items-center space-x-3">
+                                      <div className={`w-3 h-3 rounded-full ${entry.entryType === 'CREDIT' ? 'bg-green-600' : 'bg-red-600'}`}></div>
+                                      <div>
+                                        <div className="font-medium text-foreground">{entry.description}</div>
+                                        <div className="text-sm text-muted-foreground">
+                                          {new Date(entry.createdAt).toLocaleDateString()} • {entry.transactionType.replace('_', ' ')}
+                                        </div>
+                                      </div>
+                                    </div>
+                                    <div className="text-right">
+                                      <div className={`font-semibold ${entry.entryType === 'CREDIT' ? 'text-green-600' : 'text-red-600'}`}>
+                                        {entry.entryType === 'CREDIT' ? '+' : '-'}₹{parseFloat(entry.amount).toFixed(2)}
+                                      </div>
+                                      <div className="text-sm text-muted-foreground">
+                                        Bal: ₹{parseFloat(entry.balance).toFixed(2)}
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
                             </div>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className={`font-semibold ${entry.entryType === 'CREDIT' ? 'text-green-600' : 'text-red-600'}`}>
-                            {entry.entryType === 'CREDIT' ? '+' : '-'}₹{parseFloat(entry.amount).toFixed(2)}
-                          </div>
-                          <div className="text-sm text-muted-foreground">
-                            Bal: ₹{parseFloat(entry.balance).toFixed(2)}
-                          </div>
-                        </div>
+                          );
+                        })}
                       </div>
-                    ))}
-                    {(!ledgerEntries?.entries || ledgerEntries.entries.length === 0) && (
+                    ) : (
                       <div className="text-center text-muted-foreground py-8">
                         No transactions yet. Transactions will appear here when you place orders.
                       </div>
-                    )}
-                  </div>
+                    );
+                  })()}
                 </CardContent>
               </Card>
             </div>

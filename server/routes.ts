@@ -1734,25 +1734,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           paymentReceivedAt: new Date()
         });
         
-        // Create correct khatabook entries: CREDIT for original amount, DEBIT for requested amount
-        // Shop owner entries
-        await storage.createKhatabookEntry({
-          userId: order.ownerId, // shop owner
-          counterpartyId: order.retailerId,
-          orderId: changeRequest.orderId,
-          entryType: 'CREDIT',
-          transactionType: 'ORDER_PLACED',
-          amount: changeRequest.originalAmount,
-          description: `Order amount for #${changeRequest.orderId.slice(-8)} - ₹${changeRequest.originalAmount}`,
-          referenceId: changeRequest.orderId,
-          metadata: JSON.stringify({ 
-            deliveryBoyId: changeRequest.deliveryBoyId,
-            paymentRequestId: requestId,
-            originalAmount: changeRequest.originalAmount,
-            paidAmount: changeRequest.requestedAmount
-          })
-        });
-
+        // Create only payment confirmation entries (order entries should already exist)
+        // Shop owner payment confirmation
         await storage.createKhatabookEntry({
           userId: order.ownerId, // shop owner
           counterpartyId: order.retailerId,
@@ -1770,24 +1753,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           })
         });
 
-        // Retailer entries (mirror entries)
-        await storage.createKhatabookEntry({
-          userId: order.retailerId,
-          counterpartyId: order.ownerId,
-          orderId: changeRequest.orderId,
-          entryType: 'DEBIT',
-          transactionType: 'ORDER_DEBIT',
-          amount: changeRequest.originalAmount,
-          description: `Order from ${req.user.fullName} #${changeRequest.orderId.slice(-8)} - ₹${changeRequest.originalAmount}`,
-          referenceId: changeRequest.orderId,
-          metadata: JSON.stringify({ 
-            deliveryBoyId: changeRequest.deliveryBoyId,
-            paymentRequestId: requestId,
-            originalAmount: changeRequest.originalAmount,
-            paidAmount: changeRequest.requestedAmount
-          })
-        });
-
+        // Retailer payment confirmation
         await storage.createKhatabookEntry({
           userId: order.retailerId,
           counterpartyId: order.ownerId,
