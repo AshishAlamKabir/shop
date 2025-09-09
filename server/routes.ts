@@ -1722,9 +1722,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Update the payment change request status
       await storage.updatePaymentChangeRequestStatus(requestId, response);
       
-      // If approved, update the order amount
+      // If approved, update the order amount and complete delivery
       if (response === 'APPROVED') {
         await storage.updateOrderAmount(changeRequest.orderId, changeRequest.requestedAmount);
+        
+        // Complete the delivery - mark order as COMPLETED and payment received
+        await storage.updateOrderStatus(changeRequest.orderId, 'COMPLETED');
+        await storage.updateOrderPayment(changeRequest.orderId, {
+          paymentReceived: true,
+          amountReceived: changeRequest.requestedAmount,
+          paymentReceivedAt: new Date()
+        });
+        
+        // Create khatabook entries for payment completion
+        await storage.createKhatabookEntry({
+          userId: order.ownerId, // shop owner
+          counterpartyId: order.retailerId,
+          orderId: changeRequest.orderId,
+          entryType: 'CREDIT',
+          transactionType: 'PAYMENT_RECEIVED',
+          amount: changeRequest.requestedAmount,
+          description: `Payment confirmed for order #${changeRequest.orderId.slice(-8)} - ₹${changeRequest.requestedAmount}`,
+          referenceId: changeRequest.orderId,
+          metadata: JSON.stringify({ 
+            deliveryBoyId: changeRequest.deliveryBoyId,
+            paymentRequestId: requestId
+          })
+        });
+
+        await storage.createKhatabookEntry({
+          userId: order.retailerId,
+          counterpartyId: order.ownerId,
+          orderId: changeRequest.orderId,
+          entryType: 'CREDIT',
+          transactionType: 'PAYMENT_CREDIT',
+          amount: changeRequest.requestedAmount,
+          description: `Payment confirmed from ${order.ownerId} for order #${changeRequest.orderId.slice(-8)}`,
+          referenceId: changeRequest.orderId,
+          metadata: JSON.stringify({ 
+            deliveryBoyId: changeRequest.deliveryBoyId,
+            paymentRequestId: requestId
+          })
+        });
+        
+        // Create delivery completion event
+        await storage.createOrderEvent({
+          orderId: changeRequest.orderId,
+          type: 'PAYMENT_CONFIRMED',
+          message: `Payment of ₹${changeRequest.requestedAmount} confirmed by shop owner ${req.user.fullName} - Delivery completed`
+        });
+
+        await storage.createOrderEvent({
+          orderId: changeRequest.orderId,
+          type: 'COMPLETED',
+          message: `Order completed - Payment confirmed and delivery finished`
+        });
       }
       
       // Notify delivery boy via WebSocket
@@ -1736,8 +1788,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
           response,
           originalAmount: changeRequest.originalAmount,
           finalAmount: response === 'APPROVED' ? changeRequest.requestedAmount : changeRequest.originalAmount,
-          requestId
+          requestId,
+          deliveryCompleted: response === 'APPROVED' // Add flag to indicate delivery completion
         }));
+      }
+      
+      // If approved, also notify retailer about delivery completion
+      if (response === 'APPROVED') {
+        const retailerClient = clients.get(order.retailerId);
+        if (retailerClient && retailerClient.readyState === WebSocket.OPEN) {
+          retailerClient.send(JSON.stringify({
+            type: 'DELIVERY_COMPLETED',
+            orderId: changeRequest.orderId,
+            finalAmount: changeRequest.requestedAmount,
+            deliveryBoy: changeRequest.deliveryBoyId,
+            confirmedBy: req.user.fullName
+          }));
+        }
       }
       
       // Create order event
