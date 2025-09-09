@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import Header from "@/components/layout/header";
 import StoreCatalogModal from "@/components/modals/store-catalog-modal";
 import { NavigationSidebar, NavigationItem } from "@/components/ui/navigation-sidebar";
+import ToastNotifications from "@/components/toast-notifications";
 import { useCartStore } from "@/store/cart";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -134,6 +135,19 @@ export default function ShopOwnerDashboard() {
     }
   });
 
+  const { data: paymentChangeRequests = [] } = useQuery({
+    queryKey: ['/api/shop-owner/payment-change-requests'],
+    queryFn: async () => {
+      const response = await fetch('/api/shop-owner/payment-change-requests', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+        }
+      });
+      if (!response.ok) throw new Error('Failed to fetch payment change requests');
+      return response.json();
+    }
+  });
+
   const placeOrderMutation = useMutation({
     mutationFn: async (orderData: any) => {
       return await apiRequest('POST', '/api/orders', orderData);
@@ -163,6 +177,34 @@ export default function ShopOwnerDashboard() {
     },
     onError: () => {
       toast({ title: "Failed to adjust payment amount", variant: "destructive" });
+    }
+  });
+
+  const approvePaymentChangeMutation = useMutation({
+    mutationFn: async (requestId: string) => {
+      return await apiRequest('POST', `/api/shop-owner/payment-change-requests/${requestId}/approve`, {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/shop-owner/payment-change-requests'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/orders/mine'] });
+      toast({ title: "Payment change approved successfully" });
+    },
+    onError: () => {
+      toast({ title: "Failed to approve payment change", variant: "destructive" });
+    }
+  });
+
+  const rejectPaymentChangeMutation = useMutation({
+    mutationFn: async ({ requestId, reason }: { requestId: string; reason?: string }) => {
+      return await apiRequest('POST', `/api/shop-owner/payment-change-requests/${requestId}/reject`, { reason });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/shop-owner/payment-change-requests'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/orders/mine'] });
+      toast({ title: "Payment change rejected" });
+    },
+    onError: () => {
+      toast({ title: "Failed to reject payment change", variant: "destructive" });
     }
   });
 
@@ -892,6 +934,75 @@ export default function ShopOwnerDashboard() {
                   </Card>
                 )}
               </div>
+
+              {/* Payment Change Requests Section */}
+              {paymentChangeRequests.length > 0 && (
+                <div className="mt-8">
+                  <div className="mb-6">
+                    <h3 className="text-xl font-bold text-foreground mb-2 flex items-center gap-2">
+                      <i className="fas fa-money-bill-wave text-yellow-500"></i>
+                      Pending Payment Change Requests
+                    </h3>
+                    <p className="text-muted-foreground">Delivery personnel have requested payment changes for these orders</p>
+                  </div>
+
+                  <div className="space-y-4">
+                    {paymentChangeRequests.filter((req: any) => req.status === 'PENDING').map((request: any) => (
+                      <Card key={request.id} className="border-l-4 border-l-yellow-400">
+                        <CardContent className="p-6">
+                          <div className="flex items-start justify-between">
+                            <div className="space-y-3">
+                              <div>
+                                <h4 className="font-semibold text-foreground">
+                                  Order #{request.orderId.slice(-8)}
+                                </h4>
+                                <p className="text-sm text-muted-foreground">
+                                  Requested by delivery personnel
+                                </p>
+                              </div>
+                              
+                              <div className="space-y-2">
+                                <div className="flex justify-between items-center">
+                                  <span className="text-sm">Original Amount:</span>
+                                  <span className="font-semibold">₹{request.originalAmount}</span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                  <span className="text-sm">Requested Amount:</span>
+                                  <span className="font-semibold text-primary">₹{request.requestedAmount}</span>
+                                </div>
+                                <div className="border-t pt-2">
+                                  <span className="text-sm font-medium">Reason:</span>
+                                  <p className="text-sm text-muted-foreground mt-1">{request.reason}</p>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            <div className="flex gap-2">
+                              <Button 
+                                variant="destructive" 
+                                size="sm"
+                                onClick={() => rejectPaymentChangeMutation.mutate({ requestId: request.id })}
+                                disabled={rejectPaymentChangeMutation.isPending}
+                                data-testid={`button-reject-${request.id}`}
+                              >
+                                ❌ Reject
+                              </Button>
+                              <Button 
+                                size="sm"
+                                onClick={() => approvePaymentChangeMutation.mutate(request.id)}
+                                disabled={approvePaymentChangeMutation.isPending}
+                                data-testid={`button-approve-${request.id}`}
+                              >
+                                ✅ Approve
+                              </Button>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -1262,6 +1373,9 @@ export default function ShopOwnerDashboard() {
           testId="button-nav-khatabook-navigation"
         />
       </NavigationSidebar>
+
+      {/* Toast Notifications for Payment Change Requests */}
+      <ToastNotifications />
     </div>
   );
 }
