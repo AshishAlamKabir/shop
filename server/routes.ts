@@ -1010,7 +1010,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: eventMessage
       });
       
-      // Add ledger entries for actual payment received (only PAYMENT_CREDIT entries)
+      // Add ledger entries for actual payment received
       // Note: ORDER_DEBIT was already created when delivery was assigned
       
       // Shop owner pays the actual amount received
@@ -1019,7 +1019,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         counterpartyId: order.retailerId,
         orderId: id,
         entryType: 'DEBIT',
-        transactionType: 'PAYMENT_DEBIT',
+        transactionType: 'PAYMENT_CREDIT',
         amount: amount.toString(),
         description: `Payment made for Order #${id.slice(-8)} - Amount: ₹${amount}${isPartialPayment ? ` (Partial)` : ''}`,
         referenceId: id,
