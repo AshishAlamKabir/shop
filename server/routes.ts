@@ -1598,98 +1598,162 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/delivery/orders/:id/confirm-payment', authenticateToken, requireRole('DELIVERY_BOY'), async (req: any, res) => {
+  // Step 1: Delivery boy records payment (creates pending confirmation request)
+  app.post('/api/delivery/orders/:id/record-payment', authenticateToken, requireRole('DELIVERY_BOY'), async (req: any, res) => {
     try {
       const { id } = req.params;
-      const { amountReceived, paymentMethod = 'CASH' } = req.body;
+      const { amountReceived, paymentMethod = 'CASH', note = '' } = req.body;
       
       const order = await storage.getOrderForDeliveryBoy(id, req.user.id);
       if (!order) {
         return res.status(404).json({ message: 'Order not found or not assigned to you' });
       }
       
-      if (order.status !== 'OUT_FOR_DELIVERY') {
-        return res.status(400).json({ message: 'Can only confirm payment during delivery' });
+      if (order.paymentReceived) {
+        return res.status(400).json({ message: 'Payment already confirmed for this order' });
       }
+
+      // Create payment confirmation request instead of directly confirming
+      const paymentRequest = await storage.createPaymentChangeRequest({
+        orderId: id,
+        deliveryBoyId: req.user.id,
+        originalAmount: order.totalAmount,
+        requestedAmount: amountReceived,
+        reason: `Payment recorded: ₹${amountReceived} via ${paymentMethod}. ${note}`,
+        status: 'PENDING'
+      });
+
+      // Notify shop owner about payment recorded
+      const shopOwnerClient = clients.get(order.ownerId);
+      if (shopOwnerClient && shopOwnerClient.readyState === WebSocket.OPEN) {
+        shopOwnerClient.send(JSON.stringify({
+          type: 'PAYMENT_RECORDED',
+          orderId: id,
+          originalAmount: order.totalAmount,
+          amountReceived: amountReceived,
+          paymentMethod,
+          deliveryBoy: req.user.fullName,
+          requestId: paymentRequest.id,
+          note
+        }));
+      }
+
+      await storage.createOrderEvent({
+        orderId: id,
+        type: 'PAYMENT_RECORDED',
+        message: `Payment of ₹${amountReceived} recorded by ${req.user.fullName} - Awaiting shop owner confirmation`
+      });
+
+      res.json({ 
+        message: 'Payment recorded. Awaiting shop owner confirmation.',
+        amountReceived,
+        paymentMethod,
+        requestId: paymentRequest.id
+      });
+    } catch (error) {
+      console.error('Payment recording error:', error);
+      res.status(500).json({ message: 'Failed to record payment' });
+    }
+  });
+
+  // Step 2: Shop owner confirms payment (finalizes payment)
+  app.post('/api/shop-owner/payment-confirmations/:requestId/confirm', authenticateToken, requireRole('SHOP_OWNER'), async (req: any, res) => {
+    try {
+      const { requestId } = req.params;
       
-      // Update order with payment information
-      await storage.updateOrderPayment(id, {
+      const paymentRequest = await storage.getPaymentChangeRequest(requestId);
+      if (!paymentRequest) {
+        return res.status(404).json({ message: 'Payment confirmation request not found' });
+      }
+
+      if (paymentRequest.status !== 'PENDING') {
+        return res.status(400).json({ message: 'Payment request already processed' });
+      }
+
+      const order = await storage.getOrder(paymentRequest.orderId);
+      if (!order || order.ownerId !== req.user.id) {
+        return res.status(403).json({ message: 'Not authorized to confirm this payment' });
+      }
+
+      // Update payment request status
+      await storage.updatePaymentChangeRequestStatus(requestId, 'APPROVED');
+
+      // Finalize payment
+      const amountReceived = paymentRequest.requestedAmount;
+      await storage.updateOrderPayment(paymentRequest.orderId, {
         paymentReceived: true,
         amountReceived,
-        originalAmountReceived: order.totalAmount,
+        originalAmountReceived: amountReceived,
         remainingBalance: (parseFloat(order.totalAmount) - parseFloat(amountReceived)).toString(),
         isPartialPayment: parseFloat(amountReceived) < parseFloat(order.totalAmount),
         paymentReceivedAt: new Date(),
-        paymentReceivedBy: req.user.id
+        paymentReceivedBy: paymentRequest.deliveryBoyId
       });
-      
+
       // Update order status to completed
-      await storage.updateOrderStatus(id, 'COMPLETED');
-      
+      await storage.updateOrderStatus(paymentRequest.orderId, 'COMPLETED');
+
       // Create khatabook entries
       await storage.createKhatabookEntry({
         userId: order.ownerId, // shop owner
         counterpartyId: order.retailerId,
-        orderId: id,
-        entryType: 'DEBIT',
+        orderId: paymentRequest.orderId,
+        entryType: 'CREDIT',
         transactionType: 'PAYMENT_RECEIVED',
         amount: amountReceived,
-        description: `Payment received for order #${id.slice(-8)}`,
-        referenceId: id,
+        description: `Payment confirmed for order #${paymentRequest.orderId.slice(-8)} - ₹${amountReceived}`,
+        referenceId: paymentRequest.orderId,
         metadata: JSON.stringify({ 
-          paymentMethod,
-          deliveryBoyId: req.user.id,
-          deliveryBoyName: req.user.fullName
+          deliveryBoyId: paymentRequest.deliveryBoyId,
+          paymentRequestId: requestId
         })
       });
-      
+
       await storage.createKhatabookEntry({
         userId: order.retailerId,
         counterpartyId: order.ownerId,
-        orderId: id,
+        orderId: paymentRequest.orderId,
         entryType: 'CREDIT',
         transactionType: 'PAYMENT_CREDIT',
         amount: amountReceived,
-        description: `Payment received from ${order.owner?.fullName || 'customer'} for order #${id.slice(-8)}`,
-        referenceId: id,
+        description: `Payment confirmed from ${order.owner?.fullName || 'customer'} for order #${paymentRequest.orderId.slice(-8)}`,
+        referenceId: paymentRequest.orderId,
         metadata: JSON.stringify({ 
-          paymentMethod,
-          deliveryBoyId: req.user.id,
-          deliveryBoyName: req.user.fullName
+          deliveryBoyId: paymentRequest.deliveryBoyId,
+          paymentRequestId: requestId
         })
       });
-      
+
       // Create order events
       await storage.createOrderEvent({
-        orderId: id,
-        type: 'PAYMENT_RECEIVED',
-        message: `Payment of ₹${amountReceived} received by ${req.user.fullName}`
+        orderId: paymentRequest.orderId,
+        type: 'PAYMENT_CONFIRMED',
+        message: `Payment of ₹${amountReceived} confirmed by shop owner ${req.user.fullName}`
       });
-      
+
       await storage.createOrderEvent({
-        orderId: id,
+        orderId: paymentRequest.orderId,
         type: 'COMPLETED',
-        message: `Order completed by delivery boy ${req.user.fullName}`
+        message: `Order completed - Payment confirmed by shop owner`
       });
-      
-      // Notify both shop owner and retailer
-      [order.ownerId, order.retailerId].forEach(userId => {
+
+      // Notify delivery boy and retailer
+      [paymentRequest.deliveryBoyId, order.retailerId].forEach(userId => {
         const client = clients.get(userId);
         if (client && client.readyState === WebSocket.OPEN) {
           client.send(JSON.stringify({
-            type: 'ORDER_COMPLETED',
-            orderId: id,
+            type: 'PAYMENT_CONFIRMED',
+            orderId: paymentRequest.orderId,
             amountReceived,
-            paymentMethod,
-            deliveryBoy: req.user.fullName
+            confirmedBy: req.user.fullName
           }));
         }
       });
-      
+
       res.json({ 
-        message: 'Payment confirmed and order completed',
+        message: 'Payment confirmed successfully',
         amountReceived,
-        remainingBalance: (parseFloat(order.totalAmount) - parseFloat(amountReceived)).toString()
+        orderCompleted: true
       });
     } catch (error) {
       console.error('Payment confirmation error:', error);
