@@ -1,4 +1,4 @@
-[x] 1. Add functionality to withdraw/reassign delivery assignments - COMPLETED
-[x] 2. Update UI to show reassign button instead of assign when delivery is accepted - COMPLETED
-[x] 3. Remove order details from delivery boy account when reassigned - COMPLETED
-[ ] 4. Test the new reassignment workflow
+[x] 1. Remove 'Start Delivery' button when payment amount is edited/accepted - COMPLETED
+[x] 2. Update 'Payment Received' button styling to green when payment is accepted - COMPLETED
+[x] 3. Add notifications with balance calculations when payment is received - COMPLETED
+[x] 4. Add shop owner balance display section for delivery boys - COMPLETED

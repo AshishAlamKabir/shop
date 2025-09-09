@@ -434,6 +434,30 @@ export default function DeliveryBoyDashboard() {
                           </div>
                         </div>
 
+                        {/* Shop Owner Balance Information */}
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                          <div className="flex items-center mb-2">
+                            <i className="fas fa-wallet text-blue-600 mr-2"></i>
+                            <p className="text-sm font-medium text-blue-800">Customer Balance with Store</p>
+                          </div>
+                          <div className="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                              <p className="text-blue-600 font-medium">Current Balance</p>
+                              <p className="text-blue-800 font-semibold">
+                                {order.shopOwnerBalance ? `₹${order.shopOwnerBalance.currentBalance || '0.00'}` : 'Loading...'}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-blue-600 font-medium">Total Credits</p>
+                              <p className="text-blue-800">₹{order.shopOwnerBalance?.totalCredits || '0.00'}</p>
+                            </div>
+                          </div>
+                          <div className="text-xs text-blue-600 mt-2">
+                            <i className="fas fa-info-circle mr-1"></i>
+                            You can inform the customer about their current balance during delivery
+                          </div>
+                        </div>
+
                         {order.note && (
                           <div className="mb-4">
                             <p className="text-sm font-medium text-foreground">Special Instructions</p>
@@ -497,8 +521,8 @@ export default function DeliveryBoyDashboard() {
                             </Button>
                           )}
                           
-                          {/* Start Delivery Button */}
-                          {order.status === 'READY' && (
+                          {/* Start Delivery Button - Hidden when payment change is approved */}
+                          {order.status === 'READY' && !order.paymentChangeApproved && (
                             <Button 
                               onClick={() => updateOrderStatusMutation.mutate({ orderId: order.id, status: 'OUT_FOR_DELIVERY' })}
                               disabled={updateOrderStatusMutation.isPending}

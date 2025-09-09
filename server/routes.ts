@@ -1949,23 +1949,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: `Payment of ₹${order.totalAmount} marked as received by ${req.user.fullName}`
       });
       
+      // Get shop owner's balance after this payment
+      const shopOwnerBalance = await storage.getLedgerSummary(order.ownerId, order.retailerId);
+      
+      // Create enhanced notification with balance calculations
+      const notificationData = {
+        type: 'PAYMENT_RECEIVED_NOTIFICATION',
+        orderId: id,
+        orderNumber: `#${id.slice(-8)}`,
+        originalAmount: approvedRequest.originalAmount,
+        paymentReceived: order.totalAmount,
+        customerName: order.owner?.fullName || 'Customer',
+        deliveryBoyName: req.user.fullName,
+        storeName: order.store?.name || 'Store',
+        shopOwnerBalance: {
+          currentBalance: shopOwnerBalance.currentBalance,
+          totalCredits: shopOwnerBalance.totalCredits,
+          totalDebits: shopOwnerBalance.totalDebits
+        }
+      };
+      
       // Notify retailer about payment received
       const retailerClient = clients.get(order.retailerId);
       if (retailerClient && retailerClient.readyState === WebSocket.OPEN) {
-        retailerClient.send(JSON.stringify({
-          type: 'PAYMENT_RECEIVED_NOTIFICATION',
-          orderId: id,
-          orderNumber: `#${id.slice(-8)}`,
-          amount: order.totalAmount,
-          customerName: order.owner?.fullName || 'Customer',
-          deliveryBoyName: req.user.fullName,
-          storeName: order.store?.name || 'Store'
+        retailerClient.send(JSON.stringify(notificationData));
+      }
+      
+      // Notify shop owner about payment received and balance
+      const shopOwnerClient = clients.get(order.ownerId);
+      if (shopOwnerClient && shopOwnerClient.readyState === WebSocket.OPEN) {
+        shopOwnerClient.send(JSON.stringify({
+          ...notificationData,
+          type: 'PAYMENT_RECEIVED_SHOP_OWNER',
+          message: `Payment of ₹${order.totalAmount} received for Order ${notificationData.orderNumber}. Your current balance: ₹${shopOwnerBalance.currentBalance}`
         }));
       }
       
       res.json({ 
-        message: 'Payment received notification sent',
-        amount: order.totalAmount
+        message: 'Payment received notifications sent to retailer and shop owner',
+        amount: order.totalAmount,
+        shopOwnerBalance: shopOwnerBalance.currentBalance
       });
     } catch (error) {
       console.error('Payment received notification error:', error);

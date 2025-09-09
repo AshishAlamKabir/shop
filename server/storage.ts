@@ -936,7 +936,7 @@ export class DatabaseStorage implements IStorage {
       )
       .orderBy(desc(orders.createdAt));
     
-    // For each order, check if there are any approved payment change requests
+    // For each order, check if there are any approved payment change requests and get balance info
     const ordersWithApprovalStatus = await Promise.all(
       result.map(async (order) => {
         const [approvedRequest] = await db
@@ -954,9 +954,17 @@ export class DatabaseStorage implements IStorage {
           )
           .limit(1);
         
+        // Get shop owner balance information
+        const shopOwnerBalance = await this.getLedgerSummary(order.ownerId, order.retailerId);
+        
         return {
           ...order,
-          paymentChangeApproved: !!approvedRequest
+          paymentChangeApproved: !!approvedRequest,
+          shopOwnerBalance: {
+            currentBalance: shopOwnerBalance.currentBalance,
+            totalCredits: shopOwnerBalance.totalCredits,
+            totalDebits: shopOwnerBalance.totalDebits
+          }
         };
       })
     );
