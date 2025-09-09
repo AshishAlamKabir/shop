@@ -1158,8 +1158,8 @@ export default function ShopOwnerDashboard() {
           {activeSection === 'khatabook' && (
             <div>
               <div className="mb-6">
-                <h2 className="text-2xl font-bold text-foreground mb-2">Khatabook</h2>
-                <p className="text-muted-foreground">Track your transaction history and balance</p>
+                <h2 className="text-2xl font-bold text-foreground mb-2">Khatabook - Retailer Accounts</h2>
+                <p className="text-muted-foreground">Track account balances with each retailer</p>
               </div>
 
               {/* Overall Summary */}
