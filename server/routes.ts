@@ -1309,6 +1309,128 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get retailer balances for shop owners (shop owner perspective)
+  app.get('/api/khatabook/retailer-balances', authenticateToken, requireRole('SHOP_OWNER'), async (req: any, res) => {
+    try {
+      const orders = await storage.getOrdersByOwner(req.user.id);
+      
+      // Get unique retailers from orders
+      const retailerIds = Array.from(new Set(orders.map((order: any) => order.retailerId)));
+      
+      const balances = await Promise.all(
+        retailerIds.map(async (retailerId) => {
+          const summary = await storage.getLedgerSummary(req.user.id, retailerId);
+          const retailer = await storage.getUser(retailerId);
+          const entries = await storage.getLedgerEntries(req.user.id, { 
+            counterpartyId: retailerId,
+            limit: 10
+          });
+          
+          return {
+            retailerId,
+            retailerName: retailer?.fullName || 'Unknown',
+            retailerEmail: retailer?.email,
+            currentBalance: summary.currentBalance || 0,
+            totalCredits: summary.totalCredits || 0,
+            totalDebits: summary.totalDebits || 0,
+            recentEntries: entries.entries || []
+          };
+        })
+      );
+
+      // Calculate overall totals
+      const totalBalance = balances.reduce((sum, b) => sum + parseFloat(b.currentBalance.toString()), 0);
+      const totalCredits = balances.reduce((sum, b) => sum + parseFloat(b.totalCredits.toString()), 0);
+      const totalDebits = balances.reduce((sum, b) => sum + parseFloat(b.totalDebits.toString()), 0);
+
+      res.json({
+        retailerBalances: balances,
+        totals: {
+          currentBalance: totalBalance,
+          totalCredits: totalCredits,
+          totalDebits: totalDebits
+        }
+      });
+    } catch (error) {
+      console.error('Retailer balances error:', error);
+      res.status(500).json({ message: 'Failed to fetch retailer balances' });
+    }
+  });
+
+  // Get system-wide account totals (for admins)
+  app.get('/api/admin/account-totals', authenticateToken, requireRole('ADMIN'), async (req: any, res) => {
+    try {
+      // Get all users by role
+      const retailers = await storage.getUsersByRole('RETAILER');
+      const shopOwners = await storage.getUsersByRole('SHOP_OWNER');
+      
+      // Calculate retailer totals
+      const retailerTotals = await Promise.all(
+        retailers.map(async (retailer: any) => {
+          const summary = await storage.getLedgerSummary(retailer.id);
+          return {
+            id: retailer.id,
+            name: retailer.fullName,
+            email: retailer.email,
+            currentBalance: summary.currentBalance || 0,
+            totalCredits: summary.totalCredits || 0,
+            totalDebits: summary.totalDebits || 0
+          };
+        })
+      );
+      
+      // Calculate shop owner totals
+      const shopOwnerTotals = await Promise.all(
+        shopOwners.map(async (shopOwner: any) => {
+          const summary = await storage.getLedgerSummary(shopOwner.id);
+          return {
+            id: shopOwner.id,
+            name: shopOwner.fullName,
+            email: shopOwner.email,
+            currentBalance: summary.currentBalance || 0,
+            totalCredits: summary.totalCredits || 0,
+            totalDebits: summary.totalDebits || 0
+          };
+        })
+      );
+      
+      // Calculate grand totals
+      const retailerGrandTotal = {
+        currentBalance: retailerTotals.reduce((sum: number, r: any) => sum + parseFloat(r.currentBalance.toString()), 0),
+        totalCredits: retailerTotals.reduce((sum: number, r: any) => sum + parseFloat(r.totalCredits.toString()), 0),
+        totalDebits: retailerTotals.reduce((sum: number, r: any) => sum + parseFloat(r.totalDebits.toString()), 0),
+        count: retailerTotals.length
+      };
+      
+      const shopOwnerGrandTotal = {
+        currentBalance: shopOwnerTotals.reduce((sum: number, s: any) => sum + parseFloat(s.currentBalance.toString()), 0),
+        totalCredits: shopOwnerTotals.reduce((sum: number, s: any) => sum + parseFloat(s.totalCredits.toString()), 0),
+        totalDebits: shopOwnerTotals.reduce((sum: number, s: any) => sum + parseFloat(s.totalDebits.toString()), 0),
+        count: shopOwnerTotals.length
+      };
+
+      res.json({
+        retailerAccounts: {
+          accounts: retailerTotals,
+          totals: retailerGrandTotal
+        },
+        shopOwnerAccounts: {
+          accounts: shopOwnerTotals,
+          totals: shopOwnerGrandTotal
+        },
+        systemTotals: {
+          totalAccounts: retailerTotals.length + shopOwnerTotals.length,
+          netBalance: retailerGrandTotal.currentBalance + shopOwnerGrandTotal.currentBalance,
+          totalCredits: retailerGrandTotal.totalCredits + shopOwnerGrandTotal.totalCredits,
+          totalDebits: retailerGrandTotal.totalDebits + shopOwnerGrandTotal.totalDebits
+        }
+      });
+    } catch (error) {
+      console.error('Account totals error:', error);
+      res.status(500).json({ message: 'Failed to fetch account totals' });
+    }
+  });
+
   // Get outstanding balance between shop owner and retailer
   app.get('/api/outstanding-balance/:counterpartyId', authenticateToken, async (req: any, res) => {
     try {
