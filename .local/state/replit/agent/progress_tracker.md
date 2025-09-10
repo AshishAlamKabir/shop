@@ -3,4 +3,4 @@
 [x] 1. Install the required packages
 [x] 2. Restart the workflow to see if the project is working
 [x] 3. Verify the project is working using the feedback tool
-[x] 4. Migration completed successfully - application is running with working demo accounts
+[x] 4. Database created and seeded with demo accounts - migration completed successfully
