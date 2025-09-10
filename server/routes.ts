@@ -2382,42 +2382,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Get order details for ledger entries
           const order = await storage.getOrder(request.orderId);
           if (order) {
-            // Create initial khatabook entries for delivery assignment
-            const totalAmount = parseFloat(order.totalAmount);
-            
-            // Create ledger entry for shop owner (debit - they owe money)
-            await storage.addLedgerEntry({
-              userId: order.ownerId,
-              counterpartyId: order.retailerId,
-              orderId: request.orderId,
-              entryType: 'DEBIT',
-              transactionType: 'ORDER_DEBIT',
-              amount: totalAmount.toString(),
-              description: `Order #${request.orderId.slice(-8)} - Delivery accepted - Amount due: ₹${totalAmount}`,
-              referenceId: request.orderId,
-              metadata: JSON.stringify({ 
-                orderValue: totalAmount,
-                deliveryBoy: req.user.fullName,
-                status: 'DELIVERY_ACCEPTED'
-              })
-            });
-
-            // Create corresponding credit entry for retailer
-            await storage.addLedgerEntry({
-              userId: order.retailerId,
-              counterpartyId: order.ownerId,
-              orderId: request.orderId,
-              entryType: 'CREDIT',
-              transactionType: 'ORDER_PLACED',
-              amount: totalAmount.toString(),
-              description: `Order #${request.orderId.slice(-8)} - Delivery accepted - Amount receivable: ₹${totalAmount}`,
-              referenceId: request.orderId,
-              metadata: JSON.stringify({ 
-                orderValue: totalAmount,
-                deliveryBoy: req.user.fullName,
-                status: 'DELIVERY_ACCEPTED'
-              })
-            });
+            // Note: No khatabook entries needed here as they were already created when order was placed
 
             // Emit notification to retailer and shop owner about acceptance
             emitOrderEvent(request.orderId, order.ownerId, order.retailerId, 'deliveryBoyAccepted', {
