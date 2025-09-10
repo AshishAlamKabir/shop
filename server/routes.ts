@@ -1,4 +1,5 @@
 import type { Express } from "express";
+import express from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
@@ -6,8 +7,30 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { z } from "zod";
 import { insertUserSchema, insertStoreSchema, insertProductCatalogSchema, insertListingSchema, insertOrderSchema, insertDeliveryRequestSchema } from "@shared/schema";
+import multer from "multer";
+import sharp from "sharp";
+import { v4 as uuidv4 } from "uuid";
+import fs from "fs/promises";
+import path from "path";
 
 const JWT_SECRET = process.env.JWT_SECRET || "supersecret";
+
+// Multer configuration for profile photo uploads
+const storage_multer = multer.memoryStorage();
+const upload = multer({
+  storage: storage_multer,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png'];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only .jpg, .jpeg, and .png files are allowed!'));
+    }
+  }
+});
 
 // Middleware for authentication
 const authenticateToken = async (req: any, res: any, next: any) => {
@@ -172,13 +195,97 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ message: 'Logout successful' });
   });
 
+  // Serve static profile photos
+  app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+
+  // Profile photo upload endpoints
+  app.post('/api/profile/photo', authenticateToken, upload.single('photo'), async (req: any, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: 'No file uploaded' });
+      }
+
+      // Generate unique filename
+      const fileExtension = path.extname(req.file.originalname).toLowerCase();
+      const fileName = `${uuidv4()}${fileExtension}`;
+      const uploadPath = path.join(process.cwd(), 'uploads', 'profile-photos', fileName);
+
+      // Ensure directory exists
+      await fs.mkdir(path.dirname(uploadPath), { recursive: true });
+
+      // Compress and resize image using Sharp
+      const processedImage = await sharp(req.file.buffer)
+        .resize(400, 400, { fit: 'cover', position: 'center' })
+        .jpeg({ quality: 85 })
+        .toBuffer();
+
+      // Save the processed image
+      await fs.writeFile(uploadPath, processedImage);
+
+      // Update user's profile photo URL in database
+      const photoUrl = `/uploads/profile-photos/${fileName}`;
+      const updatedUser = await storage.updateUserProfilePhoto(req.user.id, photoUrl);
+
+      res.json({ 
+        message: 'Profile photo uploaded successfully',
+        profilePhoto: photoUrl,
+        user: {
+          id: updatedUser.id,
+          email: updatedUser.email,
+          fullName: updatedUser.fullName,
+          role: updatedUser.role,
+          profilePhoto: updatedUser.profilePhoto
+        }
+      });
+    } catch (error) {
+      console.error('Profile photo upload error:', error);
+      res.status(500).json({ message: 'Failed to upload profile photo' });
+    }
+  });
+
+  // Remove profile photo
+  app.delete('/api/profile/photo', authenticateToken, async (req: any, res) => {
+    try {
+      const user = req.user;
+      
+      // Delete old photo file if it exists
+      if (user.profilePhoto && user.profilePhoto.startsWith('/uploads/')) {
+        const oldPhotoPath = path.join(process.cwd(), user.profilePhoto);
+        try {
+          await fs.unlink(oldPhotoPath);
+        } catch (error) {
+          // File may not exist, continue
+          console.log('Could not delete old photo file:', error);
+        }
+      }
+
+      // Remove profile photo from database
+      const updatedUser = await storage.updateUserProfilePhoto(req.user.id, null);
+
+      res.json({ 
+        message: 'Profile photo removed successfully',
+        user: {
+          id: updatedUser.id,
+          email: updatedUser.email,
+          fullName: updatedUser.fullName,
+          role: updatedUser.role,
+          profilePhoto: updatedUser.profilePhoto
+        }
+      });
+    } catch (error) {
+      console.error('Profile photo removal error:', error);
+      res.status(500).json({ message: 'Failed to remove profile photo' });
+    }
+  });
+
   app.get('/api/auth/me', authenticateToken, async (req: any, res) => {
     res.json({
       user: {
         id: req.user.id,
         email: req.user.email,
         fullName: req.user.fullName,
-        role: req.user.role
+        role: req.user.role,
+        profilePhoto: req.user.profilePhoto
       }
     });
   });
