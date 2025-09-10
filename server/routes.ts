@@ -660,13 +660,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       // Add khatabook entries for the order
-      // Shop owner owes money for goods ordered (DEBIT)
+      // Shop owner gets product (CREDIT - they receive goods)
       await storage.addLedgerEntry({
         userId: req.user.id,
         counterpartyId: store.ownerId,
         orderId: order.id,
-        entryType: 'DEBIT',
-        transactionType: 'ORDER_DEBIT',
+        entryType: 'CREDIT',
+        transactionType: 'ORDER_CREDIT',
         amount: totalAmount.toString(),
         description: `Order #${order.id.slice(-8)} - ₹${totalAmount} for ${items.length} items`,
         referenceId: order.id,
@@ -677,13 +677,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })
       });
       
-      // Retailer is owed money for goods ordered (CREDIT)
+      // Retailer provides goods (DEBIT - they give products)
       await storage.addLedgerEntry({
         userId: store.ownerId,
         counterpartyId: req.user.id,
         orderId: order.id,
-        entryType: 'CREDIT',
-        transactionType: 'ORDER_CREDIT',
+        entryType: 'DEBIT',
+        transactionType: 'ORDER_DEBIT',
         amount: totalAmount.toString(),
         description: `Order #${order.id.slice(-8)} - ₹${totalAmount} for ${items.length} items`,
         referenceId: order.id,
@@ -1092,13 +1092,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Add ledger entries for actual payment received
       // Note: ORDER_DEBIT was already created when delivery was assigned
       
-      // Shop owner pays the actual amount received (reduces their debt)
+      // Shop owner makes payment (DEBIT - they pay money)
       await storage.addLedgerEntry({
         userId: order.ownerId,
         counterpartyId: order.retailerId,
         orderId: id,
-        entryType: 'CREDIT',
-        transactionType: 'PAYMENT_CREDIT',
+        entryType: 'DEBIT',
+        transactionType: 'PAYMENT_RECEIVED',
         amount: amount.toString(),
         description: `Payment made for Order #${id.slice(-8)} - Amount: ₹${amount}${isPartialPayment ? ` (Partial)` : ''}`,
         referenceId: id,
@@ -1110,13 +1110,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })
       });
       
-      // Retailer receives the actual amount paid (reduces amount owed to them)
+      // Retailer receives payment (CREDIT - they receive money)
       await storage.addLedgerEntry({
         userId: order.retailerId,
         counterpartyId: order.ownerId,
         orderId: id,
-        entryType: 'DEBIT',
-        transactionType: 'PAYMENT_CREDIT',
+        entryType: 'CREDIT',
+        transactionType: 'PAYMENT_RECEIVED',
         amount: amount.toString(),
         description: `Payment received for Order #${id.slice(-8)} - Amount: ₹${amount}${isPartialPayment ? ` (Partial)` : ''}`,
         referenceId: id,
@@ -1341,11 +1341,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: 'Retailer not found' });
       }
 
-      // Shop owner makes advance payment (CREDIT to their account with retailer)
+      // Shop owner makes advance payment (DEBIT - they pay money)
       await storage.addLedgerEntry({
         userId: req.user.id,
         counterpartyId: retailerId,
-        entryType: 'CREDIT',
+        entryType: 'DEBIT',
         transactionType: 'BALANCE_CLEAR_CREDIT',
         amount: paymentAmount.toString(),
         description: `Advance payment to ${retailer.fullName}. ${note || ''}`,
@@ -1356,11 +1356,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })
       });
 
-      // Retailer receives advance payment (DEBIT to their account with shop owner)
+      // Retailer receives advance payment (CREDIT - they receive money)
       await storage.addLedgerEntry({
         userId: retailerId,
         counterpartyId: req.user.id,
-        entryType: 'DEBIT',
+        entryType: 'CREDIT',
         transactionType: 'BALANCE_CLEAR_CREDIT',
         amount: paymentAmount.toString(),
         description: `Advance payment received from ${req.user.fullName}. ${note || ''}`,
