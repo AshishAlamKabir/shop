@@ -1007,7 +1007,7 @@ export default function ShopOwnerDashboard() {
                               </div>
                               <div className="text-center">
                                 <p className="font-medium text-foreground">
-                                  ₹{balance.totalCredits.toFixed(2)}
+                                  ₹{balance.totalCredits ? parseFloat(balance.totalCredits).toFixed(2) : '0.00'}
                                 </p>
                                 <p className="text-xs text-muted-foreground">Total Credits</p>
                               </div>
@@ -1163,11 +1163,11 @@ export default function ShopOwnerDashboard() {
                           <div className="grid grid-cols-2 gap-4 text-sm">
                             <div>
                               <p className="text-muted-foreground">Total Credits</p>
-                              <p className="font-medium text-green-600">₹{retailer.totalCredits.toFixed(2)}</p>
+                              <p className="font-medium text-green-600">₹{retailer.totalCredits ? parseFloat(retailer.totalCredits).toFixed(2) : '0.00'}</p>
                             </div>
                             <div>
                               <p className="text-muted-foreground">Total Debits</p>
-                              <p className="font-medium text-red-600">₹{retailer.totalDebits.toFixed(2)}</p>
+                              <p className="font-medium text-red-600">₹{retailer.totalDebits ? parseFloat(retailer.totalDebits).toFixed(2) : '0.00'}</p>
                             </div>
                           </div>
                         </CardContent>
