@@ -109,6 +109,7 @@ export interface IStorage {
   
   // Admin overview operations
   getAllUsers(): Promise<User[]>;
+  getAllProducts(): Promise<ProductCatalog[]>;
   getAllOrdersForAdmin(): Promise<any[]>;
   getSystemAnalytics(): Promise<any>;
 
@@ -1228,6 +1229,10 @@ export class DatabaseStorage implements IStorage {
   // Admin overview operations
   async getAllUsers(): Promise<User[]> {
     return await db.select().from(users).orderBy(desc(users.createdAt));
+  }
+
+  async getAllProducts(): Promise<ProductCatalog[]> {
+    return await db.select().from(productCatalog).orderBy(desc(productCatalog.createdAt));
   }
 
   async getAllOrdersForAdmin(): Promise<any[]> {

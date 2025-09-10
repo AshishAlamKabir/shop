@@ -5,6 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import ImageCropModal from "@/components/ImageCropModal";
 
 interface ProfilePhotoUploadProps {
   currentPhoto?: string | null;
@@ -20,6 +21,8 @@ export default function ProfilePhotoUpload({
   showUploadButton = true 
 }: ProfilePhotoUploadProps) {
   const [isUploading, setIsUploading] = useState(false);
+  const [showCropModal, setShowCropModal] = useState(false);
+  const [selectedImageSrc, setSelectedImageSrc] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -31,9 +34,9 @@ export default function ProfilePhotoUpload({
   };
 
   const uploadMutation = useMutation({
-    mutationFn: async (file: File) => {
+    mutationFn: async (fileOrBlob: File | Blob) => {
       const formData = new FormData();
-      formData.append('photo', file);
+      formData.append('photo', fileOrBlob, 'profile-photo.jpg');
       
       return await apiRequest('POST', '/api/profile/photo', formData, {
         headers: {
@@ -112,8 +115,30 @@ export default function ProfilePhotoUpload({
       return;
     }
 
+    // Create object URL for cropping
+    const reader = new FileReader();
+    reader.onload = () => {
+      setSelectedImageSrc(reader.result as string);
+      setShowCropModal(true);
+    };
+    reader.readAsDataURL(file);
+    
+    // Clear the file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleCropComplete = (croppedImageBlob: Blob) => {
     setIsUploading(true);
-    uploadMutation.mutate(file);
+    uploadMutation.mutate(croppedImageBlob);
+    setShowCropModal(false);
+    setSelectedImageSrc("");
+  };
+
+  const handleCropCancel = () => {
+    setShowCropModal(false);
+    setSelectedImageSrc("");
   };
 
   const handleUploadClick = () => {
@@ -213,6 +238,14 @@ export default function ProfilePhotoUpload({
         onChange={handleFileSelect}
         className="hidden"
         data-testid="input-file-upload"
+      />
+
+      {/* Image Crop Modal */}
+      <ImageCropModal
+        isOpen={showCropModal}
+        onClose={handleCropCancel}
+        imageSrc={selectedImageSrc}
+        onCropComplete={handleCropComplete}
       />
     </div>
   );
