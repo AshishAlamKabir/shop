@@ -1740,7 +1740,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           userId: order.ownerId, // shop owner
           counterpartyId: order.retailerId,
           orderId: changeRequest.orderId,
-          entryType: 'CREDIT',
+          entryType: 'DEBIT',
           transactionType: 'PAYMENT_RECEIVED',
           amount: changeRequest.requestedAmount,
           description: `Payment made for order #${changeRequest.orderId.slice(-8)} - ₹${changeRequest.requestedAmount}`,
