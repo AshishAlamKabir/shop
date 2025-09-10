@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
 import { ProfileSidebar } from "@/components/ui/profile-sidebar";
+import ProfilePhotoUpload from "@/components/ProfilePhotoUpload";
 import logoUrl from "../../assets/logo.png";
 
 interface HeaderProps {
@@ -49,11 +50,12 @@ export default function Header({ onMenuClick, onNavigationMenuClick }: HeaderPro
             className="flex items-center space-x-2"
             data-testid="button-profile"
           >
-            <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
-              <span className="text-sm font-medium text-primary-foreground">
-                {getUserInitials(user?.fullName || '')}
-              </span>
-            </div>
+            <ProfilePhotoUpload
+              currentPhoto={(user as any)?.profilePhoto}
+              userName={user?.fullName || "User"}
+              size="sm"
+              showUploadButton={false}
+            />
             <span className="font-medium text-foreground hidden sm:block">{user?.fullName}</span>
             <i className="fas fa-user text-sm text-muted-foreground"></i>
           </Button>

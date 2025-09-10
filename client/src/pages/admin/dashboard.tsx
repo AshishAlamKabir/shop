@@ -11,6 +11,7 @@ import AddProductModal from "@/components/modals/add-product-modal";
 import { NavigationSidebar, NavigationItem } from "@/components/ui/navigation-sidebar";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import ProfilePhotoUpload from "@/components/ProfilePhotoUpload";
 
 export default function AdminDashboard() {
   const [activeSection, setActiveSection] = useState('overview');
@@ -372,11 +373,12 @@ export default function AdminDashboard() {
                           <tr key={user.id} data-testid={`row-user-${user.id}`}>
                             <td className="px-6 py-4">
                               <div className="flex items-center space-x-3">
-                                <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
-                                  <span className="text-primary-foreground font-medium text-sm">
-                                    {user.fullName.split(' ').map((n: string) => n[0]).join('').toUpperCase()}
-                                  </span>
-                                </div>
+                                <ProfilePhotoUpload
+                                  currentPhoto={user.profilePhoto}
+                                  userName={user.fullName}
+                                  size="sm"
+                                  showUploadButton={false}
+                                />
                                 <div>
                                   <div className="font-medium text-foreground">{user.fullName}</div>
                                   <div className="text-sm text-muted-foreground">{user.email}</div>
