@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/use-auth";
 import EditProfileModal from "@/components/modals/edit-profile-modal";
 import ChangePasswordModal from "@/components/modals/change-password-modal";
 import SettingsModal from "@/components/modals/settings-modal";
+import ProfilePhotoUpload from "@/components/ProfilePhotoUpload";
 
 interface ProfileSidebarProps {
   isOpen: boolean;
@@ -63,11 +64,12 @@ export function ProfileSidebar({ isOpen, onClose }: ProfileSidebarProps) {
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center space-x-4">
-                <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center">
-                  <span className="text-xl font-bold text-primary-foreground">
-                    {getUserInitials(user?.fullName || '')}
-                  </span>
-                </div>
+                <ProfilePhotoUpload
+                  currentPhoto={(user as any)?.profilePhoto}
+                  userName={user?.fullName || "User"}
+                  size="md"
+                  showUploadButton={false}
+                />
                 <div className="flex-1">
                   <h3 className="text-lg font-semibold text-foreground">
                     {user?.fullName}

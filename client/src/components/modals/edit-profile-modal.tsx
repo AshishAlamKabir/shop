@@ -12,6 +12,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
+import ProfilePhotoUpload from "@/components/ProfilePhotoUpload";
 
 const editProfileSchema = z.object({
   fullName: z.string().min(1, "Full name is required"),
@@ -82,7 +83,17 @@ export default function EditProfileModal({ isOpen, onClose }: EditProfileModalPr
         </DialogHeader>
         
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+            {/* Profile Photo Upload */}
+            <div className="flex justify-center py-4">
+              <ProfilePhotoUpload
+                currentPhoto={(user as any)?.profilePhoto}
+                userName={user?.fullName || "User"}
+                size="lg"
+                showUploadButton={true}
+              />
+            </div>
+            
             <FormField
               control={form.control}
               name="fullName"
