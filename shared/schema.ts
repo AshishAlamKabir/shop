@@ -17,6 +17,7 @@ export const users = pgTable("users", {
   role: roleEnum("role").notNull(),
   fullName: text("full_name").notNull(),
   phone: text("phone"),
+  profilePhoto: text("profile_photo"), // URL to the uploaded profile photo
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
