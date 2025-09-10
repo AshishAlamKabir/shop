@@ -58,7 +58,7 @@ export default function ShopOwnerDashboard() {
   });
 
 
-  const { data: retailerBalances = [] } = useQuery({
+  const { data: retailerBalancesData } = useQuery({
     queryKey: ['/api/khatabook/retailer-balances'],
     queryFn: async () => {
       const response = await fetch('/api/khatabook/retailer-balances', {
@@ -108,6 +108,10 @@ export default function ShopOwnerDashboard() {
     },
     enabled: popularProducts.length > 0
   });
+
+  // Extract retailer balances array and totals from API response
+  const retailerBalances = retailerBalancesData?.retailerBalances || [];
+  const retailerBalancesTotals = retailerBalancesData?.totals || { currentBalance: 0, totalCredits: 0, totalDebits: 0 };
 
   const { data: ledgerSummary } = useQuery({
     queryKey: ['/api/khatabook/summary'],
