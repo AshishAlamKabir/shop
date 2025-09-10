@@ -1092,12 +1092,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Add ledger entries for actual payment received
       // Note: ORDER_DEBIT was already created when delivery was assigned
       
-      // Shop owner pays the actual amount received
+      // Shop owner pays the actual amount received (reduces their debt)
       await storage.addLedgerEntry({
         userId: order.ownerId,
         counterpartyId: order.retailerId,
         orderId: id,
-        entryType: 'DEBIT',
+        entryType: 'CREDIT',
         transactionType: 'PAYMENT_CREDIT',
         amount: amount.toString(),
         description: `Payment made for Order #${id.slice(-8)} - Amount: ₹${amount}${isPartialPayment ? ` (Partial)` : ''}`,
@@ -1110,12 +1110,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })
       });
       
-      // Retailer receives the actual amount paid
+      // Retailer receives the actual amount paid (reduces amount owed to them)
       await storage.addLedgerEntry({
         userId: order.retailerId,
         counterpartyId: order.ownerId,
         orderId: id,
-        entryType: 'CREDIT',
+        entryType: 'DEBIT',
         transactionType: 'PAYMENT_CREDIT',
         amount: amount.toString(),
         description: `Payment received for Order #${id.slice(-8)} - Amount: ₹${amount}${isPartialPayment ? ` (Partial)` : ''}`,
