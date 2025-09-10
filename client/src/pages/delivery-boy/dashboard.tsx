@@ -434,27 +434,65 @@ export default function DeliveryBoyDashboard() {
                           </div>
                         </div>
 
-                        {/* Shop Owner Balance Information */}
+                        {/* Order Items - Product Details */}
+                        <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
+                          <div className="flex items-center mb-2">
+                            <i className="fas fa-box text-green-600 mr-2"></i>
+                            <p className="text-sm font-medium text-green-800">Order Items</p>
+                          </div>
+                          <div className="space-y-2">
+                            {order.items && order.items.length > 0 ? (
+                              order.items.map((item: any, index: number) => (
+                                <div key={index} className="bg-white rounded p-2 border border-green-100">
+                                  <div className="flex justify-between items-start">
+                                    <div className="flex-1">
+                                      <p className="text-sm font-medium text-green-800">
+                                        {item.listing?.product?.name || 'Product Name'}
+                                      </p>
+                                      <p className="text-xs text-green-600">
+                                        {item.listing?.product?.brand || 'Brand'} • {item.listing?.product?.size || 'Size'}
+                                      </p>
+                                    </div>
+                                    <div className="text-right">
+                                      <p className="text-sm font-semibold text-green-800">
+                                        Qty: {item.quantity}
+                                      </p>
+                                      <p className="text-xs text-green-600">
+                                        ₹{item.price}
+                                      </p>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))
+                            ) : (
+                              <p className="text-sm text-green-600">Loading product details...</p>
+                            )}
+                          </div>
+                          <div className="text-xs text-green-600 mt-2">
+                            <i className="fas fa-info-circle mr-1"></i>
+                            Verify these items with the customer during delivery
+                          </div>
+                        </div>
+
+                        {/* Customer Information */}
                         <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
                           <div className="flex items-center mb-2">
-                            <i className="fas fa-wallet text-blue-600 mr-2"></i>
-                            <p className="text-sm font-medium text-blue-800">Customer Balance with Store</p>
+                            <i className="fas fa-user text-blue-600 mr-2"></i>
+                            <p className="text-sm font-medium text-blue-800">Customer Details</p>
                           </div>
-                          <div className="grid grid-cols-2 gap-4 text-sm">
-                            <div>
-                              <p className="text-blue-600 font-medium">Current Balance</p>
-                              <p className="text-blue-800 font-semibold">
-                                {order.shopOwnerBalance ? `₹${order.shopOwnerBalance.currentBalance || '0.00'}` : 'Loading...'}
-                              </p>
+                          <div className="space-y-1">
+                            <div className="flex justify-between">
+                              <span className="text-sm text-blue-600">Name:</span>
+                              <span className="text-sm font-medium text-blue-800">{order.owner?.fullName}</span>
                             </div>
-                            <div>
-                              <p className="text-blue-600 font-medium">Total Credits</p>
-                              <p className="text-blue-800">₹{order.shopOwnerBalance?.totalCredits || '0.00'}</p>
+                            <div className="flex justify-between">
+                              <span className="text-sm text-blue-600">Phone:</span>
+                              <span className="text-sm font-medium text-blue-800">{order.owner?.phone}</span>
                             </div>
-                          </div>
-                          <div className="text-xs text-blue-600 mt-2">
-                            <i className="fas fa-info-circle mr-1"></i>
-                            You can inform the customer about their current balance during delivery
+                            <div className="flex justify-between">
+                              <span className="text-sm text-blue-600">Store:</span>
+                              <span className="text-sm font-medium text-blue-800">{order.store?.name}</span>
+                            </div>
                           </div>
                         </div>
 

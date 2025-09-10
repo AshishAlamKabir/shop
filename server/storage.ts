@@ -899,46 +899,34 @@ export class DatabaseStorage implements IStorage {
 
   // Delivery boy order management
   async getOrdersForDeliveryBoy(deliveryBoyUserId: string): Promise<any[]> {
-    const result = await db
-      .select({
-        id: orders.id,
-        status: orders.status,
-        totalAmount: orders.totalAmount,
-        deliveryType: orders.deliveryType,
-        deliveryAt: orders.deliveryAt,
-        note: orders.note,
-        createdAt: orders.createdAt,
-        store: {
-          id: stores.id,
-          name: stores.name,
-          address: stores.address,
-          city: stores.city,
-          pincode: stores.pincode,
-        },
-        owner: {
-          id: users.id,
-          fullName: users.fullName,
-          phone: users.phone,
-        }
-      })
-      .from(orders)
-      .innerJoin(stores, eq(orders.storeId, stores.id))
-      .innerJoin(users, eq(orders.ownerId, users.id))
-      .where(
-        and(
-          eq(orders.assignedDeliveryBoyId, deliveryBoyUserId),
-          or(
-            eq(orders.status, 'ACCEPTED'),
-            eq(orders.status, 'READY'),
-            eq(orders.status, 'OUT_FOR_DELIVERY')
-          )
+    const ordersList = await db.query.orders.findMany({
+      where: and(
+        eq(orders.assignedDeliveryBoyId, deliveryBoyUserId),
+        or(
+          eq(orders.status, 'ACCEPTED'),
+          eq(orders.status, 'READY'),
+          eq(orders.status, 'OUT_FOR_DELIVERY')
         )
-      )
-      .orderBy(desc(orders.createdAt));
+      ),
+      with: {
+        store: true,
+        owner: true,
+        items: {
+          with: {
+            listing: {
+              with: {
+                product: true
+              }
+            }
+          }
+        }
+      },
+      orderBy: desc(orders.createdAt)
+    });
     
     // For each order, check if there are any approved payment change requests and get balance info
     const ordersWithApprovalStatus = await Promise.all(
-      result.map(async (order) => {
+      ordersList.map(async (order) => {
         const [approvedRequest] = await db
           .select({
             id: paymentChangeRequests.id,
