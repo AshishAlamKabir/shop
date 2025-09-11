@@ -186,8 +186,9 @@ export function BottomNavigation({ activeSection, onSectionChange }: BottomNavig
   }
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50">
-      <div className="flex items-center justify-around py-2 px-4">
+    <div className="fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50 shadow-lg">
+      {/* Safe area for iOS devices */}
+      <div className="flex items-center justify-around py-3 px-2" style={{ paddingBottom: 'env(safe-area-inset-bottom, 12px)' }}>
         {navigationItems.map((item) => {
           const IconComponent = item.icon;
           const isActive = isActiveItem(item.section);
@@ -195,23 +196,26 @@ export function BottomNavigation({ activeSection, onSectionChange }: BottomNavig
           return (
             <Button
               key={item.id}
-              variant={isActive ? "default" : "ghost"}
-              className="flex flex-col items-center justify-center h-16 w-16 p-2 relative"
+              variant="ghost"
+              className={`flex flex-col items-center justify-center min-h-[56px] min-w-[56px] p-2 relative rounded-xl transition-all duration-200 ${
+                isActive 
+                  ? 'bg-primary text-primary-foreground shadow-md' 
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+              }`}
               onClick={() => handleItemClick(item)}
               data-testid={`bottom-nav-${item.id}`}
               aria-label={item.label}
             >
-              <IconComponent className="h-5 w-5 mb-1" />
-              <span className="text-xs font-medium truncate w-full text-center">
+              <IconComponent className={`h-6 w-6 mb-1 ${isActive ? 'text-white' : ''}`} />
+              <span className={`text-xs font-medium truncate w-full text-center leading-tight ${
+                isActive ? 'text-white' : ''
+              }`}>
                 {item.label}
               </span>
               {item.badge && item.badge > 0 && (
-                <Badge 
-                  className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center bg-destructive text-destructive-foreground text-xs"
-                  variant="destructive"
-                >
+                <div className="absolute -top-1 -right-1 h-5 w-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold shadow-md">
                   {item.badge > 99 ? '99+' : item.badge}
-                </Badge>
+                </div>
               )}
             </Button>
           );

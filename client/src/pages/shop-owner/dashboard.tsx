@@ -9,9 +9,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import Header from "@/components/layout/header";
+import MobileHeader from "@/components/layout/mobile-header";
 import StoreCatalogModal from "@/components/modals/store-catalog-modal";
 import { NavigationSidebar, NavigationItem } from "@/components/ui/navigation-sidebar";
 import { BottomNavigation } from "@/components/ui/bottom-navigation";
+import { MobileCard, MobileProductCard } from "@/components/ui/mobile-card";
 import ToastNotifications from "@/components/toast-notifications";
 import { useCartStore } from "@/store/cart";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -306,11 +308,24 @@ export default function ShopOwnerDashboard() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header onNavigationMenuClick={() => setIsNavigationOpen(true)} />
+      {/* Desktop Header */}
+      <div className="desktop-only">
+        <Header onNavigationMenuClick={() => setIsNavigationOpen(true)} />
+      </div>
       
-      <div className="h-[calc(100vh-80px)]">
+      {/* Mobile Header */}
+      <div className="mobile-only">
+        <MobileHeader 
+          onMenuClick={() => setIsNavigationOpen(true)}
+          title="Shop Now"
+          showSearch={true}
+          showCart={true}
+        />
+      </div>
+      
+      <div className="h-[calc(100vh-80px)] mobile-scroll">
         {/* Main Content */}
-        <main className="flex-1 p-6 overflow-auto">
+        <main className="flex-1 mobile-spacing lg:p-6 overflow-auto">
           {/* Explore Stores Section */}
           {activeSection === 'explore' && (
             <div>
