@@ -5,6 +5,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/use-auth";
 import { useSocket } from "@/hooks/use-socket";
+import { NotificationProvider } from "@/hooks/use-notifications";
+import { BottomNavigation } from "@/components/ui/bottom-navigation";
 import Login from "@/pages/login";
 import AdminDashboard from "@/pages/admin/dashboard";
 import RetailerDashboard from "@/pages/retailer/dashboard";
@@ -33,20 +35,23 @@ function AppContent() {
   }
 
   return (
-    <Switch>
-      <Route path="/" component={() => {
-        if (user.role === 'ADMIN') return <AdminDashboard />;
-        if (user.role === 'RETAILER') return <RetailerDashboard />;
-        if (user.role === 'SHOP_OWNER') return <ShopOwnerDashboard />;
-        if (user.role === 'DELIVERY_BOY') return <DeliveryBoyDashboard />;
-        return <NotFound />;
-      }} />
-      <Route path="/admin/*" component={() => user.role === 'ADMIN' ? <AdminDashboard /> : <NotFound />} />
-      <Route path="/retailer/*" component={() => user.role === 'RETAILER' ? <RetailerDashboard /> : <NotFound />} />
-      <Route path="/shop/*" component={() => user.role === 'SHOP_OWNER' ? <ShopOwnerDashboard /> : <NotFound />} />
-      <Route path="/delivery/*" component={() => user.role === 'DELIVERY_BOY' ? <DeliveryBoyDashboard /> : <NotFound />} />
-      <Route component={NotFound} />
-    </Switch>
+    <div className="min-h-screen pb-20">
+      <Switch>
+        <Route path="/" component={() => {
+          if (user.role === 'ADMIN') return <AdminDashboard />;
+          if (user.role === 'RETAILER') return <RetailerDashboard />;
+          if (user.role === 'SHOP_OWNER') return <ShopOwnerDashboard />;
+          if (user.role === 'DELIVERY_BOY') return <DeliveryBoyDashboard />;
+          return <NotFound />;
+        }} />
+        <Route path="/admin/*" component={() => user.role === 'ADMIN' ? <AdminDashboard /> : <NotFound />} />
+        <Route path="/retailer/*" component={() => user.role === 'RETAILER' ? <RetailerDashboard /> : <NotFound />} />
+        <Route path="/shop/*" component={() => user.role === 'SHOP_OWNER' ? <ShopOwnerDashboard /> : <NotFound />} />
+        <Route path="/delivery/*" component={() => user.role === 'DELIVERY_BOY' ? <DeliveryBoyDashboard /> : <NotFound />} />
+        <Route component={NotFound} />
+      </Switch>
+      <BottomNavigation />
+    </div>
   );
 }
 
@@ -54,9 +59,11 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <AppContent />
-        <Toaster />
-        <ToastNotifications />
+        <NotificationProvider>
+          <AppContent />
+          <Toaster />
+          <ToastNotifications />
+        </NotificationProvider>
       </TooltipProvider>
     </QueryClientProvider>
   );

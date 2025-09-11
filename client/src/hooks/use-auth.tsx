@@ -14,10 +14,6 @@ export function useAuth() {
     enabled: !!token && !user,
     retry: false,
     staleTime: Infinity,
-    onError: () => {
-      // If getting current user fails, clear tokens
-      clearAuth();
-    },
   });
 
   // Update user in store when query resolves
