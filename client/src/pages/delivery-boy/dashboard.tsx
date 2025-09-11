@@ -517,8 +517,8 @@ export default function DeliveryBoyDashboard() {
                             Call Customer
                           </Button>
 
-                          {/* Edit Payment Amount Button - Available for ACCEPTED, READY, and OUT_FOR_DELIVERY */}
-                          {(order.status === 'ACCEPTED' || order.status === 'READY' || order.status === 'OUT_FOR_DELIVERY') && (
+                          {/* Edit Payment Amount Button - Only available after delivery has started (OUT_FOR_DELIVERY) */}
+                          {order.status === 'OUT_FOR_DELIVERY' && (
                             <Button 
                               onClick={() => openPaymentChangeModal(order)}
                               variant="outline"

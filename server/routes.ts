@@ -1196,44 +1196,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: eventMessage
       });
       
-      // Add ledger entries for actual payment received
-      // Note: ORDER_DEBIT was already created when delivery was assigned
-      
-      // Shop owner makes payment (DEBIT - they pay money)
-      await storage.addLedgerEntry({
-        userId: order.ownerId,
-        counterpartyId: order.retailerId,
-        orderId: id,
-        entryType: 'DEBIT',
-        transactionType: 'PAYMENT_RECEIVED',
-        amount: amount.toString(),
-        description: `Payment made for Order #${id.slice(-8)} - Amount: ₹${amount}${isPartialPayment ? ` (Partial)` : ''}`,
-        referenceId: id,
-        metadata: JSON.stringify({ 
-          paymentType: isPartialPayment ? 'partial' : 'full',
-          amountReceived: amount,
-          remainingBalance,
-          originalOrderAmount: totalAmount
-        })
-      });
-      
-      // Retailer receives payment (CREDIT - they receive money)
-      await storage.addLedgerEntry({
-        userId: order.retailerId,
-        counterpartyId: order.ownerId,
-        orderId: id,
-        entryType: 'CREDIT',
-        transactionType: 'PAYMENT_RECEIVED',
-        amount: amount.toString(),
-        description: `Payment received for Order #${id.slice(-8)} - Amount: ₹${amount}${isPartialPayment ? ` (Partial)` : ''}`,
-        referenceId: id,
-        metadata: JSON.stringify({ 
-          paymentType: isPartialPayment ? 'partial' : 'full',
-          amountReceived: amount,
-          remainingBalance,
-          originalOrderAmount: totalAmount
-        })
-      });
+      // Check if delivery is confirmed and finished before adding khatabook entries
+      // Only create PAYMENT_RECEIVED entries when order status is COMPLETED
+      if (order.status === 'COMPLETED') {
+        // Add ledger entries for actual payment received
+        // Note: ORDER_DEBIT was already created when delivery was assigned
+        
+        // Shop owner makes payment (DEBIT - they pay money)
+        await storage.addLedgerEntry({
+          userId: order.ownerId,
+          counterpartyId: order.retailerId,
+          orderId: id,
+          entryType: 'DEBIT',
+          transactionType: 'PAYMENT_RECEIVED',
+          amount: amount.toString(),
+          description: `Payment made for Order #${id.slice(-8)} - Amount: ₹${amount}${isPartialPayment ? ` (Partial)` : ''}`,
+          referenceId: id,
+          metadata: JSON.stringify({ 
+            paymentType: isPartialPayment ? 'partial' : 'full',
+            amountReceived: amount,
+            remainingBalance,
+            originalOrderAmount: totalAmount
+          })
+        });
+        
+        // Retailer receives payment (CREDIT - they receive money)
+        await storage.addLedgerEntry({
+          userId: order.retailerId,
+          counterpartyId: order.ownerId,
+          orderId: id,
+          entryType: 'CREDIT',
+          transactionType: 'PAYMENT_RECEIVED',
+          amount: amount.toString(),
+          description: `Payment received for Order #${id.slice(-8)} - Amount: ₹${amount}${isPartialPayment ? ` (Partial)` : ''}`,
+          referenceId: id,
+          metadata: JSON.stringify({ 
+            paymentType: isPartialPayment ? 'partial' : 'full',
+            amountReceived: amount,
+            remainingBalance,
+            originalOrderAmount: totalAmount
+          })
+        });
+      } else {
+        console.log(`Khatabook entries skipped for order ${id} - Delivery not completed (status: ${order.status})`);
+      }
       
       // Emit real-time notification
       emitOrderEvent(id, order.ownerId, order.retailerId, 'paymentReceived', {
@@ -2155,10 +2161,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         paymentReceivedBy: paymentRequest.deliveryBoyId
       });
 
-      // Update order status to completed
-      await storage.updateOrderStatus(paymentRequest.orderId, 'COMPLETED');
+      // Only complete order and create khatabook entries if delivery has started (OUT_FOR_DELIVERY)
+      // This ensures the proper workflow: start delivery → payment changes → delivery completion
+      if (order.status === 'OUT_FOR_DELIVERY') {
+        // Update order status to completed
+        await storage.updateOrderStatus(paymentRequest.orderId, 'COMPLETED');
 
-      // Create khatabook entries
+        // Create khatabook entries
       await storage.createKhatabookEntry({
         userId: order.ownerId, // shop owner
         counterpartyId: order.retailerId,
@@ -2188,6 +2197,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           paymentRequestId: requestId
         })
       });
+      } else {
+        console.log(`Order completion and khatabook entries skipped for order ${paymentRequest.orderId} - Delivery not started (status: ${order.status})`);
+        return res.status(400).json({ 
+          message: 'Order can only be completed after delivery has started',
+          currentStatus: order.status,
+          requiredStatus: 'OUT_FOR_DELIVERY'
+        });
+      }
 
       // Create order events
       await storage.createOrderEvent({

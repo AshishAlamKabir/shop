@@ -503,6 +503,25 @@ export class DatabaseStorage implements IStorage {
   }
 
   async addLedgerEntry(entry: InsertKhatabook): Promise<Khatabook> {
+    // Double-entry prevention: Check for existing identical entry to prevent duplicates
+    if (entry.orderId && entry.transactionType) {
+      const existingEntry = await db.select()
+        .from(khatabook)
+        .where(and(
+          eq(khatabook.userId, entry.userId),
+          eq(khatabook.orderId, entry.orderId),
+          eq(khatabook.transactionType, entry.transactionType),
+          eq(khatabook.entryType, entry.entryType),
+          eq(khatabook.amount, entry.amount)
+        ))
+        .limit(1);
+      
+      if (existingEntry.length > 0) {
+        console.log(`Duplicate khatabook entry prevented for user ${entry.userId}, order ${entry.orderId}, type ${entry.transactionType}`);
+        return existingEntry[0];
+      }
+    }
+    
     // Calculate running balance for the user (considering counterparty if provided)
     let balanceQuery = db.select({ balance: khatabook.balance })
       .from(khatabook)
@@ -537,6 +556,8 @@ export class DatabaseStorage implements IStorage {
       ...entry,
       balance: newBalance.toString()
     }).returning();
+    
+    console.log(`Khatabook entry created: ${entry.transactionType} for order ${entry.orderId}, user ${entry.userId}, amount ${entry.amount}`);
     return ledgerEntry;
   }
 
