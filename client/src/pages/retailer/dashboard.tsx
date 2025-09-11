@@ -13,6 +13,7 @@ import EnhancedKhatabook from "@/components/enhanced-khatabook";
 import AddFromCatalogModal from "@/components/modals/add-from-catalog-modal";
 import AddManualProductModal from "@/components/modals/add-manual-product-modal";
 import { NavigationSidebar, NavigationItem } from "@/components/ui/navigation-sidebar";
+import { BottomNavigation } from "@/components/ui/bottom-navigation";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
@@ -2014,6 +2015,12 @@ export default function RetailerDashboard() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Bottom Navigation */}
+      <BottomNavigation 
+        activeSection={activeSection}
+        onSectionChange={setActiveSection}
+      />
     </div>
   );
 }

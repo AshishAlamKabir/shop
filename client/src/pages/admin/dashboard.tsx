@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Header from "@/components/layout/header";
 import AddProductModal from "@/components/modals/add-product-modal";
 import { NavigationSidebar, NavigationItem } from "@/components/ui/navigation-sidebar";
+import { BottomNavigation } from "@/components/ui/bottom-navigation";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import ProfilePhotoUpload from "@/components/ProfilePhotoUpload";
@@ -908,6 +909,12 @@ export default function AdminDashboard() {
           testId="button-nav-analytics-navigation"
         />
       </NavigationSidebar>
+
+      {/* Bottom Navigation */}
+      <BottomNavigation 
+        activeSection={activeSection}
+        onSectionChange={setActiveSection}
+      />
     </div>
   );
 }

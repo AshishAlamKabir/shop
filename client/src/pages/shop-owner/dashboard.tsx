@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import Header from "@/components/layout/header";
 import StoreCatalogModal from "@/components/modals/store-catalog-modal";
 import { NavigationSidebar, NavigationItem } from "@/components/ui/navigation-sidebar";
+import { BottomNavigation } from "@/components/ui/bottom-navigation";
 import ToastNotifications from "@/components/toast-notifications";
 import { useCartStore } from "@/store/cart";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -1337,6 +1338,12 @@ export default function ShopOwnerDashboard() {
 
       {/* Toast Notifications for Payment Change Requests */}
       <ToastNotifications />
+
+      {/* Bottom Navigation */}
+      <BottomNavigation 
+        activeSection={activeSection}
+        onSectionChange={setActiveSection}
+      />
     </div>
   );
 }

@@ -6,7 +6,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/use-auth";
 import { useSocket } from "@/hooks/use-socket";
 import { NotificationProvider } from "@/hooks/use-notifications";
-import { BottomNavigation } from "@/components/ui/bottom-navigation";
 import Login from "@/pages/login";
 import AdminDashboard from "@/pages/admin/dashboard";
 import RetailerDashboard from "@/pages/retailer/dashboard";
@@ -50,7 +49,6 @@ function AppContent() {
         <Route path="/delivery/*" component={() => user.role === 'DELIVERY_BOY' ? <DeliveryBoyDashboard /> : <NotFound />} />
         <Route component={NotFound} />
       </Switch>
-      <BottomNavigation />
     </div>
   );
 }

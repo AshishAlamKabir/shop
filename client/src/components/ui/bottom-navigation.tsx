@@ -3,7 +3,6 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
 import { useNotifications } from "@/hooks/use-notifications";
 import { useCartStore } from "@/store/cart";
-import { useLocation } from "wouter";
 import { 
   ShoppingBag, 
   Book, 
@@ -26,29 +25,28 @@ interface BottomNavItem {
   id: string;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
-  path: string;
+  section: string;
   badge?: number;
 }
 
 interface BottomNavigationProps {
-  onNavigate?: (sectionId: string) => void;
+  activeSection?: string;
+  onSectionChange?: (section: string) => void;
 }
 
-export function BottomNavigation({ onNavigate }: BottomNavigationProps) {
+export function BottomNavigation({ activeSection, onSectionChange }: BottomNavigationProps) {
   const { user } = useAuth();
   const { notificationCount } = useNotifications();
   const { getItemCount } = useCartStore();
-  const [location, setLocation] = useLocation();
 
   const handleItemClick = (item: BottomNavItem) => {
-    setLocation(item.path);
-    if (onNavigate) {
-      onNavigate(item.id);
+    if (onSectionChange) {
+      onSectionChange(item.section);
     }
   };
 
-  const isActiveItem = (path: string) => {
-    return location === path || location.startsWith(path);
+  const isActiveItem = (section: string) => {
+    return activeSection === section;
   };
 
   const getNavigationItems = (): BottomNavItem[] => {
@@ -58,126 +56,126 @@ export function BottomNavigation({ onNavigate }: BottomNavigationProps) {
       case 'RETAILER':
         return [
           {
-            id: 'order',
+            id: 'orders',
             label: 'Orders',
             icon: ShoppingBag,
-            path: '/retailer/orders'
+            section: 'orders'
           },
           {
             id: 'khatabook',
             label: 'Khatabook',
             icon: Book,
-            path: '/retailer/khatabook'
+            section: 'khatabook'
           },
           {
-            id: 'delivery-boy',
+            id: 'delivery-boys',
             label: 'Delivery Boy',
             icon: Bike,
-            path: '/retailer/delivery-boy'
+            section: 'delivery-boys'
           },
           {
-            id: 'inventory',
+            id: 'listings',
             label: 'Inventory',
             icon: Package,
-            path: '/retailer/inventory'
+            section: 'listings'
           },
           {
-            id: 'my-store',
+            id: 'store',
             label: 'My Store',
             icon: Store,
-            path: '/retailer/my-store'
+            section: 'store'
           }
         ];
 
       case 'SHOP_OWNER':
         return [
           {
-            id: 'explore-stores',
+            id: 'explore',
             label: 'Explore',
             icon: Search,
-            path: '/shop/explore'
+            section: 'explore'
           },
           {
             id: 'cart',
             label: 'Cart',
             icon: ShoppingCart,
-            path: '/shop/cart',
+            section: 'cart',
             badge: getItemCount()
           },
           {
-            id: 'my-orders',
+            id: 'orders',
             label: 'My Orders',
             icon: Receipt,
-            path: '/shop/orders'
+            section: 'orders'
           },
           {
-            id: 'retailer-accounts',
+            id: 'retailers',
             label: 'Retailers',
             icon: Users,
-            path: '/shop/retailers'
+            section: 'retailers'
           },
           {
             id: 'khatabook',
             label: 'Khatabook',
             icon: Book,
-            path: '/shop/khatabook'
+            section: 'khatabook'
           }
         ];
 
       case 'DELIVERY_BOY':
         return [
           {
-            id: 'my-delivery',
-            label: 'My Delivery',
+            id: 'pending',
+            label: 'Pending',
             icon: Truck,
-            path: '/delivery/my-delivery'
+            section: 'pending'
+          },
+          {
+            id: 'orders',
+            label: 'Orders',
+            icon: Package,
+            section: 'orders'
           },
           {
             id: 'notifications',
             label: 'Notifications',
             icon: Bell,
-            path: '/delivery/notifications',
+            section: 'notifications',
             badge: notificationCount
-          },
-          {
-            id: 'profile',
-            label: 'Profile',
-            icon: User,
-            path: '/delivery/profile'
           }
         ];
 
       case 'ADMIN':
         return [
           {
-            id: 'dashboard',
-            label: 'Dashboard',
+            id: 'overview',
+            label: 'Overview',
             icon: BarChart3,
-            path: '/admin/dashboard'
+            section: 'overview'
           },
           {
             id: 'users',
             label: 'Users',
             icon: Users,
-            path: '/admin/users'
+            section: 'users'
           },
           {
-            id: 'products',
+            id: 'catalog',
             label: 'Products',
             icon: Box,
-            path: '/admin/products'
+            section: 'catalog'
           },
           {
-            id: 'reports',
-            label: 'Reports',
+            id: 'orders',
+            label: 'Orders',
+            icon: Receipt,
+            section: 'orders'
+          },
+          {
+            id: 'analytics',
+            label: 'Analytics',
             icon: TrendingUp,
-            path: '/admin/reports'
-          },
-          {
-            id: 'notifications',
-            label: 'Notifications',
-            icon: Bell,
-            path: '/admin/notifications',
+            section: 'analytics',
             badge: notificationCount
           }
         ];
@@ -198,7 +196,7 @@ export function BottomNavigation({ onNavigate }: BottomNavigationProps) {
       <div className="flex items-center justify-around py-2 px-4">
         {navigationItems.map((item) => {
           const IconComponent = item.icon;
-          const isActive = isActiveItem(item.path);
+          const isActive = isActiveItem(item.section);
           
           return (
             <Button
