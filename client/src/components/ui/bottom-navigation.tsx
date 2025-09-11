@@ -18,7 +18,8 @@ import {
   User, 
   BarChart3, 
   Box, 
-  TrendingUp 
+  TrendingUp,
+  Clock 
 } from "lucide-react";
 
 interface BottomNavItem {
@@ -127,21 +128,14 @@ export function BottomNavigation({ activeSection, onSectionChange }: BottomNavig
           {
             id: 'pending',
             label: 'Pending',
-            icon: Truck,
+            icon: Clock,
             section: 'pending'
           },
           {
             id: 'orders',
-            label: 'Orders',
-            icon: Package,
+            label: 'My Deliveries',
+            icon: Truck,
             section: 'orders'
-          },
-          {
-            id: 'notifications',
-            label: 'Notifications',
-            icon: Bell,
-            section: 'notifications',
-            badge: notificationCount
           }
         ];
 
