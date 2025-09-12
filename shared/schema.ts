@@ -68,7 +68,7 @@ export const listings = pgTable("listings", {
 export const orders = pgTable("orders", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   ownerId: varchar("owner_id").notNull(),
-  retailerId: varchar("retailer_id").notNull(),
+  wholesalerId: varchar("wholesaler_id").notNull(),
   storeId: varchar("store_id").notNull(),
   status: orderStatusEnum("status").default('PENDING'),
   totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).default("0"),
@@ -145,7 +145,7 @@ export const paymentAuditTrail = pgTable("payment_audit_trail", {
 
 export const deliveryRequests = pgTable("delivery_requests", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  retailerId: varchar("retailer_id").notNull(),
+  wholesalerId: varchar("wholesaler_id").notNull(),
   title: text("title").notNull(),
   description: text("description").notNull(),
   pickupAddress: text("pickup_address").notNull(),
@@ -175,10 +175,10 @@ export const paymentChangeRequests = pgTable("payment_change_requests", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Many-to-many relationship between retailers and delivery boys
-export const retailerDeliveryBoys = pgTable("retailer_delivery_boys", {
+// Many-to-many relationship between wholesalers and delivery boys
+export const wholesalerDeliveryBoys = pgTable("wholesaler_delivery_boys", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  retailerId: varchar("retailer_id").notNull(),
+  wholesalerId: varchar("wholesaler_id").notNull(),
   deliveryBoyId: varchar("delivery_boy_id").notNull(),
   addedAt: timestamp("added_at").defaultNow(),
   addedBy: varchar("added_by"), // user id who added this relationship
@@ -191,15 +191,15 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   store: one(stores, { fields: [users.id], references: [stores.ownerId] }),
   fcmTokens: many(fcmTokens),
   ordersAsOwner: many(orders, { relationName: "ownerOrders" }),
-  ordersAsRetailer: many(orders, { relationName: "retailerOrders" }),
+  ordersAsWholesaler: many(orders, { relationName: "wholesalerOrders" }),
   createdProducts: many(productCatalog),
   ledgerEntries: many(khatabook),
   deliveryRequests: many(deliveryRequests),
   acceptedDeliveryRequests: many(deliveryRequests, { relationName: "acceptedDeliveryRequests" }),
-  // Retailer relationships
-  linkedDeliveryBoys: many(retailerDeliveryBoys, { relationName: "retailerLinkedDeliveryBoys" }),
+  // Wholesaler relationships
+  linkedDeliveryBoys: many(wholesalerDeliveryBoys, { relationName: "wholesalerLinkedDeliveryBoys" }),
   // Delivery boy relationships  
-  linkedToRetailers: many(retailerDeliveryBoys, { relationName: "deliveryBoyLinkedToRetailers" }),
+  linkedToWholesalers: many(wholesalerDeliveryBoys, { relationName: "deliveryBoyLinkedToWholesalers" }),
 }));
 
 export const storesRelations = relations(stores, ({ one, many }) => ({
@@ -221,7 +221,7 @@ export const listingsRelations = relations(listings, ({ one, many }) => ({
 
 export const ordersRelations = relations(orders, ({ one, many }) => ({
   owner: one(users, { fields: [orders.ownerId], references: [users.id], relationName: "ownerOrders" }),
-  retailer: one(users, { fields: [orders.retailerId], references: [users.id], relationName: "retailerOrders" }),
+  wholesaler: one(users, { fields: [orders.wholesalerId], references: [users.id], relationName: "wholesalerOrders" }),
   store: one(stores, { fields: [orders.storeId], references: [stores.id] }),
   items: many(orderItems),
   timeline: many(orderEvents),
@@ -253,7 +253,7 @@ export const paymentAuditTrailRelations = relations(paymentAuditTrail, ({ one })
 
 
 export const deliveryRequestsRelations = relations(deliveryRequests, ({ one }) => ({
-  retailer: one(users, { fields: [deliveryRequests.retailerId], references: [users.id] }),
+  wholesaler: one(users, { fields: [deliveryRequests.wholesalerId], references: [users.id] }),
   acceptedBy: one(users, { fields: [deliveryRequests.acceptedBy], references: [users.id], relationName: "acceptedDeliveryRequests" }),
   order: one(orders, { fields: [deliveryRequests.orderId], references: [orders.id] }),
 }));
@@ -264,10 +264,10 @@ export const paymentChangeRequestsRelations = relations(paymentChangeRequests, (
   approver: one(users, { fields: [paymentChangeRequests.approvedBy], references: [users.id] }),
 }));
 
-export const retailerDeliveryBoysRelations = relations(retailerDeliveryBoys, ({ one }) => ({
-  retailer: one(users, { fields: [retailerDeliveryBoys.retailerId], references: [users.id] }),
-  deliveryBoy: one(users, { fields: [retailerDeliveryBoys.deliveryBoyId], references: [users.id] }),
-  addedByUser: one(users, { fields: [retailerDeliveryBoys.addedBy], references: [users.id] }),
+export const wholesalerDeliveryBoysRelations = relations(wholesalerDeliveryBoys, ({ one }) => ({
+  wholesaler: one(users, { fields: [wholesalerDeliveryBoys.wholesalerId], references: [users.id] }),
+  deliveryBoy: one(users, { fields: [wholesalerDeliveryBoys.deliveryBoyId], references: [users.id] }),
+  addedByUser: one(users, { fields: [wholesalerDeliveryBoys.addedBy], references: [users.id] }),
 }));
 
 // Insert schemas
@@ -343,7 +343,7 @@ export const insertPaymentChangeRequestSchema = createInsertSchema(paymentChange
   createdAt: true,
 });
 
-export const insertRetailerDeliveryBoySchema = createInsertSchema(retailerDeliveryBoys).omit({
+export const insertWholesalerDeliveryBoySchema = createInsertSchema(wholesalerDeliveryBoys).omit({
   id: true,
   addedAt: true,
 });
@@ -373,5 +373,5 @@ export type DeliveryRequest = typeof deliveryRequests.$inferSelect;
 export type InsertDeliveryRequest = z.infer<typeof insertDeliveryRequestSchema>;
 export type PaymentChangeRequest = typeof paymentChangeRequests.$inferSelect;
 export type InsertPaymentChangeRequest = z.infer<typeof insertPaymentChangeRequestSchema>;
-export type RetailerDeliveryBoy = typeof retailerDeliveryBoys.$inferSelect;
-export type InsertRetailerDeliveryBoy = z.infer<typeof insertRetailerDeliveryBoySchema>;
+export type WholesalerDeliveryBoy = typeof wholesalerDeliveryBoys.$inferSelect;
+export type InsertWholesalerDeliveryBoy = z.infer<typeof insertWholesalerDeliveryBoySchema>;

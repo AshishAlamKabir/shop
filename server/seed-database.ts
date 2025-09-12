@@ -61,7 +61,7 @@ async function clearExistingData() {
   await db.delete(schema.khatabook);
   await db.delete(schema.paymentAuditTrail);
   await db.delete(schema.fcmTokens);
-  await db.delete(schema.retailerDeliveryBoys);
+  await db.delete(schema.wholesalerDeliveryBoys);
   await db.delete(schema.listings);
   await db.delete(schema.productCatalog);
   await db.delete(schema.stores);
@@ -89,7 +89,7 @@ async function createUser(userData: {
   return user;
 }
 
-// Create store for a retailer
+// Create store for a wholesaler
 async function createStore(ownerId: string, storeName?: string) {
   const name = storeName || getRandomElement(storeNames);
   const [store] = await db.insert(schema.stores).values({
@@ -155,13 +155,13 @@ async function seedDatabase(config = SEED_CONFIG) {
       for (let i = 0; i < totalUsers - testUserCount; i++) {
         const firstName = getRandomElement(firstNames);
         const lastName = getRandomElement(lastNames);
-        let role: 'ADMIN' | 'RETAILER' | 'SHOP_OWNER' | 'DELIVERY_BOY';
+        let role: 'ADMIN' | 'WHOLESALER' | 'SHOP_OWNER' | 'DELIVERY_BOY';
         
         if (i < config.ADMIN_COUNT - (config.TEST_USERS.filter(u => u.role === 'ADMIN').length)) {
           role = 'ADMIN';
-        } else if (i < config.ADMIN_COUNT + config.RETAILER_COUNT - (config.TEST_USERS.filter(u => u.role === 'RETAILER').length)) {
+        } else if (i < config.ADMIN_COUNT + config.WHOLESALER_COUNT - (config.TEST_USERS.filter(u => u.role === 'WHOLESALER').length)) {
           role = 'WHOLESALER';
-        } else if (i < config.ADMIN_COUNT + config.RETAILER_COUNT + config.SHOP_OWNER_COUNT - (config.TEST_USERS.filter(u => u.role === 'SHOP_OWNER').length)) {
+        } else if (i < config.ADMIN_COUNT + config.WHOLESALER_COUNT + config.SHOP_OWNER_COUNT - (config.TEST_USERS.filter(u => u.role === 'SHOP_OWNER').length)) {
           role = 'SHOP_OWNER';
         } else {
           role = 'DELIVERY_BOY';

@@ -1,5 +1,5 @@
 import { 
-  users, stores, productCatalog, listings, orders, orderItems, orderEvents, fcmTokens, khatabook, paymentAuditTrail, deliveryRequests, paymentChangeRequests, retailerDeliveryBoys,
+  users, stores, productCatalog, listings, orders, orderItems, orderEvents, fcmTokens, khatabook, paymentAuditTrail, deliveryRequests, paymentChangeRequests, wholesalerDeliveryBoys,
   type User, type InsertUser, type Store, type InsertStore,
   type ProductCatalog, type InsertProductCatalog, type Listing, type InsertListing,
   type Order, type InsertOrder, type OrderItem, type InsertOrderItem,
@@ -7,7 +7,7 @@ import {
   type Khatabook, type InsertKhatabook, type PaymentAuditTrail, type InsertPaymentAuditTrail,
   type DeliveryRequest, type InsertDeliveryRequest,
   type PaymentChangeRequest, type InsertPaymentChangeRequest,
-  type RetailerDeliveryBoy, type InsertRetailerDeliveryBoy
+  type WholesalerDeliveryBoy, type InsertWholesalerDeliveryBoy
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, asc, like, or, sql } from "drizzle-orm";
