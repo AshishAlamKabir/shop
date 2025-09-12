@@ -109,7 +109,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Authentication routes
   app.post('/api/auth/register', async (req, res) => {
     try {
+      console.log('Registration attempt with data:', req.body);
       const userData = insertUserSchema.parse(req.body);
+      console.log('Validation passed, parsed data:', userData);
       
       // Check if user already exists
       const existingUser = await storage.getUserByEmail(userData.email);
@@ -127,7 +129,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.status(201).json({ message: 'User created successfully', userId: user.id });
     } catch (error) {
-      res.status(400).json({ message: 'Invalid input data' });
+      console.error('Registration error:', error);
+      if (error.issues) {
+        console.error('Validation issues:', error.issues);
+      }
+      res.status(400).json({ message: 'Invalid input data', details: error.message });
     }
   });
 
