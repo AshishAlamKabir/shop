@@ -9,6 +9,7 @@ export const deliveryTypeEnum = pgEnum('delivery_type', ['PICKUP', 'DELIVERY']);
 export const deliveryRequestStatusEnum = pgEnum('delivery_request_status', ['OPEN', 'ACCEPTED', 'REJECTED', 'COMPLETED']);
 export const ledgerEntryTypeEnum = pgEnum('ledger_entry_type', ['CREDIT', 'DEBIT']);
 export const ledgerTransactionTypeEnum = pgEnum('ledger_transaction_type', ['ORDER_PLACED', 'ORDER_DEBIT', 'ORDER_CREDIT', 'PAYMENT_RECEIVED', 'PAYMENT_CREDIT', 'BALANCE_CLEAR_CREDIT', 'PAYMENT_ADJUSTED', 'ADJUSTMENT', 'REFUND', 'COMMISSION']);
+export const storeCategoryEnum = pgEnum('store_category', ['GROCERY', 'ELECTRONICS', 'CLOTHING', 'PHARMACY', 'RESTAURANT', 'BAKERY', 'HARDWARE', 'BOOKS', 'AUTOMOTIVE', 'BEAUTY', 'SPORTS', 'HOME_GARDEN', 'JEWELRY', 'TOYS', 'STATIONERY', 'OTHER']);
 
 export const users = pgTable("users", {
   id: varchar("id").primaryKey(),
@@ -30,6 +31,7 @@ export const stores = pgTable("stores", {
   address: text("address"),
   city: text("city"),
   pincode: text("pincode"),
+  category: storeCategoryEnum("category"),
   logoUrl: text("logo_url"),
   isOpen: boolean("is_open").default(true),
   rating: decimal("rating", { precision: 3, scale: 2 }).default("0"),
