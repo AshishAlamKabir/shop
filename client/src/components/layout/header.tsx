@@ -62,15 +62,21 @@ export default function Header({ onMenuClick, onNavigationMenuClick }: HeaderPro
           
           {/* Navigation Menu Button */}
           {onNavigationMenuClick && (
-            <Button 
-              variant="ghost" 
-              size="sm" 
+            <button
               onClick={onNavigationMenuClick}
               data-testid="button-navigation-menu"
-              className="bg-[#fa0000]"
+              className="group relative w-10 h-10 flex flex-col justify-center items-center bg-black hover:bg-gray-800 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 active:scale-95 shadow-lg hover:shadow-xl"
             >
-              <i className="fas fa-bars"></i>
-            </Button>
+              <div className="w-6 h-0.5 bg-white rounded-full transition-all duration-300 ease-in-out transform group-hover:translate-y-0 group-active:rotate-45 group-active:translate-y-1.5"></div>
+              <div className="w-6 h-0.5 bg-white rounded-full mt-1.5 transition-all duration-300 ease-in-out transform group-hover:scale-110 group-active:opacity-0"></div>
+              <div className="w-6 h-0.5 bg-white rounded-full mt-1.5 transition-all duration-300 ease-in-out transform group-hover:translate-y-0 group-active:-rotate-45 group-active:-translate-y-1.5"></div>
+              
+              {/* Pulse effect on hover */}
+              <div className="absolute inset-0 bg-black rounded-lg opacity-0 group-hover:opacity-20 group-hover:animate-pulse transition-opacity duration-300"></div>
+              
+              {/* Ripple effect on click */}
+              <div className="absolute inset-0 bg-white rounded-lg opacity-0 group-active:opacity-10 group-active:animate-ping transition-opacity duration-150"></div>
+            </button>
           )}
         </div>
       </div>
