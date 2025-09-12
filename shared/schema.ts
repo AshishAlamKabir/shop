@@ -15,7 +15,7 @@ export const users = pgTable("users", {
   id: varchar("id").primaryKey(),
   email: text("email").notNull().unique(),
   passwordHash: text("password_hash").notNull(),
-  role: roleEnum("role").notNull(),
+  role: text("role").notNull(),
   fullName: text("full_name").notNull(),
   phone: text("phone"),
   profilePhoto: text("profile_photo"), // URL to the uploaded profile photo
