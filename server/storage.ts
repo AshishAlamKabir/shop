@@ -45,7 +45,7 @@ export interface IStorage {
   // Order operations
   createOrder(order: InsertOrder): Promise<Order>;
   getOrdersByOwner(ownerId: string): Promise<any[]>;
-  getOrdersByRetailer(retailerId: string): Promise<any[]>;
+  getOrdersByWholesaler(wholesalerId: string): Promise<any[]>;
   getOrder(id: string): Promise<any>;
   updateOrderStatus(id: string, status: string): Promise<Order>;
   assignOrderToDeliveryBoy(orderId: string, deliveryBoyId: string): Promise<Order>;
@@ -72,24 +72,23 @@ export interface IStorage {
   addLedgerEntry(entry: InsertKhatabook): Promise<Khatabook>;
   getLedgerEntries(userId: string, options?: { page?: number; limit?: number; type?: string; counterpartyId?: string }): Promise<any>;
   getLedgerSummary(userId: string, counterpartyId?: string): Promise<any>;
-  getOutstandingBalance(shopOwnerId: string, retailerId: string): Promise<number>;
+  getOutstandingBalance(shopOwnerId: string, wholesalerId: string): Promise<number>;
   
   // Enhanced payment operations
   recordPartialPayment(orderId: string, paymentData: any, auditData: InsertPaymentAuditTrail): Promise<Order>;
-  settleBalances(shopOwnerId: string, retailerId: string, settlementData: any): Promise<any>;
+  settleBalances(shopOwnerId: string, wholesalerId: string, settlementData: any): Promise<any>;
   
   // Audit trail operations
   addPaymentAudit(auditData: InsertPaymentAuditTrail): Promise<PaymentAuditTrail>;
   getPaymentAuditTrail(orderId: string): Promise<PaymentAuditTrail[]>;
   
-  // Delivery boy operations
-  createDeliveryBoy(deliveryBoy: InsertDeliveryBoy): Promise<DeliveryBoy>;
-  getDeliveryBoysByRetailer(retailerId: string): Promise<DeliveryBoy[]>;
-  getDeliveryBoy(id: string): Promise<DeliveryBoy | undefined>;
-  getDeliveryBoyByPhone(phone: string, retailerId?: string): Promise<DeliveryBoy | undefined>;
-  updateDeliveryBoy(id: string, deliveryBoy: Partial<InsertDeliveryBoy>): Promise<DeliveryBoy>;
+  // Delivery boy operations (using User type since delivery boys are users with DELIVERY_BOY role)
+  getDeliveryBoysByWholesaler(wholesalerId: string): Promise<User[]>;
+  getDeliveryBoy(id: string): Promise<User | undefined>;
+  getDeliveryBoyByPhone(phone: string, wholesalerId?: string): Promise<User | undefined>;
+  updateDeliveryBoy(id: string, deliveryBoy: Partial<InsertUser>): Promise<User>;
   deleteDeliveryBoy(id: string): Promise<void>;
-  searchDeliveryBoysByLocation(retailerId: string, locations: { pickupLocation?: string; deliveryLocation?: string }): Promise<DeliveryBoy[]>;
+  searchDeliveryBoysByLocation(wholesalerId: string, locations: { pickupLocation?: string; deliveryLocation?: string }): Promise<User[]>;
   
   // Delivery boy order management
   getOrdersForDeliveryBoy(deliveryBoyUserId: string): Promise<any[]>;
@@ -116,20 +115,20 @@ export interface IStorage {
   // Delivery request operations
   createDeliveryRequest(request: InsertDeliveryRequest): Promise<DeliveryRequest>;
   getDeliveryRequest(id: string): Promise<DeliveryRequest | undefined>;
-  getDeliveryRequestsByRetailer(retailerId: string): Promise<DeliveryRequest[]>;
+  getDeliveryRequestsByWholesaler(wholesalerId: string): Promise<DeliveryRequest[]>;
   getOpenDeliveryRequests(): Promise<DeliveryRequest[]>;
   getAcceptedDeliveryRequestsByDeliveryBoy(deliveryBoyId: string): Promise<DeliveryRequest[]>;
   acceptDeliveryRequest(id: string, deliveryBoyId: string): Promise<DeliveryRequest>;
   rejectDeliveryRequest(id: string): Promise<DeliveryRequest>;
   completeDeliveryRequest(id: string, notes?: string): Promise<DeliveryRequest>;
 
-  // Retailer-Delivery Boy relationship operations
-  addDeliveryBoyToRetailer(retailerId: string, deliveryBoyId: string, addedBy: string, notes?: string): Promise<RetailerDeliveryBoy>;
-  removeDeliveryBoyFromRetailer(retailerId: string, deliveryBoyId: string): Promise<void>;
-  isDeliveryBoyLinkedToRetailer(retailerId: string, deliveryBoyId: string): Promise<boolean>;
-  getLinkedDeliveryBoys(retailerId: string): Promise<any[]>;
-  getLinkedRetailers(deliveryBoyId: string): Promise<any[]>;
-  getRetailerDeliveryBoyRelationship(retailerId: string, deliveryBoyId: string): Promise<RetailerDeliveryBoy | undefined>;
+  // Wholesaler-Delivery Boy relationship operations
+  addDeliveryBoyToWholesaler(wholesalerId: string, deliveryBoyId: string, addedBy: string, notes?: string): Promise<WholesalerDeliveryBoy>;
+  removeDeliveryBoyFromWholesaler(wholesalerId: string, deliveryBoyId: string): Promise<void>;
+  isDeliveryBoyLinkedToWholesaler(wholesalerId: string, deliveryBoyId: string): Promise<boolean>;
+  getLinkedDeliveryBoys(wholesalerId: string): Promise<any[]>;
+  getLinkedWholesalers(deliveryBoyId: string): Promise<any[]>;
+  getWholesalerDeliveryBoyRelationship(wholesalerId: string, deliveryBoyId: string): Promise<WholesalerDeliveryBoy | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -334,7 +333,7 @@ export class DatabaseStorage implements IStorage {
       where: eq(orders.ownerId, ownerId),
       with: {
         store: true,
-        retailer: true,
+        wholesaler: true,
         items: {
           with: {
             listing: {
@@ -350,9 +349,9 @@ export class DatabaseStorage implements IStorage {
     });
   }
 
-  async getOrdersByRetailer(retailerId: string): Promise<any[]> {
+  async getOrdersByWholesaler(wholesalerId: string): Promise<any[]> {
     return await db.query.orders.findMany({
-      where: eq(orders.retailerId, retailerId),
+      where: eq(orders.wholesalerId, wholesalerId),
       with: {
         owner: true,
         store: true,
@@ -376,7 +375,7 @@ export class DatabaseStorage implements IStorage {
       where: eq(orders.id, id),
       with: {
         owner: true,
-        retailer: true,
+        wholesaler: true,
         store: true,
         items: {
           with: {
@@ -660,12 +659,12 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
-  async getOutstandingBalance(shopOwnerId: string, retailerId: string): Promise<number> {
+  async getOutstandingBalance(shopOwnerId: string, wholesalerId: string): Promise<number> {
     const lastEntry = await db.select({ balance: khatabook.balance })
       .from(khatabook)
       .where(and(
         eq(khatabook.userId, shopOwnerId),
-        eq(khatabook.counterpartyId, retailerId)
+        eq(khatabook.counterpartyId, wholesalerId)
       ))
       .orderBy(desc(khatabook.createdAt))
       .limit(1);
@@ -706,7 +705,7 @@ export class DatabaseStorage implements IStorage {
     return updatedOrder;
   }
 
-  async settleBalances(shopOwnerId: string, retailerId: string, settlementData: any): Promise<any> {
+  async settleBalances(shopOwnerId: string, wholesalerId: string, settlementData: any): Promise<any> {
     const { currentOrderPayment, outstandingBalancePayment, totalPayment, orderId, note } = settlementData;
     
     // Create ledger entries for the settlement
@@ -716,7 +715,7 @@ export class DatabaseStorage implements IStorage {
       // Payment for current order
       entries.push(await this.addLedgerEntry({
         userId: shopOwnerId,
-        counterpartyId: retailerId,
+        counterpartyId: wholesalerId,
         orderId: orderId,
         entryType: 'DEBIT',
         transactionType: 'PAYMENT_RECEIVED',
@@ -727,7 +726,7 @@ export class DatabaseStorage implements IStorage {
       }));
       
       entries.push(await this.addLedgerEntry({
-        userId: retailerId,
+        userId: wholesalerId,
         counterpartyId: shopOwnerId,
         orderId: orderId,
         entryType: 'CREDIT',
@@ -743,7 +742,7 @@ export class DatabaseStorage implements IStorage {
       // Payment for outstanding balance
       entries.push(await this.addLedgerEntry({
         userId: shopOwnerId,
-        counterpartyId: retailerId,
+        counterpartyId: wholesalerId,
         entryType: 'DEBIT',
         transactionType: 'BALANCE_CLEAR_CREDIT',
         amount: outstandingBalancePayment.toString(),
@@ -753,7 +752,7 @@ export class DatabaseStorage implements IStorage {
       }));
       
       entries.push(await this.addLedgerEntry({
-        userId: retailerId,
+        userId: wholesalerId,
         counterpartyId: shopOwnerId,
         entryType: 'CREDIT',
         transactionType: 'BALANCE_CLEAR_CREDIT',
@@ -778,7 +777,7 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(paymentAuditTrail.createdAt));
   }
 
-  async getDeliveryBoysByRetailer(retailerId: string): Promise<User[]> {
+  async getDeliveryBoysByWholesaler(wholesalerId: string): Promise<User[]> {
     // Return all delivery boy users - since delivery boys are now just users with DELIVERY_BOY role
     return await db.select().from(users)
       .where(eq(users.role, 'DELIVERY_BOY'))
@@ -809,7 +808,7 @@ export class DatabaseStorage implements IStorage {
     return deliveryBoy || undefined;
   }
 
-  async findDeliveryBoyById(retailerId: string, deliveryBoyId: string): Promise<{ user: User; alreadyAdded: boolean } | undefined> {
+  async findDeliveryBoyById(wholesalerId: string, deliveryBoyId: string): Promise<{ user: User; alreadyAdded: boolean } | undefined> {
     // Search for delivery boy user directly by ID
     const [deliveryBoyUser] = await db.select().from(users)
       .where(
@@ -824,7 +823,7 @@ export class DatabaseStorage implements IStorage {
     }
     
     // Check if this delivery boy is already linked to the retailer
-    const alreadyAdded = await this.isDeliveryBoyLinkedToRetailer(retailerId, deliveryBoyId);
+    const alreadyAdded = await this.isDeliveryBoyLinkedToWholesaler(wholesalerId, deliveryBoyId);
     
     return {
       user: deliveryBoyUser,
@@ -833,9 +832,9 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Retailer-Delivery Boy relationship operations
-  async addDeliveryBoyToRetailer(retailerId: string, deliveryBoyId: string, addedBy: string, notes?: string): Promise<RetailerDeliveryBoy> {
-    const [relationship] = await db.insert(retailerDeliveryBoys).values({
-      retailerId,
+  async addDeliveryBoyToWholesaler(wholesalerId: string, deliveryBoyId: string, addedBy: string, notes?: string): Promise<WholesalerDeliveryBoy> {
+    const [relationship] = await db.insert(wholesalerDeliveryBoys).values({
+      wholesalerId,
       deliveryBoyId,
       addedBy,
       notes,
@@ -844,23 +843,23 @@ export class DatabaseStorage implements IStorage {
     return relationship;
   }
 
-  async removeDeliveryBoyFromRetailer(retailerId: string, deliveryBoyId: string): Promise<void> {
-    await db.delete(retailerDeliveryBoys)
+  async removeDeliveryBoyFromWholesaler(wholesalerId: string, deliveryBoyId: string): Promise<void> {
+    await db.delete(wholesalerDeliveryBoys)
       .where(
         and(
-          eq(retailerDeliveryBoys.retailerId, retailerId),
-          eq(retailerDeliveryBoys.deliveryBoyId, deliveryBoyId)
+          eq(wholesalerDeliveryBoys.wholesalerId, retailerId),
+          eq(wholesalerDeliveryBoys.deliveryBoyId, deliveryBoyId)
         )
       );
   }
 
-  async isDeliveryBoyLinkedToRetailer(retailerId: string, deliveryBoyId: string): Promise<boolean> {
-    const [relationship] = await db.select().from(retailerDeliveryBoys)
+  async isDeliveryBoyLinkedToWholesaler(wholesalerId: string, deliveryBoyId: string): Promise<boolean> {
+    const [relationship] = await db.select().from(wholesalerDeliveryBoys)
       .where(
         and(
-          eq(retailerDeliveryBoys.retailerId, retailerId),
-          eq(retailerDeliveryBoys.deliveryBoyId, deliveryBoyId),
-          eq(retailerDeliveryBoys.status, 'ACTIVE')
+          eq(wholesalerDeliveryBoys.wholesalerId, retailerId),
+          eq(wholesalerDeliveryBoys.deliveryBoyId, deliveryBoyId),
+          eq(wholesalerDeliveryBoys.status, 'ACTIVE')
         )
       );
     return !!relationship;
@@ -874,24 +873,24 @@ export class DatabaseStorage implements IStorage {
         fullName: users.fullName,
         phone: users.phone,
         role: users.role,
-        linkedAt: retailerDeliveryBoys.addedAt,
-        notes: retailerDeliveryBoys.notes,
-        relationshipId: retailerDeliveryBoys.id
+        linkedAt: wholesalerDeliveryBoys.addedAt,
+        notes: wholesalerDeliveryBoys.notes,
+        relationshipId: wholesalerDeliveryBoys.id
       })
-      .from(retailerDeliveryBoys)
-      .innerJoin(users, eq(retailerDeliveryBoys.deliveryBoyId, users.id))
+      .from(wholesalerDeliveryBoys)
+      .innerJoin(users, eq(wholesalerDeliveryBoys.deliveryBoyId, users.id))
       .where(
         and(
-          eq(retailerDeliveryBoys.retailerId, retailerId),
-          eq(retailerDeliveryBoys.status, 'ACTIVE')
+          eq(wholesalerDeliveryBoys.wholesalerId, retailerId),
+          eq(wholesalerDeliveryBoys.status, 'ACTIVE')
         )
       )
-      .orderBy(desc(retailerDeliveryBoys.addedAt));
+      .orderBy(desc(wholesalerDeliveryBoys.addedAt));
     
     return result;
   }
 
-  async getLinkedRetailers(deliveryBoyId: string): Promise<any[]> {
+  async getLinkedWholesalers(deliveryBoyId: string): Promise<any[]> {
     const result = await db
       .select({
         id: users.id,
@@ -899,29 +898,29 @@ export class DatabaseStorage implements IStorage {
         fullName: users.fullName,
         phone: users.phone,
         role: users.role,
-        linkedAt: retailerDeliveryBoys.addedAt,
-        notes: retailerDeliveryBoys.notes,
-        relationshipId: retailerDeliveryBoys.id
+        linkedAt: wholesalerDeliveryBoys.addedAt,
+        notes: wholesalerDeliveryBoys.notes,
+        relationshipId: wholesalerDeliveryBoys.id
       })
-      .from(retailerDeliveryBoys)
-      .innerJoin(users, eq(retailerDeliveryBoys.retailerId, users.id))
+      .from(wholesalerDeliveryBoys)
+      .innerJoin(users, eq(wholesalerDeliveryBoys.wholesalerId, users.id))
       .where(
         and(
-          eq(retailerDeliveryBoys.deliveryBoyId, deliveryBoyId),
-          eq(retailerDeliveryBoys.status, 'ACTIVE')
+          eq(wholesalerDeliveryBoys.deliveryBoyId, deliveryBoyId),
+          eq(wholesalerDeliveryBoys.status, 'ACTIVE')
         )
       )
-      .orderBy(desc(retailerDeliveryBoys.addedAt));
+      .orderBy(desc(wholesalerDeliveryBoys.addedAt));
     
     return result;
   }
 
-  async getRetailerDeliveryBoyRelationship(retailerId: string, deliveryBoyId: string): Promise<RetailerDeliveryBoy | undefined> {
-    const [relationship] = await db.select().from(retailerDeliveryBoys)
+  async getWholesalerDeliveryBoyRelationship(retailerId: string, deliveryBoyId: string): Promise<WholesalerDeliveryBoy | undefined> {
+    const [relationship] = await db.select().from(wholesalerDeliveryBoys)
       .where(
         and(
-          eq(retailerDeliveryBoys.retailerId, retailerId),
-          eq(retailerDeliveryBoys.deliveryBoyId, deliveryBoyId)
+          eq(wholesalerDeliveryBoys.wholesalerId, retailerId),
+          eq(wholesalerDeliveryBoys.deliveryBoyId, deliveryBoyId)
         )
       );
     return relationship || undefined;
@@ -975,7 +974,7 @@ export class DatabaseStorage implements IStorage {
           .limit(1);
         
         // Get shop owner balance information
-        const shopOwnerBalance = await this.getLedgerSummary(order.ownerId, order.retailerId);
+        const shopOwnerBalance = await this.getLedgerSummary(order.ownerId, order.wholesalerId);
         
         return {
           ...order,
@@ -1007,7 +1006,7 @@ export class DatabaseStorage implements IStorage {
         isPartialPayment: orders.isPartialPayment,
         createdAt: orders.createdAt,
         ownerId: orders.ownerId,
-        retailerId: orders.retailerId,
+        wholesalerId: orders.wholesalerId,
         store: {
           id: stores.id,
           name: stores.name,
@@ -1056,7 +1055,7 @@ export class DatabaseStorage implements IStorage {
         order: {
           id: orders.id,
           ownerId: orders.ownerId,
-          retailerId: orders.retailerId,
+          wholesalerId: orders.wholesalerId,
           status: orders.status,
         }
       })
@@ -1191,7 +1190,7 @@ export class DatabaseStorage implements IStorage {
         orderCount: sql<number>`COUNT(${orders.id})`.as('orderCount')
       })
       .from(stores)
-      .leftJoin(orders, eq(stores.id, orders.retailerId))
+      .leftJoin(orders, eq(stores.id, orders.wholesalerId))
       .groupBy(stores.id, stores.name, stores.city, stores.pincode, stores.isOpen)
       .orderBy(sql`COUNT(${orders.id}) DESC`, sql`AVG(CAST(${stores.rating} AS DECIMAL)) DESC`)
       .limit(limit);
@@ -1238,7 +1237,7 @@ export class DatabaseStorage implements IStorage {
           END), 0)`.as('totalDebits')
       })
       .from(stores)
-      .leftJoin(orders, eq(stores.id, orders.retailerId))
+      .leftJoin(orders, eq(stores.id, orders.wholesalerId))
       .leftJoin(khatabook, eq(orders.id, khatabook.orderId))
       .where(eq(orders.ownerId, shopOwnerId))
       .groupBy(stores.id, stores.name)
@@ -1260,7 +1259,7 @@ export class DatabaseStorage implements IStorage {
     return await db.query.orders.findMany({
       with: {
         owner: true,
-        retailer: true,
+        wholesaler: true,
         store: true,
         items: {
           with: {
@@ -1316,9 +1315,9 @@ export class DatabaseStorage implements IStorage {
     return request || undefined;
   }
 
-  async getDeliveryRequestsByRetailer(retailerId: string): Promise<DeliveryRequest[]> {
+  async getDeliveryRequestsByWholesaler(wholesalerId: string): Promise<DeliveryRequest[]> {
     return await db.select().from(deliveryRequests)
-      .where(eq(deliveryRequests.retailerId, retailerId))
+      .where(eq(deliveryRequests.wholesalerId, wholesalerId))
       .orderBy(desc(deliveryRequests.createdAt));
   }
 
@@ -1372,6 +1371,39 @@ export class DatabaseStorage implements IStorage {
       .where(eq(deliveryRequests.id, id))
       .returning();
     return request;
+  }
+
+  // Missing delivery boy operations
+  async getDeliveryBoy(id: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(and(
+      eq(users.id, id),
+      eq(users.role, 'DELIVERY_BOY')
+    ));
+    return user || undefined;
+  }
+
+  async getDeliveryBoyByPhone(phone: string, wholesalerId?: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(and(
+      eq(users.phone, phone),
+      eq(users.role, 'DELIVERY_BOY')
+    ));
+    return user || undefined;
+  }
+
+  async updateDeliveryBoy(id: string, deliveryBoy: Partial<InsertUser>): Promise<User> {
+    const [user] = await db.update(users).set(deliveryBoy).where(eq(users.id, id)).returning();
+    return user;
+  }
+
+  async deleteDeliveryBoy(id: string): Promise<void> {
+    await db.delete(users).where(eq(users.id, id));
+  }
+
+  async searchDeliveryBoysByLocation(wholesalerId: string, locations: { pickupLocation?: string; deliveryLocation?: string }): Promise<User[]> {
+    // Return all delivery boys linked to the wholesaler for now
+    // Could be enhanced with location-based filtering
+    const linkedDeliveryBoys = await this.getLinkedDeliveryBoys(wholesalerId);
+    return linkedDeliveryBoys;
   }
 }
 

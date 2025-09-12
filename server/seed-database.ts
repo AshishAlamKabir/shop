@@ -182,11 +182,11 @@ async function seedDatabase(config = SEED_CONFIG) {
     const wholesalerUsers = users.filter(u => u.role === 'WHOLESALER');
     const shopOwnerUsers = users.filter(u => u.role === 'SHOP_OWNER');
 
-    // 2. Create Stores (one per retailer - retailers manage stores)
+    // 2. Create Stores (one per wholesaler - wholesalers manage stores)
     console.log('Creating stores...');
     const stores = [];
-    for (let i = 0; i < retailerUsers.length; i++) {
-      const owner = retailerUsers[i];
+    for (let i = 0; i < wholesalerUsers.length; i++) {
+      const owner = wholesalerUsers[i];
       const [store] = await db.insert(schema.stores).values({
         ownerId: owner.id,
         name: `${getRandomElement(storeNames)} ${i + 1}`,
@@ -250,7 +250,7 @@ async function seedDatabase(config = SEED_CONFIG) {
       const isPartialPayment = Math.random() > 0.7;
       const [order] = await db.insert(schema.orders).values({
         ownerId: store.ownerId,
-        retailerId: retailer.id,
+        wholesalerId: wholesaler.id,
         storeId: store.id,
         status: getRandomElement(['PENDING', 'ACCEPTED', 'REJECTED', 'READY', 'OUT_FOR_DELIVERY', 'COMPLETED', 'CANCELLED']),
         totalAmount,
@@ -365,7 +365,7 @@ async function seedDatabase(config = SEED_CONFIG) {
       const retailer = getRandomElement(retailerUsers);
       const deliveryBoy = getRandomElement(deliveryBoyUsers);
       const [relationship] = await db.insert(schema.retailerDeliveryBoys).values({
-        retailerId: retailer.id,
+        wholesalerId: wholesaler.id,
         deliveryBoyId: deliveryBoy.id,
         addedBy: retailer.id,
         status: 'ACTIVE',
