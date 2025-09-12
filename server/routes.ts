@@ -476,7 +476,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (existingStore) {
         // Update existing store
-        const updateData = req.body;
+        const updateData = insertStoreSchema.omit({ ownerId: true }).partial().parse(req.body);
         const store = await storage.updateStore(existingStore.id, updateData);
         res.json(store);
       } else {
