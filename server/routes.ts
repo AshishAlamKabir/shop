@@ -858,7 +858,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/orders/:id/accept', authenticateToken, requireRole('RETAILER'), async (req: any, res) => {
+  app.post('/api/orders/:id/accept', authenticateToken, requireRole('WHOLESALER'), async (req: any, res) => {
     try {
       const { id } = req.params;
       const { deliveryAt } = req.body;
@@ -891,7 +891,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/orders/:id/reject', authenticateToken, requireRole('RETAILER'), async (req: any, res) => {
+  app.post('/api/orders/:id/reject', authenticateToken, requireRole('WHOLESALER'), async (req: any, res) => {
     try {
       const { id } = req.params;
       const { reason } = req.body;
@@ -924,7 +924,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/orders/:id/status', authenticateToken, requireRole('RETAILER'), async (req: any, res) => {
+  app.post('/api/orders/:id/status', authenticateToken, requireRole('WHOLESALER'), async (req: any, res) => {
     try {
       const { id } = req.params;
       const { status } = req.body;
@@ -964,7 +964,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Withdraw/remove delivery boy assignment
-  app.post('/api/orders/:id/withdraw-delivery-assignment', authenticateToken, requireRole('RETAILER'), async (req: any, res) => {
+  app.post('/api/orders/:id/withdraw-delivery-assignment', authenticateToken, requireRole('WHOLESALER'), async (req: any, res) => {
     try {
       const { id } = req.params;
       
@@ -1020,7 +1020,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Request delivery boy assignment (creates delivery request for acceptance)
-  app.post('/api/orders/:id/assign-delivery-boy', authenticateToken, requireRole('RETAILER'), async (req: any, res) => {
+  app.post('/api/orders/:id/assign-delivery-boy', authenticateToken, requireRole('WHOLESALER'), async (req: any, res) => {
     try {
       const { id } = req.params;
       const { deliveryBoyId } = req.body;

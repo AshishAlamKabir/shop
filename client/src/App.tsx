@@ -8,7 +8,7 @@ import { useSocket } from "@/hooks/use-socket";
 import { NotificationProvider } from "@/hooks/use-notifications";
 import Login from "@/pages/login";
 import AdminDashboard from "@/pages/admin/dashboard";
-import RetailerDashboard from "@/pages/retailer/dashboard";
+import WholesalerDashboard from "@/pages/wholesaler/dashboard";
 import ShopOwnerDashboard from "@/pages/shop-owner/dashboard";
 import DeliveryBoyDashboard from "@/pages/delivery-boy/dashboard";
 import NotFound from "@/pages/not-found";
@@ -40,13 +40,13 @@ function AppContent() {
         <Switch>
           <Route path="/" component={() => {
             if (user.role === 'ADMIN') return <AdminDashboard />;
-            if (user.role === 'RETAILER') return <RetailerDashboard />;
+            if (user.role === 'WHOLESALER') return <WholesalerDashboard />;
             if (user.role === 'SHOP_OWNER') return <ShopOwnerDashboard />;
             if (user.role === 'DELIVERY_BOY') return <DeliveryBoyDashboard />;
             return <NotFound />;
           }} />
           <Route path="/admin/*" component={() => user.role === 'ADMIN' ? <AdminDashboard /> : <NotFound />} />
-          <Route path="/retailer/*" component={() => user.role === 'RETAILER' ? <RetailerDashboard /> : <NotFound />} />
+          <Route path="/wholesaler/*" component={() => user.role === 'WHOLESALER' ? <WholesalerDashboard /> : <NotFound />} />
           <Route path="/shop/*" component={() => user.role === 'SHOP_OWNER' ? <ShopOwnerDashboard /> : <NotFound />} />
           <Route path="/delivery/*" component={() => user.role === 'DELIVERY_BOY' ? <DeliveryBoyDashboard /> : <NotFound />} />
           <Route component={NotFound} />

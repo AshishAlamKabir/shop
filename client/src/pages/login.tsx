@@ -12,7 +12,7 @@ import logoUrl from "../assets/logo.png";
 
 const demoAccounts = [
   { email: 'admin@test.com', role: 'Admin', icon: 'fas fa-user-shield' },
-  { email: 'retailer@test.com', role: 'Retailer', icon: 'fas fa-store' },
+  { email: 'wholesaler@test.com', role: 'Wholesaler', icon: 'fas fa-store' },
   { email: 'shop@test.com', role: 'Shop Owner', icon: 'fas fa-shopping-cart' },
   { email: 'delivery@test.com', role: 'Delivery Boy', icon: 'fas fa-truck' }
 ];

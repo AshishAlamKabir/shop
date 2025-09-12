@@ -54,7 +54,7 @@ export function BottomNavigation({ activeSection, onSectionChange }: BottomNavig
     if (!user) return [];
 
     switch (user.role) {
-      case 'RETAILER':
+      case 'WHOLESALER':
         return [
           {
             id: 'orders',

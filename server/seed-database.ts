@@ -7,7 +7,7 @@ import { nanoid } from 'nanoid';
 const SEED_CONFIG = {
   // User counts by role
   ADMIN_COUNT: 10,
-  RETAILER_COUNT: 20,
+  WHOLESALER_COUNT: 20,
   SHOP_OWNER_COUNT: 20,
   DELIVERY_BOY_COUNT: 15,
   
@@ -26,7 +26,7 @@ const SEED_CONFIG = {
   // Test credentials (easily modifiable for future requirements)
   TEST_USERS: [
     { email: 'admin@test.com', password: 'admin123', role: 'ADMIN' as const, fullName: 'Test Admin' },
-    { email: 'retailer@test.com', password: 'retailer123', role: 'RETAILER' as const, fullName: 'Test Retailer' },
+    { email: 'wholesaler@test.com', password: 'wholesaler123', role: 'WHOLESALER' as const, fullName: 'Test Wholesaler' },
     { email: 'shop@test.com', password: 'shop123', role: 'SHOP_OWNER' as const, fullName: 'Test Shop Owner' },
     { email: 'delivery@test.com', password: 'delivery123', role: 'DELIVERY_BOY' as const, fullName: 'Test Delivery Boy' },
   ]
@@ -73,7 +73,7 @@ async function clearExistingData() {
 async function createUser(userData: {
   email: string;
   password: string;
-  role: 'ADMIN' | 'RETAILER' | 'SHOP_OWNER' | 'DELIVERY_BOY';
+  role: 'ADMIN' | 'WHOLESALER' | 'SHOP_OWNER' | 'DELIVERY_BOY';
   fullName: string;
   phone?: string;
 }) {
@@ -149,7 +149,7 @@ async function seedDatabase(config = SEED_CONFIG) {
 
     // Create additional users based on configuration
     if (config.SEED_REALISTIC_DATA) {
-      const totalUsers = config.ADMIN_COUNT + config.RETAILER_COUNT + config.SHOP_OWNER_COUNT + config.DELIVERY_BOY_COUNT;
+      const totalUsers = config.ADMIN_COUNT + config.WHOLESALER_COUNT + config.SHOP_OWNER_COUNT + config.DELIVERY_BOY_COUNT;
       const testUserCount = config.CREATE_TEST_USERS ? config.TEST_USERS.length : 0;
       
       for (let i = 0; i < totalUsers - testUserCount; i++) {
@@ -160,7 +160,7 @@ async function seedDatabase(config = SEED_CONFIG) {
         if (i < config.ADMIN_COUNT - (config.TEST_USERS.filter(u => u.role === 'ADMIN').length)) {
           role = 'ADMIN';
         } else if (i < config.ADMIN_COUNT + config.RETAILER_COUNT - (config.TEST_USERS.filter(u => u.role === 'RETAILER').length)) {
-          role = 'RETAILER';
+          role = 'WHOLESALER';
         } else if (i < config.ADMIN_COUNT + config.RETAILER_COUNT + config.SHOP_OWNER_COUNT - (config.TEST_USERS.filter(u => u.role === 'SHOP_OWNER').length)) {
           role = 'SHOP_OWNER';
         } else {
@@ -179,7 +179,7 @@ async function seedDatabase(config = SEED_CONFIG) {
     console.log(`✅ Created ${users.length} users`);
 
     const adminUsers = users.filter(u => u.role === 'ADMIN');
-    const retailerUsers = users.filter(u => u.role === 'RETAILER');
+    const wholesalerUsers = users.filter(u => u.role === 'WHOLESALER');
     const shopOwnerUsers = users.filter(u => u.role === 'SHOP_OWNER');
 
     // 2. Create Stores (one per retailer - retailers manage stores)
