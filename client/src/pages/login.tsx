@@ -77,15 +77,12 @@ export default function Login() {
     setIsRegistering(true);
     
     try {
-      await apiRequest('/api/auth/register', {
-        method: 'POST',
-        body: JSON.stringify({
-          email: regEmail,
-          phone: regPhone || null,
-          passwordHash: regPassword,
-          fullName: regFullName,
-          role: regRole
-        })
+      await apiRequest('POST', '/api/auth/register', {
+        email: regEmail,
+        phone: regPhone || null,
+        passwordHash: regPassword,
+        fullName: regFullName,
+        role: regRole
       });
       
       toast({
