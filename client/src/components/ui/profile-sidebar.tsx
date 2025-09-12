@@ -52,14 +52,15 @@ export function ProfileSidebar({ isOpen, onClose }: ProfileSidebarProps) {
     <Sheet open={isOpen} onOpenChange={onClose}>
       <SheetContent 
         side="left" 
-        className="w-80 p-0"
+        className="w-80 p-0 flex flex-col h-full"
         data-testid="profile-sidebar"
       >
-        <SheetHeader className="p-6 border-b">
+        <SheetHeader className="p-6 border-b flex-shrink-0">
           <SheetTitle className="text-left">Profile</SheetTitle>
         </SheetHeader>
         
-        <div className="p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto">
+          <div className="p-6 space-y-6">
           {/* Profile Header */}
           <Card>
             <CardContent className="p-6">
@@ -159,6 +160,7 @@ export function ProfileSidebar({ isOpen, onClose }: ProfileSidebarProps) {
               Sign Out
             </Button>
           </div>
+        </div>
         </div>
       </SheetContent>
       
