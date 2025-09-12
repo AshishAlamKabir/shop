@@ -443,8 +443,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Retailer access to global catalog for adding products
-  app.get('/api/retailer/catalog', authenticateToken, requireRole('RETAILER'), async (req: any, res) => {
+  // Wholesaler access to global catalog for adding products
+  app.get('/api/wholesaler/catalog', authenticateToken, requireRole('WHOLESALER'), async (req: any, res) => {
     try {
       const { search, page = 1, limit = 50 } = req.query;
       const products = await storage.getProducts({ search, page: parseInt(page), limit: parseInt(limit) });
@@ -454,8 +454,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Allow retailers to create products in the global catalog
-  app.post('/api/retailer/catalog', authenticateToken, requireRole('RETAILER'), async (req: any, res) => {
+  // Allow wholesalers to create products in the global catalog
+  app.post('/api/wholesaler/catalog', authenticateToken, requireRole('WHOLESALER'), async (req: any, res) => {
     try {
       const productData = insertProductCatalogSchema.parse({
         ...req.body,
@@ -469,8 +469,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Retailer routes - Store management
-  app.post('/api/retailer/store', authenticateToken, requireRole('RETAILER'), async (req: any, res) => {
+  // Wholesaler routes - Store management
+  app.post('/api/wholesaler/store', authenticateToken, requireRole('WHOLESALER'), async (req: any, res) => {
     try {
       const existingStore = await storage.getStoreByOwnerId(req.user.id);
       
@@ -493,7 +493,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/retailer/store/me', authenticateToken, requireRole('RETAILER'), async (req: any, res) => {
+  app.get('/api/wholesaler/store/me', authenticateToken, requireRole('WHOLESALER'), async (req: any, res) => {
     try {
       const store = await storage.getStoreByOwnerId(req.user.id);
       res.json(store);
@@ -502,8 +502,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Retailer routes - Listings
-  app.post('/api/retailer/listings', authenticateToken, requireRole('RETAILER'), async (req: any, res) => {
+  // Wholesaler routes - Listings
+  app.post('/api/wholesaler/listings', authenticateToken, requireRole('WHOLESALER'), async (req: any, res) => {
     try {
       const store = await storage.getStoreByOwnerId(req.user.id);
       if (!store) {
@@ -527,7 +527,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/retailer/listings', authenticateToken, requireRole('RETAILER'), async (req: any, res) => {
+  app.get('/api/wholesaler/listings', authenticateToken, requireRole('WHOLESALER'), async (req: any, res) => {
     try {
       const store = await storage.getStoreByOwnerId(req.user.id);
       if (!store) {
@@ -545,7 +545,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/retailer/listings/:id', authenticateToken, requireRole('RETAILER'), async (req: any, res) => {
+  app.put('/api/wholesaler/listings/:id', authenticateToken, requireRole('WHOLESALER'), async (req: any, res) => {
     try {
       const { id } = req.params;
       const updateData = req.body;
@@ -557,7 +557,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Delivery Boy routes for retailers - Updated to use users table
-  app.get('/api/retailer/delivery-boys', authenticateToken, requireRole('RETAILER'), async (req: any, res) => {
+  app.get('/api/wholesaler/delivery-boys', authenticateToken, requireRole('WHOLESALER'), async (req: any, res) => {
     try {
       const deliveryBoys = await storage.getLinkedDeliveryBoys(req.user.id);
       res.json(deliveryBoys);
@@ -567,7 +567,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Search delivery boys by ID route - Updated to use users table (MUST come before :id route)
-  app.get('/api/retailer/delivery-boys/search-by-id', authenticateToken, requireRole('RETAILER'), async (req: any, res) => {
+  app.get('/api/wholesaler/delivery-boys/search-by-id', authenticateToken, requireRole('WHOLESALER'), async (req: any, res) => {
     try {
       const { deliveryBoyId } = req.query;
       
@@ -596,7 +596,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/retailer/delivery-boys/:id', authenticateToken, requireRole('RETAILER'), async (req: any, res) => {
+  app.get('/api/wholesaler/delivery-boys/:id', authenticateToken, requireRole('WHOLESALER'), async (req: any, res) => {
     try {
       const { id } = req.params;
       const deliveryBoy = await storage.getDeliveryBoy(id);
@@ -612,7 +612,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Add delivery boy to retailer
-  app.post('/api/retailer/delivery-boys', authenticateToken, requireRole('RETAILER'), async (req: any, res) => {
+  app.post('/api/wholesaler/delivery-boys', authenticateToken, requireRole('WHOLESALER'), async (req: any, res) => {
     try {
       const { deliveryBoyId, notes } = req.body;
       
@@ -652,7 +652,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Remove delivery boy from retailer
-  app.delete('/api/retailer/delivery-boys/:deliveryBoyId', authenticateToken, requireRole('RETAILER'), async (req: any, res) => {
+  app.delete('/api/wholesaler/delivery-boys/:deliveryBoyId', authenticateToken, requireRole('WHOLESALER'), async (req: any, res) => {
     try {
       const { deliveryBoyId } = req.params;
       
@@ -849,7 +849,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Retailer order management
-  app.get('/api/retailer/orders', authenticateToken, requireRole('RETAILER'), async (req: any, res) => {
+  app.get('/api/wholesaler/orders', authenticateToken, requireRole('WHOLESALER'), async (req: any, res) => {
     try {
       const orders = await storage.getOrdersByRetailer(req.user.id);
       res.json(orders);
@@ -1379,7 +1379,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get individual shop owner balances for retailers
-  app.get('/api/retailer/shop-owner-balances', authenticateToken, requireRole('RETAILER'), async (req: any, res) => {
+  app.get('/api/wholesaler/shop-owner-balances', authenticateToken, requireRole('WHOLESALER'), async (req: any, res) => {
     try {
       const orders = await storage.getOrdersByRetailer(req.user.id);
       
