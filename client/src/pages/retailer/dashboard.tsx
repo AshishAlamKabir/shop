@@ -39,7 +39,8 @@ export default function RetailerDashboard() {
     city: '',
     pincode: '',
     phone: '',
-    description: ''
+    description: '',
+    category: ''
   });
   const [editingListing, setEditingListing] = useState<any>(null);
   const [editListingForm, setEditListingForm] = useState({
@@ -394,6 +395,21 @@ export default function RetailerDashboard() {
     (order.status === 'ACCEPTED' || order.status === 'READY') && !order.assignedDeliveryBoyId
   );
 
+  // Helper function to format category names for display
+  const getCategoryDisplay = (category: string) => {
+    if (!category) return '';
+    return category.split('_').map(word => 
+      word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+    ).join(' ');
+  };
+
+  // Store categories for the dropdown
+  const storeCategories = [
+    'GROCERY', 'ELECTRONICS', 'CLOTHING', 'PHARMACY', 'RESTAURANT', 
+    'BAKERY', 'HARDWARE', 'BOOKS', 'AUTOMOTIVE', 'BEAUTY', 
+    'SPORTS', 'HOME_GARDEN', 'JEWELRY', 'TOYS', 'STATIONERY', 'OTHER'
+  ];
+
   const handleEditListing = (listing: any) => {
     setEditingListing(listing);
     setEditListingForm({
@@ -458,7 +474,8 @@ export default function RetailerDashboard() {
                                   city: '',
                                   pincode: '',
                                   phone: '',
-                                  description: ''
+                                  description: '',
+                                  category: ''
                                 });
                               }}
                               data-testid="button-cancel-store-edit"
@@ -481,7 +498,8 @@ export default function RetailerDashboard() {
                                   city: store?.city || '',
                                   pincode: store?.pincode || '',
                                   phone: store?.phone || '',
-                                  description: store?.description || ''
+                                  description: store?.description || '',
+                                  category: store?.category || ''
                                 });
                                 setEditingStore(true);
                               }
@@ -545,6 +563,30 @@ export default function RetailerDashboard() {
                             placeholder="Enter phone number"
                             data-testid="input-store-phone"
                           />
+                        </div>
+                        <div>
+                          <Label className="text-sm font-medium text-foreground">Category</Label>
+                          {editingStore ? (
+                            <Select 
+                              value={storeFormData.category} 
+                              onValueChange={(value) => setStoreFormData(prev => ({ ...prev, category: value }))}
+                            >
+                              <SelectTrigger className="mt-2" data-testid="select-store-category">
+                                <SelectValue placeholder="Select store category" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {storeCategories.map((category) => (
+                                  <SelectItem key={category} value={category}>
+                                    {getCategoryDisplay(category)}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <div className="mt-2 p-2 bg-muted rounded-md text-sm text-muted-foreground">
+                              {store?.category ? getCategoryDisplay(store.category) : 'No category selected'}
+                            </div>
+                          )}
                         </div>
                         <div className="md:col-span-2">
                           <Label className="text-sm font-medium text-foreground">Address</Label>
