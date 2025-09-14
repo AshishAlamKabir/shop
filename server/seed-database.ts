@@ -245,7 +245,7 @@ async function seedDatabase(config = SEED_CONFIG) {
     const orders = [];
     for (let i = 0; i < 50; i++) {
       const store = getRandomElement(stores);
-      const retailer = getRandomElement(retailerUsers);
+      const wholesaler = getRandomElement(wholesalerUsers);
       const totalAmount = getRandomDecimal(100, 5000);
       const isPartialPayment = Math.random() > 0.7;
       const [order] = await db.insert(schema.orders).values({
@@ -319,7 +319,7 @@ async function seedDatabase(config = SEED_CONFIG) {
     console.log('Creating khatabook entries...');
     const khatabookEntries = [];
     for (let i = 0; i < 100; i++) {
-      const user = getRandomElement([...retailerUsers, ...shopOwnerUsers]);
+      const user = getRandomElement([...wholesalerUsers, ...shopOwnerUsers]);
       const counterparty = getRandomElement(users.filter(u => u.id !== user.id));
       const amount = getRandomDecimal(100, 10000);
       const [entry] = await db.insert(schema.khatabook).values({
@@ -361,13 +361,13 @@ async function seedDatabase(config = SEED_CONFIG) {
     console.log('Creating retailer-delivery boy relationships...');
     const deliveryBoyRelationships = [];
     const deliveryBoyUsers = users.filter(u => u.role === 'DELIVERY_BOY');
-    for (let i = 0; i < Math.min(50, retailerUsers.length * 2); i++) {
-      const retailer = getRandomElement(retailerUsers);
+    for (let i = 0; i < Math.min(50, wholesalerUsers.length * 2); i++) {
+      const wholesaler = getRandomElement(wholesalerUsers);
       const deliveryBoy = getRandomElement(deliveryBoyUsers);
-      const [relationship] = await db.insert(schema.retailerDeliveryBoys).values({
+      const [relationship] = await db.insert(schema.wholesalerDeliveryBoys).values({
         wholesalerId: wholesaler.id,
         deliveryBoyId: deliveryBoy.id,
-        addedBy: retailer.id,
+        addedBy: wholesaler.id,
         status: 'ACTIVE',
         notes: `Delivery boy ${i + 1} assigned to retailer`,
       }).returning();
