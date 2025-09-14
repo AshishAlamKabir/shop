@@ -6,5 +6,5 @@
 [x] 4. Deploy database schema using drizzle
 [x] 5. Fix seeding script errors and run database seeding
 [x] 6. Database created and seeded with demo accounts - migration completed successfully
-[ ] 7. Test login functionality with demo accounts
-[ ] 8. Inform user the import is completed and they can start building
+[x] 7. Test login functionality with demo accounts
+[x] 8. Inform user the import is completed and they can start building

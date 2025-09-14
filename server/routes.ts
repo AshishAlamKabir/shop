@@ -2648,7 +2648,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Notify retailer about acceptance
-      const retailerClient = clients.get(request.retailerId);
+      const retailerClient = clients.get(request.wholesalerId);
       if (retailerClient && retailerClient.readyState === WebSocket.OPEN) {
         retailerClient.send(JSON.stringify({
           type: 'deliveryRequestAccepted',
@@ -2707,7 +2707,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.completeDeliveryRequest(id, notes);
       
       // Notify retailer about completion
-      const retailerClient = clients.get(request.retailerId);
+      const retailerClient = clients.get(request.wholesalerId);
       if (retailerClient && retailerClient.readyState === WebSocket.OPEN) {
         retailerClient.send(JSON.stringify({
           type: 'deliveryRequestCompleted',
