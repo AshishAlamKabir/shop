@@ -746,7 +746,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create order
       const orderData = insertOrderSchema.parse({
         ownerId: req.user.id,
-        retailerId: store.ownerId,
+        wholesalerId: store.ownerId,
         storeId,
         totalAmount: totalAmount.toString(),
         deliveryType,
