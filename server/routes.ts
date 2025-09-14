@@ -627,13 +627,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check if already linked
-      const alreadyLinked = await storage.isDeliveryBoyLinkedToRetailer(req.user.id, deliveryBoyId);
+      const alreadyLinked = await storage.isDeliveryBoyLinkedToWholesaler(req.user.id, deliveryBoyId);
       if (alreadyLinked) {
         return res.status(400).json({ message: 'Delivery boy already added to your account' });
       }
       
       // Add the relationship
-      const relationship = await storage.addDeliveryBoyToRetailer(req.user.id, deliveryBoyId, req.user.id, notes);
+      const relationship = await storage.addDeliveryBoyToWholesaler(req.user.id, deliveryBoyId, req.user.id, notes);
       
       res.status(201).json({ 
         message: 'Delivery boy added successfully',
@@ -657,13 +657,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { deliveryBoyId } = req.params;
       
       // Check if the relationship exists
-      const relationship = await storage.getRetailerDeliveryBoyRelationship(req.user.id, deliveryBoyId);
+      const relationship = await storage.getWholesalerDeliveryBoyRelationship(req.user.id, deliveryBoyId);
       if (!relationship) {
         return res.status(404).json({ message: 'Delivery boy not found in your account' });
       }
       
       // Remove the relationship
-      await storage.removeDeliveryBoyFromRetailer(req.user.id, deliveryBoyId);
+      await storage.removeDeliveryBoyFromWholesaler(req.user.id, deliveryBoyId);
       
       res.json({ message: 'Delivery boy removed successfully' });
     } catch (error) {
@@ -838,7 +838,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check if user has access to this order
-      if (order.ownerId !== req.user.id && order.retailerId !== req.user.id) {
+      if (order.ownerId !== req.user.id && order.wholesalerId !== req.user.id) {
         return res.status(403).json({ message: 'Access denied' });
       }
       
@@ -851,7 +851,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Retailer order management
   app.get('/api/wholesaler/orders', authenticateToken, requireRole('WHOLESALER'), async (req: any, res) => {
     try {
-      const orders = await storage.getOrdersByRetailer(req.user.id);
+      const orders = await storage.getOrdersByWholesaler(req.user.id);
       res.json(orders);
     } catch (error) {
       res.status(500).json({ message: 'Failed to fetch orders' });
@@ -1037,14 +1037,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check if delivery boy is linked to this retailer
-      const isLinked = await storage.isDeliveryBoyLinkedToRetailer(req.user.id, deliveryBoyId);
+      const isLinked = await storage.isDeliveryBoyLinkedToWholesaler(req.user.id, deliveryBoyId);
       if (!isLinked) {
         return res.status(400).json({ message: 'Delivery boy not in your team' });
       }
 
       // Create delivery request instead of direct assignment
       const deliveryRequest = await storage.createDeliveryRequest({
-        retailerId: req.user.id,
+        wholesalerId: req.user.id,
         title: `Delivery Assignment - Order #${id.slice(-8)}`,
         description: `Delivery request for order from ${order.owner?.fullName}`,
         pickupAddress: order.store?.address || 'Store location',
@@ -1098,7 +1098,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check access
-      if (order.ownerId !== req.user.id && order.retailerId !== req.user.id) {
+      if (order.ownerId !== req.user.id && order.wholesalerId !== req.user.id) {
         return res.status(403).json({ message: 'Access denied' });
       }
       
@@ -1381,7 +1381,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get individual shop owner balances for retailers
   app.get('/api/wholesaler/shop-owner-balances', authenticateToken, requireRole('WHOLESALER'), async (req: any, res) => {
     try {
-      const orders = await storage.getOrdersByRetailer(req.user.id);
+      const orders = await storage.getOrdersByWholesaler(req.user.id);
       
       // Get unique shop owners from orders
       const shopOwnerIds = Array.from(new Set(orders.map((order: any) => order.ownerId)));
@@ -1705,7 +1705,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check access
-      if (order.ownerId !== req.user.id && order.retailerId !== req.user.id) {
+      if (order.ownerId !== req.user.id && order.wholesalerId !== req.user.id) {
         return res.status(403).json({ message: 'Access denied' });
       }
       
@@ -2554,7 +2554,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Create a shared delivery request
       const deliveryRequest = await storage.createDeliveryRequest({
-        retailerId: req.user.id,
+        wholesalerId: req.user.id,
         description: `Delivery for order - ${order.owner?.fullName}`,
         title: `Order Delivery - ${order.owner?.fullName}`,
         pickupAddress: pickupAddress || 'Store pickup location',
@@ -2584,7 +2584,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Retailer - Get own delivery requests
   app.get('/api/delivery-requests', authenticateToken, requireRole('RETAILER'), async (req: any, res) => {
     try {
-      const deliveryRequests = await storage.getDeliveryRequestsByRetailer(req.user.id);
+      const deliveryRequests = await storage.getDeliveryRequestsByWholesaler(req.user.id);
       res.json(deliveryRequests);
     } catch (error) {
       res.status(400).json({ message: 'Failed to fetch delivery requests' });
