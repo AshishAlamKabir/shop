@@ -864,7 +864,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { deliveryAt } = req.body;
       
       const order = await storage.getOrder(id);
-      if (!order || order.retailerId !== req.user.id) {
+      if (!order || order.wholesalerId !== req.user.id) {
         return res.status(404).json({ message: 'Order not found' });
       }
       
@@ -897,7 +897,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { reason } = req.body;
       
       const order = await storage.getOrder(id);
-      if (!order || order.retailerId !== req.user.id) {
+      if (!order || order.wholesalerId !== req.user.id) {
         return res.status(404).json({ message: 'Order not found' });
       }
       
@@ -930,7 +930,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { status } = req.body;
       
       const order = await storage.getOrder(id);
-      if (!order || order.retailerId !== req.user.id) {
+      if (!order || order.wholesalerId !== req.user.id) {
         return res.status(404).json({ message: 'Order not found' });
       }
       
