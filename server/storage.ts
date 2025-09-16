@@ -847,7 +847,7 @@ export class DatabaseStorage implements IStorage {
     await db.delete(wholesalerDeliveryBoys)
       .where(
         and(
-          eq(wholesalerDeliveryBoys.wholesalerId, retailerId),
+          eq(wholesalerDeliveryBoys.wholesalerId, wholesalerId),
           eq(wholesalerDeliveryBoys.deliveryBoyId, deliveryBoyId)
         )
       );
@@ -857,7 +857,7 @@ export class DatabaseStorage implements IStorage {
     const [relationship] = await db.select().from(wholesalerDeliveryBoys)
       .where(
         and(
-          eq(wholesalerDeliveryBoys.wholesalerId, retailerId),
+          eq(wholesalerDeliveryBoys.wholesalerId, wholesalerId),
           eq(wholesalerDeliveryBoys.deliveryBoyId, deliveryBoyId),
           eq(wholesalerDeliveryBoys.status, 'ACTIVE')
         )
@@ -1373,22 +1373,6 @@ export class DatabaseStorage implements IStorage {
     return request;
   }
 
-  // Missing delivery boy operations
-  async getDeliveryBoy(id: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(and(
-      eq(users.id, id),
-      eq(users.role, 'DELIVERY_BOY')
-    ));
-    return user || undefined;
-  }
-
-  async getDeliveryBoyByPhone(phone: string, wholesalerId?: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(and(
-      eq(users.phone, phone),
-      eq(users.role, 'DELIVERY_BOY')
-    ));
-    return user || undefined;
-  }
 
   async updateDeliveryBoy(id: string, deliveryBoy: Partial<InsertUser>): Promise<User> {
     const [user] = await db.update(users).set(deliveryBoy).where(eq(users.id, id)).returning();
