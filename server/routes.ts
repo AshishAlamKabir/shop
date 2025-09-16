@@ -1371,7 +1371,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { counterpartyId } = req.query;
       const summary = await storage.getLedgerSummary(req.user.id, counterpartyId as string);
-      res.json(summary);
+      
+      // Add user-friendly balance interpretation based on role
+      const balance = summary.currentBalance;
+      const userRole = req.user.role;
+      let balanceMessage = '';
+      let balanceStatus = 'neutral';
+      
+      if (balance > 0) {
+        if (userRole === 'SHOP_OWNER') {
+          balanceMessage = `You owe ₹${Math.abs(balance).toFixed(2)}`;
+          balanceStatus = 'owing';
+        } else if (userRole === 'WHOLESALER') {
+          balanceMessage = `You owe ₹${Math.abs(balance).toFixed(2)}`;
+          balanceStatus = 'owing';
+        }
+      } else if (balance < 0) {
+        if (userRole === 'SHOP_OWNER') {
+          balanceMessage = `You are owed ₹${Math.abs(balance).toFixed(2)}`;
+          balanceStatus = 'owed';
+        } else if (userRole === 'WHOLESALER') {
+          balanceMessage = `You are owed ₹${Math.abs(balance).toFixed(2)}`;
+          balanceStatus = 'owed';
+        }
+      } else {
+        balanceMessage = 'Account settled';
+        balanceStatus = 'settled';
+      }
+      
+      res.json({
+        ...summary,
+        balanceMessage,
+        balanceStatus,
+        userRole
+      });
     } catch (error) {
       console.error('Ledger summary error:', error);
       res.status(500).json({ message: 'Failed to fetch ledger summary' });

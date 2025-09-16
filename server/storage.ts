@@ -624,8 +624,6 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(khatabook.createdAt))
       .limit(1);
     
-    const currentBalance = lastEntry[0]?.balance || "0";
-    
     // Get summary statistics
     const stats = await db.select({
       totalCredits: sql<number>`COALESCE(SUM(CASE WHEN entry_type = 'CREDIT' THEN amount ELSE 0 END), 0)`,
@@ -634,6 +632,10 @@ export class DatabaseStorage implements IStorage {
     })
     .from(khatabook)
     .where(and(...whereConditions));
+
+    // Use calculated balance (Credits - Debits) for consistency
+    const currentBalance = (parseFloat(stats[0].totalCredits.toString()) - parseFloat(stats[0].totalDebits.toString())).toString();
+    const lastEntryBalance = lastEntry[0]?.balance || "0";
     
     // Get recent transactions
     const recentTransactions = await db.select({
@@ -652,25 +654,28 @@ export class DatabaseStorage implements IStorage {
     
     return {
       currentBalance: parseFloat(currentBalance),
-      totalCredits: stats[0].totalCredits,
-      totalDebits: stats[0].totalDebits,
+      totalCredits: parseFloat(stats[0].totalCredits.toString()),
+      totalDebits: parseFloat(stats[0].totalDebits.toString()),
       totalTransactions: stats[0].totalTransactions,
+      lastEntryBalance: parseFloat(lastEntryBalance), // For diagnostic purposes
       recentTransactions
     };
   }
 
   async getOutstandingBalance(shopOwnerId: string, wholesalerId: string): Promise<number> {
-    const lastEntry = await db.select({ balance: khatabook.balance })
-      .from(khatabook)
-      .where(and(
-        eq(khatabook.userId, shopOwnerId),
-        eq(khatabook.counterpartyId, wholesalerId)
-      ))
-      .orderBy(desc(khatabook.createdAt))
-      .limit(1);
+    // Use calculated balance (Credits - Debits) for consistency
+    const stats = await db.select({
+      totalCredits: sql<number>`COALESCE(SUM(CASE WHEN entry_type = 'CREDIT' THEN amount ELSE 0 END), 0)`,
+      totalDebits: sql<number>`COALESCE(SUM(CASE WHEN entry_type = 'DEBIT' THEN amount ELSE 0 END), 0)`
+    })
+    .from(khatabook)
+    .where(and(
+      eq(khatabook.userId, shopOwnerId),
+      eq(khatabook.counterpartyId, wholesalerId)
+    ));
     
-    const balance = lastEntry[0]?.balance || "0";
-    return parseFloat(balance);
+    const balance = parseFloat(stats[0].totalCredits.toString()) - parseFloat(stats[0].totalDebits.toString());
+    return balance;
   }
 
   async recordPartialPayment(orderId: string, paymentData: any, auditData: InsertPaymentAuditTrail): Promise<Order> {
