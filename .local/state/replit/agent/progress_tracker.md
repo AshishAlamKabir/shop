@@ -8,3 +8,4 @@
 [x] 6. Database created and seeded with demo accounts - migration completed successfully
 [x] 7. Test login functionality with demo accounts
 [x] 8. Inform user the import is completed and they can start building
+[x] 9. Fixed all demo account login credentials - all working perfectly
