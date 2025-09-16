@@ -87,8 +87,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Helper function to emit order events
-  const emitOrderEvent = (orderId: string, ownerId: string, retailerId: string, event: string, payload: any) => {
-    [ownerId, retailerId].forEach(userId => {
+  const emitOrderEvent = (orderId: string, ownerId: string, wholesalerId: string, event: string, payload: any) => {
+    [ownerId, wholesalerId].forEach(userId => {
       const client = clients.get(userId);
       if (client && client.readyState === WebSocket.OPEN) {
         client.send(JSON.stringify({ orderId, event, payload }));
@@ -879,7 +879,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: `Order accepted${deliveryAt ? ` with delivery scheduled for ${new Date(deliveryAt).toLocaleDateString()}` : ''}`
       });
       
-      emitOrderEvent(id, order.ownerId, order.retailerId, 'orderAccepted', {
+      emitOrderEvent(id, order.ownerId, order.wholesalerId, 'orderAccepted', {
         orderId: id,
         status: 'ACCEPTED',
         deliveryAt
@@ -912,7 +912,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: `Order rejected: ${reason || 'No reason provided'}`
       });
       
-      emitOrderEvent(id, order.ownerId, order.retailerId, 'orderRejected', {
+      emitOrderEvent(id, order.ownerId, order.wholesalerId, 'orderRejected', {
         orderId: id,
         status: 'REJECTED',
         reason
@@ -951,7 +951,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: `Order status updated to ${status.toLowerCase().replace('_', ' ')}`
       });
       
-      emitOrderEvent(id, order.ownerId, order.retailerId, 'orderStatusChanged', {
+      emitOrderEvent(id, order.ownerId, order.wholesalerId, 'orderStatusChanged', {
         orderId: id,
         status,
         previousStatus: order.status
@@ -1004,7 +1004,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Emit real-time notification to shop owner
-      emitOrderEvent(id, order.ownerId, order.retailerId, 'deliveryAssignmentWithdrawn', {
+      emitOrderEvent(id, order.ownerId, order.wholesalerId, 'deliveryAssignmentWithdrawn', {
         orderId: id,
         message: 'Delivery assignment has been withdrawn'
       });
@@ -1130,7 +1130,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: 'Order cancelled by customer'
       });
       
-      emitOrderEvent(id, order.ownerId, order.retailerId, 'orderCancelled', {
+      emitOrderEvent(id, order.ownerId, order.wholesalerId, 'orderCancelled', {
         orderId: id,
         status: 'CANCELLED'
       });
@@ -1152,7 +1152,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: 'Order not found' });
       }
       
-      if (order.retailerId !== req.user.id) {
+      if (order.wholesalerId !== req.user.id) {
         return res.status(403).json({ message: 'Access denied' });
       }
       
@@ -1209,7 +1209,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Shop owner makes payment (DEBIT - they pay money)
         await storage.addLedgerEntry({
           userId: order.ownerId,
-          counterpartyId: order.retailerId,
+          counterpartyId: order.wholesalerId,
           orderId: id,
           entryType: 'DEBIT',
           transactionType: 'PAYMENT_RECEIVED',
@@ -1226,7 +1226,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Retailer receives payment (CREDIT - they receive money)
         await storage.addLedgerEntry({
-          userId: order.retailerId,
+          userId: order.wholesalerId,
           counterpartyId: order.ownerId,
           orderId: id,
           entryType: 'CREDIT',
@@ -1246,7 +1246,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Emit real-time notification
-      emitOrderEvent(id, order.ownerId, order.retailerId, 'paymentReceived', {
+      emitOrderEvent(id, order.ownerId, order.wholesalerId, 'paymentReceived', {
         orderId: id,
         amountReceived: amount,
         totalAmount,
@@ -1321,7 +1321,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
         
         await storage.addLedgerEntry({
-          userId: order.retailerId,
+          userId: order.wholesalerId,
           orderId: id,
           entryType: adjustment > 0 ? 'CREDIT' : 'DEBIT',
           transactionType: 'PAYMENT_ADJUSTED',
@@ -1332,7 +1332,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Emit real-time notification
-      emitOrderEvent(id, order.ownerId, order.retailerId, 'paymentAdjusted', {
+      emitOrderEvent(id, order.ownerId, order.wholesalerId, 'paymentAdjusted', {
         orderId: id,
         adjustedAmount: newAmount,
         adjustment: adjustment,
@@ -1432,7 +1432,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const orders = await storage.getOrdersByOwner(req.user.id);
       
       // Get unique retailers from orders
-      const retailerIds = Array.from(new Set(orders.map((order: any) => order.retailerId)));
+      const retailerIds = Array.from(new Set(orders.map((order: any) => order.wholesalerId)));
       
       const balances = await Promise.all(
         retailerIds.map(async (retailerId) => {
@@ -1977,7 +1977,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Shop owner payment confirmation
         await storage.createKhatabookEntry({
           userId: order.ownerId, // shop owner
-          counterpartyId: order.retailerId,
+          counterpartyId: order.wholesalerId,
           orderId: changeRequest.orderId,
           entryType: 'DEBIT',
           transactionType: 'PAYMENT_RECEIVED',
@@ -1992,9 +1992,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           })
         });
 
-        // Retailer payment confirmation
+        // Wholesaler payment confirmation
         await storage.createKhatabookEntry({
-          userId: order.retailerId,
+          userId: order.wholesalerId,
           counterpartyId: order.ownerId,
           orderId: changeRequest.orderId,
           entryType: 'CREDIT',
@@ -2040,7 +2040,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // If approved, also notify retailer about delivery completion
       if (response === 'APPROVED') {
-        const retailerClient = clients.get(order.retailerId);
+        const retailerClient = clients.get(order.wholesalerId);
         if (retailerClient && retailerClient.readyState === WebSocket.OPEN) {
           retailerClient.send(JSON.stringify({
             type: 'DELIVERY_COMPLETED',
@@ -2174,7 +2174,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Create khatabook entries
       await storage.createKhatabookEntry({
         userId: order.ownerId, // shop owner
-        counterpartyId: order.retailerId,
+        counterpartyId: order.wholesalerId,
         orderId: paymentRequest.orderId,
         entryType: 'CREDIT',
         transactionType: 'PAYMENT_RECEIVED',
@@ -2188,7 +2188,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       await storage.createKhatabookEntry({
-        userId: order.retailerId,
+        userId: order.wholesalerId,
         counterpartyId: order.ownerId,
         orderId: paymentRequest.orderId,
         entryType: 'CREDIT',
@@ -2224,7 +2224,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       // Notify delivery boy and retailer
-      [paymentRequest.deliveryBoyId, order.retailerId].forEach(userId => {
+      [paymentRequest.deliveryBoyId, order.wholesalerId].forEach(userId => {
         const client = clients.get(userId);
         if (client && client.readyState === WebSocket.OPEN) {
           client.send(JSON.stringify({
@@ -2273,7 +2273,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       // Get shop owner's balance after this payment
-      const shopOwnerBalance = await storage.getLedgerSummary(order.ownerId, order.retailerId);
+      const shopOwnerBalance = await storage.getLedgerSummary(order.ownerId, order.wholesalerId);
       
       // Create enhanced notification with balance calculations
       const notificationData = {
@@ -2293,7 +2293,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
       
       // Notify retailer about payment received
-      const retailerClient = clients.get(order.retailerId);
+      const retailerClient = clients.get(order.wholesalerId);
       if (retailerClient && retailerClient.readyState === WebSocket.OPEN) {
         retailerClient.send(JSON.stringify(notificationData));
       }
@@ -2347,7 +2347,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       // Emit real-time notification
-      emitOrderEvent(id, order.ownerId, order.retailerId, 'orderStatusChanged', {
+      emitOrderEvent(id, order.ownerId, order.wholesalerId, 'orderStatusChanged', {
         orderId: id,
         status,
         previousStatus: order.status,
@@ -2410,7 +2410,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Update shop owner's ledger (adjustment to their debt/credit)
         await storage.addLedgerEntry({
           userId: request.order.ownerId,
-          counterpartyId: request.order.retailerId,
+          counterpartyId: request.order.wholesalerId,
           orderId: request.orderId,
           entryType: amountDifference > 0 ? 'DEBIT' : 'CREDIT',
           transactionType: 'PAYMENT_ADJUSTED',
@@ -2428,7 +2428,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Update retailer's ledger (opposite adjustment)
         await storage.addLedgerEntry({
-          userId: request.order.retailerId,
+          userId: request.order.wholesalerId,
           counterpartyId: request.order.ownerId,
           orderId: request.orderId,
           entryType: amountDifference > 0 ? 'CREDIT' : 'DEBIT',
@@ -2548,7 +2548,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { estimatedReward, pickupAddress, deliveryAddress } = req.body;
       
       const order = await storage.getOrder(orderId);
-      if (!order || order.retailerId !== req.user.id) {
+      if (!order || order.wholesalerId !== req.user.id) {
         return res.status(404).json({ message: 'Order not found' });
       }
 
@@ -2635,7 +2635,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Note: No khatabook entries needed here as they were already created when order was placed
 
             // Emit notification to retailer and shop owner about acceptance
-            emitOrderEvent(request.orderId, order.ownerId, order.retailerId, 'deliveryBoyAccepted', {
+            emitOrderEvent(request.orderId, order.ownerId, order.wholesalerId, 'deliveryBoyAccepted', {
               orderId: request.orderId,
               deliveryBoy: req.user.fullName,
               deliveryBoyPhone: req.user.phone || 'Not provided',
