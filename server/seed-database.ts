@@ -393,7 +393,7 @@ async function seedDatabase(config = SEED_CONFIG) {
 
 🔐 Test Login Credentials:
 • Admin: admin@test.com / admin123
-• Retailer: retailer@test.com / retailer123  
+• Wholesaler: wholesaler@test.com / wholesaler123  
 • Shop Owner: shop@test.com / shop123
 • Delivery Boy: delivery@test.com / delivery123
 • Others: [name].[surname][number]@example.com / password123
