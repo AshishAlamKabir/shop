@@ -9,3 +9,4 @@
 [x] 7. Test login functionality with demo accounts
 [x] 8. Inform user the import is completed and they can start building
 [x] 9. Fixed all demo account login credentials - all working perfectly
+[x] 10. Verified Khatabook functionality is working correctly for wholesaler transactions
