@@ -2006,7 +2006,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           paymentReceivedAt: new Date()
         });
         
-        // Create only payment confirmation entries (order entries should already exist)
+        // Create payment confirmation entries and handle balance settlement
+        const originalAmount = parseFloat(changeRequest.originalAmount.toString());
+        const paidAmount = parseFloat(changeRequest.requestedAmount.toString());
+        const balanceDifference = originalAmount - paidAmount;
+
         // Shop owner payment confirmation
         await storage.createKhatabookEntry({
           userId: order.ownerId, // shop owner
@@ -2042,6 +2046,86 @@ export async function registerRoutes(app: Express): Promise<Server> {
             paidAmount: changeRequest.requestedAmount
           })
         });
+
+        // Handle balance settlement when order is completed
+        if (Math.abs(balanceDifference) > 0.01) { // Use small threshold for floating point comparison
+          if (balanceDifference > 0) {
+            // Outstanding balance - shop owner still owes money to wholesaler
+            await storage.createKhatabookEntry({
+              userId: order.ownerId,
+              counterpartyId: order.wholesalerId,
+              orderId: changeRequest.orderId,
+              entryType: 'CREDIT',
+              transactionType: 'BALANCE_CLEAR_CREDIT',
+              amount: balanceDifference.toFixed(2),
+              description: `Outstanding balance cleared for completed order #${changeRequest.orderId.slice(-8)} - ₹${balanceDifference.toFixed(2)}`,
+              referenceId: changeRequest.orderId,
+              metadata: JSON.stringify({ 
+                orderCompleted: true,
+                balanceType: 'outstanding',
+                originalAmount: originalAmount,
+                paidAmount: paidAmount,
+                outstandingAmount: balanceDifference
+              })
+            });
+
+            await storage.createKhatabookEntry({
+              userId: order.wholesalerId,
+              counterpartyId: order.ownerId,
+              orderId: changeRequest.orderId,
+              entryType: 'DEBIT',
+              transactionType: 'BALANCE_CLEAR_CREDIT',
+              amount: balanceDifference.toFixed(2),
+              description: `Outstanding balance cleared for completed order #${changeRequest.orderId.slice(-8)} - ₹${balanceDifference.toFixed(2)}`,
+              referenceId: changeRequest.orderId,
+              metadata: JSON.stringify({ 
+                orderCompleted: true,
+                balanceType: 'outstanding_cleared',
+                originalAmount: originalAmount,
+                paidAmount: paidAmount,
+                outstandingAmount: balanceDifference
+              })
+            });
+          } else {
+            // Overpayment - shop owner paid more than the order amount
+            const overpayment = Math.abs(balanceDifference);
+            await storage.createKhatabookEntry({
+              userId: order.ownerId,
+              counterpartyId: order.wholesalerId,
+              orderId: changeRequest.orderId,
+              entryType: 'DEBIT',
+              transactionType: 'ADJUSTMENT',
+              amount: overpayment.toFixed(2),
+              description: `Overpayment adjustment for completed order #${changeRequest.orderId.slice(-8)} - ₹${overpayment.toFixed(2)}`,
+              referenceId: changeRequest.orderId,
+              metadata: JSON.stringify({ 
+                orderCompleted: true,
+                balanceType: 'overpayment',
+                originalAmount: originalAmount,
+                paidAmount: paidAmount,
+                overpaymentAmount: overpayment
+              })
+            });
+
+            await storage.createKhatabookEntry({
+              userId: order.wholesalerId,
+              counterpartyId: order.ownerId,
+              orderId: changeRequest.orderId,
+              entryType: 'CREDIT',
+              transactionType: 'ADJUSTMENT',
+              amount: overpayment.toFixed(2),
+              description: `Overpayment adjustment for completed order #${changeRequest.orderId.slice(-8)} - ₹${overpayment.toFixed(2)}`,
+              referenceId: changeRequest.orderId,
+              metadata: JSON.stringify({ 
+                orderCompleted: true,
+                balanceType: 'overpayment_credited',
+                originalAmount: originalAmount,
+                paidAmount: paidAmount,
+                overpaymentAmount: overpayment
+              })
+            });
+          }
+        }
         
         // Create delivery completion event
         await storage.createOrderEvent({
