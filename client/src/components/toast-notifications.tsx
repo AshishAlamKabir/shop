@@ -107,8 +107,8 @@ export default function ToastNotifications() {
         return;
       }
       
-      // Handle delivery completion notifications for retailers
-      if (type === 'DELIVERY_COMPLETED' && user.role === 'RETAILER') {
+      // Handle delivery completion notifications for wholesalers
+      if (type === 'DELIVERY_COMPLETED' && user.role === 'WHOLESALER') {
         toast({
           title: "🚚 Delivery Completed!",
           description: `Delivery finished for order #${data.orderId.slice(-8)} - Final amount: ₹${data.finalAmount}`,
@@ -117,8 +117,8 @@ export default function ToastNotifications() {
         return;
       }
       
-      // Handle payment received notifications for retailers
-      if (type === 'PAYMENT_RECEIVED_NOTIFICATION' && user.role === 'RETAILER') {
+      // Handle payment received notifications for wholesalers
+      if (type === 'PAYMENT_RECEIVED_NOTIFICATION' && user.role === 'WHOLESALER') {
         const title = "💰 Payment Received!";
         const description = `${data.deliveryBoyName} collected ₹${data.amount} from ${data.customerName} for order ${data.orderNumber}`;
         
@@ -139,7 +139,7 @@ export default function ToastNotifications() {
       
       switch (event) {
         case 'orderPlaced':
-          if (user.role === 'RETAILER') {
+          if (user.role === 'WHOLESALER') {
             const title = "New Order Received!";
             const description = `Order #${orderId.slice(-8)} - ₹${payload.totalAmount}`;
             
@@ -227,7 +227,7 @@ export default function ToastNotifications() {
           break;
           
         case 'orderCancelled':
-          if (user.role === 'RETAILER') {
+          if (user.role === 'WHOLESALER') {
             const title = "Order Cancelled";
             const description = `Order #${orderId.slice(-8)} was cancelled by customer`;
             
