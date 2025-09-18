@@ -9,6 +9,7 @@ import logoUrl from "../../assets/logo.png";
 
 interface MobileHeaderProps {
   onMenuClick?: () => void;
+  onSearchClick?: () => void;
   showSearch?: boolean;
   showCart?: boolean;
   title?: string;
@@ -16,6 +17,7 @@ interface MobileHeaderProps {
 
 export default function MobileHeader({ 
   onMenuClick, 
+  onSearchClick,
   showSearch = true, 
   showCart = true,
   title = "Shop Now"
@@ -57,6 +59,7 @@ export default function MobileHeader({
               <Button 
                 variant="ghost" 
                 size="sm" 
+                onClick={onSearchClick}
                 className="p-2 hover:bg-muted rounded-lg"
                 data-testid="mobile-search-button"
               >

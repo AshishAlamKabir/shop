@@ -320,6 +320,7 @@ export default function ShopOwnerDashboard() {
       <div className="mobile-only">
         <MobileHeader 
           onMenuClick={() => setIsNavigationOpen(true)}
+          onSearchClick={() => setActiveSection('explore')}
           title="Shop Now"
           showSearch={true}
           showCart={true}

@@ -91,10 +91,10 @@ export function BottomNavigation({ activeSection, onSectionChange }: BottomNavig
       case 'SHOP_OWNER':
         return [
           {
-            id: 'explore',
-            label: 'Explore',
-            icon: Search,
-            section: 'explore'
+            id: 'profile',
+            label: 'Profile',
+            icon: User,
+            section: 'profile'
           },
           {
             id: 'cart',
