@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -52,11 +52,10 @@ export default function WholesalerDashboard() {
   const [deliveryBoySearchForm, setDeliveryBoySearchForm] = useState({
     deliveryBoyId: ''
   });
-  const [searchResults, setSearchResults] = useState<any>(null);
-  const [isSearching, setIsSearching] = useState(false);
   const [deliveryBoyAssignmentModal, setDeliveryBoyAssignmentModal] = useState<{ isOpen: boolean; order: any }>({ isOpen: false, order: null });
   const [selectedDeliveryBoyId, setSelectedDeliveryBoyId] = useState('');
   const { toast } = useToast();
+
 
   const { data: store } = useQuery({
     queryKey: ['/api/wholesaler/store/me'],
@@ -148,6 +147,7 @@ export default function WholesalerDashboard() {
       return response.json();
     }
   });
+
 
   const acceptOrderMutation = useMutation({
     mutationFn: async ({ orderId, deliveryAt }: { orderId: string; deliveryAt?: string }) => {
@@ -1963,6 +1963,12 @@ export default function WholesalerDashboard() {
           icon="fas fa-motorcycle"
           label="Delivery Boy"
           testId="button-nav-delivery-boys-navigation"
+        />
+        <NavigationItem
+          href="/wholesaler/search"
+          icon="fas fa-search"
+          label="Search Shop Owners"
+          testId="button-nav-search-navigation"
         />
         <NavigationItem
           onClick={() => {

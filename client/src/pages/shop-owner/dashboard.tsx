@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -34,6 +34,7 @@ export default function ShopOwnerDashboard() {
   
   const { cart, addToCart, removeFromCart, updateQuantity, clearCart, getTotalAmount, getItemCount } = useCartStore();
   const { toast } = useToast();
+
 
   const { data: stores = [] } = useQuery({
     queryKey: ['/api/stores', searchFilters],
@@ -73,6 +74,7 @@ export default function ShopOwnerDashboard() {
       return response.json();
     }
   });
+
 
   const { data: orders = [] } = useQuery({
     queryKey: ['/api/orders/mine'],
@@ -1087,6 +1089,7 @@ export default function ShopOwnerDashboard() {
             </div>
           )}
 
+
           {/* Khatabook Section */}
           {activeSection === 'khatabook' && (
             <div>
@@ -1338,6 +1341,12 @@ export default function ShopOwnerDashboard() {
           icon="fas fa-store-alt"
           label="Retailer Accounts"
           testId="button-nav-retailers-navigation"
+        />
+        <NavigationItem
+          href="/shop/search"
+          icon="fas fa-search"
+          label="Search Wholesalers"
+          testId="button-nav-search-navigation"
         />
         <NavigationItem
           onClick={() => {

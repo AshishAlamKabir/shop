@@ -9,7 +9,9 @@ import { NotificationProvider } from "@/hooks/use-notifications";
 import Login from "@/pages/login";
 import AdminDashboard from "@/pages/admin/dashboard";
 import WholesalerDashboard from "@/pages/wholesaler/dashboard";
+import WholesalerSearch from "@/pages/wholesaler/search";
 import ShopOwnerDashboard from "@/pages/shop-owner/dashboard";
+import ShopOwnerSearch from "@/pages/shop-owner/search";
 import DeliveryBoyDashboard from "@/pages/delivery-boy/dashboard";
 import NotFound from "@/pages/not-found";
 import ToastNotifications from "@/components/toast-notifications";
@@ -46,7 +48,9 @@ function AppContent() {
             return <NotFound />;
           }} />
           <Route path="/admin/*" component={() => user.role === 'ADMIN' ? <AdminDashboard /> : <NotFound />} />
+          <Route path="/wholesaler/search" component={() => user.role === 'WHOLESALER' ? <WholesalerSearch /> : <NotFound />} />
           <Route path="/wholesaler/*" component={() => user.role === 'WHOLESALER' ? <WholesalerDashboard /> : <NotFound />} />
+          <Route path="/shop/search" component={() => user.role === 'SHOP_OWNER' ? <ShopOwnerSearch /> : <NotFound />} />
           <Route path="/shop/*" component={() => user.role === 'SHOP_OWNER' ? <ShopOwnerDashboard /> : <NotFound />} />
           <Route path="/delivery/*" component={() => user.role === 'DELIVERY_BOY' ? <DeliveryBoyDashboard /> : <NotFound />} />
           <Route component={NotFound} />
