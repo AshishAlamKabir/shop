@@ -1411,6 +1411,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Search counterparties with balance - Shop Owner searching for Wholesalers
+  app.get('/api/shop-owner/wholesalers/search', authenticateToken, requireRole('SHOP_OWNER'), async (req: any, res) => {
+    try {
+      const { q, limit = 20 } = req.query;
+      
+      if (!q || typeof q !== 'string' || q.trim().length === 0) {
+        return res.status(400).json({ message: 'Search query is required and must be at least 1 character' });
+      }
+      
+      if (q.length > 64) {
+        return res.status(400).json({ message: 'Search query too long (max 64 characters)' });
+      }
+      
+      const results = await storage.searchCounterpartiesWithBalance(
+        req.user.id, 
+        'WHOLESALER', 
+        q.trim(), 
+        Math.min(parseInt(limit as string) || 20, 50)
+      );
+      
+      res.json(results);
+    } catch (error) {
+      console.error('Shop owner search error:', error);
+      res.status(500).json({ message: 'Failed to search wholesalers' });
+    }
+  });
+
+  // Search counterparties with balance - Wholesaler searching for Shop Owners
+  app.get('/api/wholesaler/shop-owners/search', authenticateToken, requireRole('WHOLESALER'), async (req: any, res) => {
+    try {
+      const { q, limit = 20 } = req.query;
+      
+      if (!q || typeof q !== 'string' || q.trim().length === 0) {
+        return res.status(400).json({ message: 'Search query is required and must be at least 1 character' });
+      }
+      
+      if (q.length > 64) {
+        return res.status(400).json({ message: 'Search query too long (max 64 characters)' });
+      }
+      
+      const results = await storage.searchCounterpartiesWithBalance(
+        req.user.id, 
+        'SHOP_OWNER', 
+        q.trim(), 
+        Math.min(parseInt(limit as string) || 20, 50)
+      );
+      
+      res.json(results);
+    } catch (error) {
+      console.error('Wholesaler search error:', error);
+      res.status(500).json({ message: 'Failed to search shop owners' });
+    }
+  });
+
   // Get individual shop owner balances for retailers
   app.get('/api/wholesaler/shop-owner-balances', authenticateToken, requireRole('WHOLESALER'), async (req: any, res) => {
     try {

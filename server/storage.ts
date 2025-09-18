@@ -73,6 +73,7 @@ export interface IStorage {
   getLedgerEntries(userId: string, options?: { page?: number; limit?: number; type?: string; counterpartyId?: string }): Promise<any>;
   getLedgerSummary(userId: string, counterpartyId?: string): Promise<any>;
   getOutstandingBalance(shopOwnerId: string, wholesalerId: string): Promise<number>;
+  searchCounterpartiesWithBalance(currentUserId: string, counterpartyRole: string, q: string, limit?: number): Promise<any[]>;
   
   // Enhanced payment operations
   recordPartialPayment(orderId: string, paymentData: any, auditData: InsertPaymentAuditTrail): Promise<Order>;
@@ -660,6 +661,74 @@ export class DatabaseStorage implements IStorage {
       lastEntryBalance: parseFloat(lastEntryBalance), // For diagnostic purposes
       recentTransactions
     };
+  }
+
+  async searchCounterpartiesWithBalance(currentUserId: string, counterpartyRole: string, q: string, limit: number = 20): Promise<any[]> {
+    // Search users by role and query (name, email, phone)
+    const searchPattern = `%${q.toLowerCase()}%`;
+    
+    const foundUsers = await db.select({
+      id: users.id,
+      fullName: users.fullName,
+      email: users.email,
+      phone: users.phone,
+      role: users.role,
+      profilePhoto: users.profilePhoto
+    })
+    .from(users)
+    .where(
+      and(
+        eq(users.role, counterpartyRole),
+        or(
+          like(sql`LOWER(${users.fullName})`, searchPattern),
+          like(sql`LOWER(${users.email})`, searchPattern),
+          like(users.phone, `%${q}%`)
+        )
+      )
+    )
+    .limit(limit);
+
+    // For each found user, calculate their balance with the current user
+    const usersWithBalance = await Promise.all(
+      foundUsers.map(async (user) => {
+        // Get balance summary between current user and this counterparty
+        const balanceSummary = await this.getLedgerSummary(currentUserId, user.id);
+        
+        // Get the last transaction date
+        const lastTransaction = await db.select({ 
+          createdAt: khatabook.createdAt 
+        })
+        .from(khatabook)
+        .where(
+          and(
+            eq(khatabook.userId, currentUserId),
+            eq(khatabook.counterpartyId, user.id)
+          )
+        )
+        .orderBy(desc(khatabook.createdAt))
+        .limit(1);
+
+        return {
+          id: user.id,
+          name: user.fullName,
+          email: user.email,
+          phone: user.phone,
+          role: user.role,
+          profilePhoto: user.profilePhoto,
+          currentBalance: balanceSummary.currentBalance || 0,
+          totalCredits: balanceSummary.totalCredits || 0,
+          totalDebits: balanceSummary.totalDebits || 0,
+          totalTransactions: balanceSummary.totalTransactions || 0,
+          lastTxnAt: lastTransaction[0]?.createdAt || null
+        };
+      })
+    );
+
+    // Filter out users with no transaction history (optional - can be removed if you want to show all users)
+    // return usersWithBalance.filter(user => user.totalTransactions > 0);
+    
+    // Return all users (including those with zero balance)
+    return usersWithBalance;
   }
 
   async getOutstandingBalance(shopOwnerId: string, wholesalerId: string): Promise<number> {
