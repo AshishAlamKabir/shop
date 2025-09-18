@@ -256,7 +256,7 @@ export default function Login() {
                       <SelectValue placeholder="Select your role" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="RETAILER">Retailer</SelectItem>
+                      <SelectItem value="WHOLESALER">Wholesaler</SelectItem>
                       <SelectItem value="SHOP_OWNER">Shop Owner</SelectItem>
                       <SelectItem value="DELIVERY_BOY">Delivery Boy</SelectItem>
                       <SelectItem value="ADMIN">Admin</SelectItem>

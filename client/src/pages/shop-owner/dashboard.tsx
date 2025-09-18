@@ -21,7 +21,7 @@ import { useToast } from "@/hooks/use-toast";
 import defaultProductUrl from "../../assets/default-product.jpg";
 
 export default function ShopOwnerDashboard() {
-  const [activeSection, setActiveSection] = useState('explore');
+  const [activeSection, setActiveSection] = useState('profile');
   const [isNavigationOpen, setIsNavigationOpen] = useState(false);
   const [selectedStore, setSelectedStore] = useState<any>(null);
   const [searchFilters, setSearchFilters] = useState({ search: '', city: '', pincode: '', name: '', id: '' });
@@ -1345,7 +1345,11 @@ export default function ShopOwnerDashboard() {
           testId="button-nav-retailers-navigation"
         />
         <NavigationItem
-          href="/shop/search"
+          onClick={() => {
+            setActiveSection('explore');
+            setIsNavigationOpen(false);
+          }}
+          active={activeSection === 'explore'}
           icon="fas fa-search"
           label="Search Wholesalers"
           testId="button-nav-search-navigation"

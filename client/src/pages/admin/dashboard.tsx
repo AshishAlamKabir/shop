@@ -127,7 +127,7 @@ export default function AdminDashboard() {
   const getRoleColor = (role: string) => {
     switch (role) {
       case 'ADMIN': return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200';
-      case 'RETAILER': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
+      case 'WHOLESALER': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
       case 'SHOP_OWNER': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
       case 'DELIVERY_BOY': return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200';
       default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
@@ -336,7 +336,7 @@ export default function AdminDashboard() {
                     <SelectContent>
                       <SelectItem value="">All Roles</SelectItem>
                       <SelectItem value="ADMIN">Admins</SelectItem>
-                      <SelectItem value="RETAILER">Retailers</SelectItem>
+                      <SelectItem value="WHOLESALER">Wholesalers</SelectItem>
                       <SelectItem value="SHOP_OWNER">Shop Owners</SelectItem>
                       <SelectItem value="DELIVERY_BOY">Delivery Boys</SelectItem>
                     </SelectContent>

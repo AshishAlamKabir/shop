@@ -6,7 +6,7 @@ interface User {
   id: string;
   email: string;
   fullName: string;
-  role: 'ADMIN' | 'RETAILER' | 'SHOP_OWNER' | 'DELIVERY_BOY';
+  role: 'ADMIN' | 'WHOLESALER' | 'SHOP_OWNER' | 'DELIVERY_BOY';
 }
 
 interface AuthState {

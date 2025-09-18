@@ -19,8 +19,8 @@ export function NotificationPanel() {
   } = useNotifications();
   const [isOpen, setIsOpen] = useState(false);
 
-  // Only show for retailer and shop owner accounts as requested
-  if (!user || (user.role !== 'RETAILER' && user.role !== 'SHOP_OWNER')) {
+  // Only show for wholesaler and shop owner accounts as requested
+  if (!user || (user.role !== 'WHOLESALER' && user.role !== 'SHOP_OWNER')) {
     return null;
   }
 

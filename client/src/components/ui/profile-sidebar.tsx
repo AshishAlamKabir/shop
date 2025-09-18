@@ -31,7 +31,7 @@ export function ProfileSidebar({ isOpen, onClose }: ProfileSidebarProps) {
   const getRoleIcon = (role: string) => {
     switch (role) {
       case 'ADMIN': return 'fas fa-user-shield';
-      case 'RETAILER': return 'fas fa-store';
+      case 'WHOLESALER': return 'fas fa-store';
       case 'SHOP_OWNER': return 'fas fa-shopping-cart';
       case 'DELIVERY_BOY': return 'fas fa-motorcycle';
       default: return 'fas fa-user';
@@ -41,7 +41,7 @@ export function ProfileSidebar({ isOpen, onClose }: ProfileSidebarProps) {
   const getRoleColor = (role: string) => {
     switch (role) {
       case 'ADMIN': return 'bg-destructive/10 text-destructive';
-      case 'RETAILER': return 'bg-primary/10 text-primary';
+      case 'WHOLESALER': return 'bg-primary/10 text-primary';
       case 'SHOP_OWNER': return 'bg-accent/10 text-accent';
       case 'DELIVERY_BOY': return 'bg-secondary/80 text-secondary-foreground';
       default: return 'bg-muted text-muted-foreground';

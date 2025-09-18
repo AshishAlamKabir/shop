@@ -49,8 +49,8 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
   };
 
   const addNotification = (notification: Omit<Notification, 'id' | 'timestamp' | 'read'>) => {
-    // Only add notifications for RETAILER and SHOP_OWNER as requested
-    if (!user || (user.role !== 'RETAILER' && user.role !== 'SHOP_OWNER')) {
+    // Only add notifications for WHOLESALER and SHOP_OWNER as requested
+    if (!user || (user.role !== 'WHOLESALER' && user.role !== 'SHOP_OWNER')) {
       return;
     }
 
