@@ -18,6 +18,7 @@ import ToastNotifications from "@/components/toast-notifications";
 import { useCartStore } from "@/store/cart";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import defaultProductUrl from "../../assets/default-product.jpg";
 
 export default function ShopOwnerDashboard() {
   const [activeSection, setActiveSection] = useState('explore');
@@ -288,7 +289,7 @@ export default function ShopOwnerDashboard() {
       brand: item.product.brand,
       size: item.product.size,
       price: listing.price,
-      imageUrl: item.product.imageUrl || 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=200&h=160',
+      imageUrl: item.product.imageUrl || defaultProductUrl,
       qty: quantity
     });
 
@@ -500,7 +501,7 @@ export default function ShopOwnerDashboard() {
                     >
                       <CardContent className="p-4">
                         <img 
-                          src={item.product.imageUrl || 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=200&h=160'} 
+                          src={item.product.imageUrl || defaultProductUrl} 
                           alt={item.product.name}
                           className="w-full h-32 object-cover rounded-md mb-3"
                         />
@@ -653,7 +654,7 @@ export default function ShopOwnerDashboard() {
                         {cart.map((item) => (
                           <div key={item.listingId} className="flex items-center space-x-4" data-testid={`cart-item-${item.listingId}`}>
                             <img 
-                              src={item.imageUrl || 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=60&h=60'} 
+                              src={item.imageUrl || defaultProductUrl} 
                               alt={item.name}
                               className="w-15 h-15 rounded-md object-cover"
                             />
@@ -785,7 +786,7 @@ export default function ShopOwnerDashboard() {
                         {order.items.map((item: any) => (
                           <div key={item.id} className="flex items-center space-x-3 mb-2">
                             <img 
-                              src={item.listing.product.imageUrl || 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=40&h=40'} 
+                              src={item.listing.product.imageUrl || defaultProductUrl} 
                               alt={item.listing.product.name}
                               className="w-10 h-10 rounded object-cover"
                             />

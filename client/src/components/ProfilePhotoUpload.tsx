@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import ImageCropModal from "@/components/ImageCropModal";
+import defaultAvatarUrl from "../assets/default-avatar.jpg";
 
 interface ProfilePhotoUploadProps {
   currentPhoto?: string | null;
@@ -163,7 +164,7 @@ export default function ProfilePhotoUpload({
       <div className="relative">
         <Avatar className={sizeClasses[size]} data-testid="avatar-profile-photo">
           <AvatarImage 
-            src={currentPhoto || undefined} 
+            src={currentPhoto || defaultAvatarUrl} 
             alt={userName}
             className="object-cover"
           />

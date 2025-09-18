@@ -13,6 +13,7 @@ import { BottomNavigation } from "@/components/ui/bottom-navigation";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import ProfilePhotoUpload from "@/components/ProfilePhotoUpload";
+import defaultProductUrl from "../../assets/default-product.jpg";
 
 export default function AdminDashboard() {
   const [activeSection, setActiveSection] = useState('overview');
@@ -615,7 +616,7 @@ export default function AdminDashboard() {
                             <td className="px-6 py-4">
                               <div className="flex items-center space-x-3">
                                 <img 
-                                  src={product.imageUrl || 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=80&h=80'} 
+                                  src={product.imageUrl || defaultProductUrl} 
                                   alt={product.name}
                                   className="w-12 h-12 rounded-md object-cover"
                                 />

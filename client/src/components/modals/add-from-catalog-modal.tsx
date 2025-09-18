@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import defaultProductUrl from "../../assets/default-product.jpg";
 
 interface AddFromCatalogModalProps {
   isOpen: boolean;
@@ -195,7 +196,7 @@ export default function AddFromCatalogModal({ isOpen, onClose, storeId }: AddFro
                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                           <div className="flex items-center gap-3">
                             <img 
-                              src={product.imageUrl || 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=60&h=60'} 
+                              src={product.imageUrl || defaultProductUrl} 
                               alt={product.name}
                               className="w-10 h-10 sm:w-12 sm:h-12 rounded object-cover flex-shrink-0"
                             />
@@ -252,7 +253,7 @@ export default function AddFromCatalogModal({ isOpen, onClose, storeId }: AddFro
                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                           <div className="flex items-center gap-3">
                             <img 
-                              src={product.imageUrl || 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=60&h=60'} 
+                              src={product.imageUrl || defaultProductUrl} 
                               alt={product.name}
                               className="w-10 h-10 sm:w-12 sm:h-12 rounded object-cover flex-shrink-0"
                             />
@@ -292,7 +293,7 @@ export default function AddFromCatalogModal({ isOpen, onClose, storeId }: AddFro
                 <div className="mb-3 p-3 bg-muted rounded-lg">
                   <div className="flex items-center gap-3">
                     <img 
-                      src={selectedProduct.imageUrl || 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=60&h=60'} 
+                      src={selectedProduct.imageUrl || defaultProductUrl} 
                       alt={selectedProduct.name}
                       className="w-10 h-10 sm:w-12 sm:h-12 rounded object-cover flex-shrink-0"
                     />

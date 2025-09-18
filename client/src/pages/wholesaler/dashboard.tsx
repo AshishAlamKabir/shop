@@ -16,6 +16,7 @@ import { NavigationSidebar, NavigationItem } from "@/components/ui/navigation-si
 import { BottomNavigation } from "@/components/ui/bottom-navigation";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import defaultProductUrl from "../../assets/default-product.jpg";
 
 export default function WholesalerDashboard() {
   const [activeSection, setActiveSection] = useState('orders');
@@ -693,7 +694,7 @@ export default function WholesalerDashboard() {
                     <CardContent className="p-4">
                       <div className="flex items-start justify-between mb-3">
                         <img 
-                          src={listing.product.imageUrl || 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=80&h=80'} 
+                          src={listing.product.imageUrl || defaultProductUrl} 
                           alt={listing.product.name}
                           className="w-16 h-16 rounded-md object-cover"
                         />
@@ -757,7 +758,7 @@ export default function WholesalerDashboard() {
                     <div className="space-y-4">
                       <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
                         <img 
-                          src={editingListing.product.imageUrl || 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=60&h=60'} 
+                          src={editingListing.product.imageUrl || defaultProductUrl} 
                           alt={editingListing.product.name}
                           className="w-12 h-12 rounded object-cover"
                         />
@@ -879,7 +880,7 @@ export default function WholesalerDashboard() {
                           <div key={item.id} className="flex items-center justify-between">
                             <div className="flex items-center space-x-3">
                               <img 
-                                src={item.listing.product.imageUrl || 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=40&h=40'} 
+                                src={item.listing.product.imageUrl || defaultProductUrl} 
                                 alt={item.listing.product.name}
                                 className="w-10 h-10 rounded object-cover"
                               />

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useCartStore } from "@/store/cart";
 import { useToast } from "@/hooks/use-toast";
+import defaultProductUrl from "../../assets/default-product.jpg";
 
 interface StoreCatalogModalProps {
   store: any;
@@ -89,7 +90,7 @@ export default function StoreCatalogModal({ store, isOpen, onClose, onNavigateTo
                   data-testid={`product-card-${listing.id}`}
                 >
                   <img 
-                    src={listing.product.imageUrl || 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=200&h=160'} 
+                    src={listing.product.imageUrl || defaultProductUrl} 
                     alt={listing.product.name}
                     className="w-full h-40 object-cover rounded-md mb-3"
                   />
