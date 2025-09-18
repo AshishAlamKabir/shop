@@ -15,6 +15,7 @@ import { NavigationSidebar, NavigationItem } from "@/components/ui/navigation-si
 import { BottomNavigation } from "@/components/ui/bottom-navigation";
 import { MobileCard, MobileProductCard } from "@/components/ui/mobile-card";
 import ToastNotifications from "@/components/toast-notifications";
+import { ProfileSidebar } from "@/components/ui/profile-sidebar";
 import { useCartStore } from "@/store/cart";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -32,9 +33,17 @@ export default function ShopOwnerDashboard() {
   const [adjustmentDialogOpen, setAdjustmentDialogOpen] = useState(false);
   const [selectedOrderForAdjustment, setSelectedOrderForAdjustment] = useState<any>(null);
   const [productQuantities, setProductQuantities] = useState<{[key: string]: number}>({});
+  const [isProfileSidebarOpen, setIsProfileSidebarOpen] = useState(false);
   
   const { cart, addToCart, removeFromCart, updateQuantity, clearCart, getTotalAmount, getItemCount } = useCartStore();
   const { toast } = useToast();
+
+  // Handle profile sidebar opening when profile section is active
+  useEffect(() => {
+    if (activeSection === 'profile') {
+      setIsProfileSidebarOpen(true);
+    }
+  }, [activeSection]);
 
 
   const { data: stores = [] } = useQuery({
@@ -1373,6 +1382,12 @@ export default function ShopOwnerDashboard() {
       <BottomNavigation 
         activeSection={activeSection}
         onSectionChange={setActiveSection}
+      />
+
+      {/* Profile Sidebar */}
+      <ProfileSidebar 
+        isOpen={isProfileSidebarOpen}
+        onClose={() => setIsProfileSidebarOpen(false)}
       />
     </div>
   );
