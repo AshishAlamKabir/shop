@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useSocket } from "@/hooks/use-socket";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
+import { useNotifications } from "@/hooks/use-notifications";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useMutation } from "@tanstack/react-query";
@@ -11,6 +12,7 @@ export default function ToastNotifications() {
   const { socket, isConnected } = useSocket();
   const { user } = useAuth();
   const { toast } = useToast();
+  const { addNotification } = useNotifications();
   const [paymentChangeRequest, setPaymentChangeRequest] = useState<any>(null);
 
   // Mutations for handling payment change requests
@@ -72,10 +74,20 @@ export default function ToastNotifications() {
           requestId: data.requestId
         });
         
+        const title = "💰 Payment Change Request";
+        const description = `Delivery boy requests changing payment from ₹${data.originalAmount} to ₹${data.requestedAmount}`;
+        
         toast({
-          title: "💰 Payment Change Request",
-          description: `Delivery boy requests changing payment from ₹${data.originalAmount} to ₹${data.requestedAmount}`,
+          title,
+          description,
           duration: 10000,
+        });
+        
+        // Add to persistent notification list
+        addNotification({
+          title,
+          description,
+          type: 'payment'
         });
         return;
       }
@@ -107,10 +119,20 @@ export default function ToastNotifications() {
       
       // Handle payment received notifications for retailers
       if (type === 'PAYMENT_RECEIVED_NOTIFICATION' && user.role === 'RETAILER') {
+        const title = "💰 Payment Received!";
+        const description = `${data.deliveryBoyName} collected ₹${data.amount} from ${data.customerName} for order ${data.orderNumber}`;
+        
         toast({
-          title: "💰 Payment Received!",
-          description: `${data.deliveryBoyName} collected ₹${data.amount} from ${data.customerName} for order ${data.orderNumber}`,
+          title,
+          description,
           duration: 10000,
+        });
+        
+        // Add to persistent notification list
+        addNotification({
+          title,
+          description,
+          type: 'payment'
         });
         return;
       }
@@ -118,31 +140,61 @@ export default function ToastNotifications() {
       switch (event) {
         case 'orderPlaced':
           if (user.role === 'RETAILER') {
+            const title = "New Order Received!";
+            const description = `Order #${orderId.slice(-8)} - ₹${payload.totalAmount}`;
+            
             toast({
-              title: "New Order Received!",
-              description: `Order #${orderId.slice(-8)} - ₹${payload.totalAmount}`,
+              title,
+              description,
               duration: 5000,
+            });
+            
+            // Add to persistent notification list
+            addNotification({
+              title,
+              description,
+              type: 'order'
             });
           }
           break;
           
         case 'orderAccepted':
           if (user.role === 'SHOP_OWNER') {
+            const title = "Order Accepted";
+            const description = `Your order #${orderId.slice(-8)} has been accepted`;
+            
             toast({
-              title: "Order Accepted",
-              description: `Your order #${orderId.slice(-8)} has been accepted`,
+              title,
+              description,
               duration: 5000,
+            });
+            
+            // Add to persistent notification list
+            addNotification({
+              title,
+              description,
+              type: 'order'
             });
           }
           break;
           
         case 'orderRejected':
           if (user.role === 'SHOP_OWNER') {
+            const title = "Order Rejected";
+            const description = `Your order #${orderId.slice(-8)} was rejected${payload.reason ? `: ${payload.reason}` : ''}`;
+            
             toast({
-              title: "Order Rejected",
-              description: `Your order #${orderId.slice(-8)} was rejected${payload.reason ? `: ${payload.reason}` : ''}`,
+              title,
+              description,
               variant: "destructive",
               duration: 5000,
+            });
+            
+            // Add to persistent notification list
+            addNotification({
+              title,
+              description,
+              type: 'order'
             });
           }
           break;
@@ -156,21 +208,41 @@ export default function ToastNotifications() {
           
           const message = statusMessages[payload.status as keyof typeof statusMessages];
           if (message && user.role === 'SHOP_OWNER') {
+            const title = "Order Status Updated";
+            const description = `Order #${orderId.slice(-8)}: ${message}`;
+            
             toast({
-              title: "Order Status Updated",
-              description: `Order #${orderId.slice(-8)}: ${message}`,
+              title,
+              description,
               duration: 5000,
+            });
+            
+            // Add to persistent notification list
+            addNotification({
+              title,
+              description,
+              type: 'order'
             });
           }
           break;
           
         case 'orderCancelled':
           if (user.role === 'RETAILER') {
+            const title = "Order Cancelled";
+            const description = `Order #${orderId.slice(-8)} was cancelled by customer`;
+            
             toast({
-              title: "Order Cancelled",
-              description: `Order #${orderId.slice(-8)} was cancelled by customer`,
+              title,
+              description,
               variant: "destructive",
               duration: 5000,
+            });
+            
+            // Add to persistent notification list
+            addNotification({
+              title,
+              description,
+              type: 'order'
             });
           }
           break;

@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
 import { ProfileSidebar } from "@/components/ui/profile-sidebar";
+import { NotificationPanel } from "@/components/ui/notification-panel";
 import ProfilePhotoUpload from "@/components/ProfilePhotoUpload";
 import logoUrl from "../../assets/logo.png";
 
@@ -36,12 +37,7 @@ export default function Header({ onMenuClick, onNavigationMenuClick }: HeaderPro
         
         <div className="flex items-center space-x-4">
           {/* Notifications */}
-          <Button variant="ghost" size="sm" className="relative" data-testid="button-notifications">
-            <i className="fas fa-bell"></i>
-            <span className="absolute -top-1 -right-1 w-5 h-5 bg-destructive text-destructive-foreground text-xs rounded-full flex items-center justify-center hidden">
-              3
-            </span>
-          </Button>
+          <NotificationPanel />
           
           {/* Profile Icon */}
           <Button 

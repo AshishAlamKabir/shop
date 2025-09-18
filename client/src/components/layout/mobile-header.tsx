@@ -2,9 +2,9 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
-import { useNotifications } from "@/hooks/use-notifications";
 import { ProfileSidebar } from "@/components/ui/profile-sidebar";
-import { Menu, Search, ShoppingCart, Bell } from "lucide-react";
+import { NotificationPanel } from "@/components/ui/notification-panel";
+import { Menu, Search, ShoppingCart } from "lucide-react";
 import logoUrl from "../../assets/logo.png";
 
 interface MobileHeaderProps {
@@ -22,7 +22,6 @@ export default function MobileHeader({
 }: MobileHeaderProps) {
   const [showProfileSidebar, setShowProfileSidebar] = useState(false);
   const { user } = useAuth();
-  const { notificationCount } = useNotifications();
 
   return (
     <>
@@ -66,19 +65,7 @@ export default function MobileHeader({
             )}
             
             {/* Notifications */}
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="p-2 hover:bg-muted rounded-lg relative"
-              data-testid="mobile-notifications-button"
-            >
-              <Bell className="h-5 w-5" />
-              {notificationCount > 0 && (
-                <div className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
-                  {notificationCount > 9 ? '9+' : notificationCount}
-                </div>
-              )}
-            </Button>
+            <NotificationPanel />
             
             {/* Cart (for shop owners) */}
             {showCart && user?.role === 'SHOP_OWNER' && (
