@@ -12,3 +12,5 @@
 [x] 10. Verified Khatabook functionality is working correctly for wholesaler transactions
 [x] 11. Implemented notification list system for retailer and shop owner accounts
 [x] 12. Added notification icon and persistent notification list functionality - users can now access all notifications via clicking the bell icon
+[x] 13. Fixed demo account login issue - corrected wholesaler account password mapping
+[x] 14. All migration tasks completed successfully - application is fully functional

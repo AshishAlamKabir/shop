@@ -115,7 +115,7 @@ export default function Login() {
   const fillLogin = (demoEmail: string) => {
     setEmail(demoEmail);
     if (demoEmail === 'admin@test.com') setPassword('admin123');
-    else if (demoEmail === 'retailer@test.com') setPassword('retailer123');
+    else if (demoEmail === 'wholesaler@test.com') setPassword('wholesaler123');
     else if (demoEmail === 'shop@test.com') setPassword('shop123');
     else if (demoEmail === 'delivery@test.com') setPassword('delivery123');
     else setPassword('password123');
