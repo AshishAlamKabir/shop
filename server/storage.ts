@@ -275,7 +275,7 @@ export class DatabaseStorage implements IStorage {
       query = query.where(or(
         like(productCatalog.name, `%${filters.search}%`),
         like(productCatalog.brand, `%${filters.search}%`)
-      ));
+      )) as any;
     }
     
     return await query.orderBy(desc(productCatalog.createdAt));

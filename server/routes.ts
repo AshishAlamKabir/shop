@@ -162,7 +162,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           role: user.role
         }
       });
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Login error:', error);
       res.status(500).json({ message: 'Login failed' });
     }
   });
