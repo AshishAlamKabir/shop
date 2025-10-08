@@ -55,6 +55,8 @@ export default function WholesalerDashboard() {
   });
   const [deliveryBoyAssignmentModal, setDeliveryBoyAssignmentModal] = useState<{ isOpen: boolean; order: any }>({ isOpen: false, order: null });
   const [selectedDeliveryBoyId, setSelectedDeliveryBoyId] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState<any>(null);
   const { toast } = useToast();
 
 
